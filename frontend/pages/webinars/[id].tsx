@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { Container, Typography, Box, CircularProgress, Alert, Card, CardContent, Button } from '@mui/material';
 import api from '../../utils/api';
 
+
 export default function WebinarDetail() {
   const router = useRouter();
   const { id } = router.query;
