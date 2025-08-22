@@ -16,6 +16,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import CommentIcon from "@mui/icons-material/Comment";
 import GroupIcon from "@mui/icons-material/Group";
 import StarIcon from "@mui/icons-material/Star";
+import ThumbUpAltIcon from "@mui/icons-material/ThumbUpAlt";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 interface ProfileDropdownProps {
@@ -99,7 +100,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
           </Typography>
         </Box>
         <Divider sx={{ my: 1 }} />
-        <MenuItem
+        {/* <MenuItem
           onClick={() => {
             handleClose();
             if (window.location.pathname !== `/profile/${userId}`) {
@@ -109,7 +110,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
           sx={{ py: 1.2 }}
         >
           <PersonIcon sx={{ mr: 1 }} /> View Profile
-        </MenuItem>
+        </MenuItem> */}
         <MenuItem
           onClick={() => {
             handleClose();
@@ -120,15 +121,15 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
           <EditIcon sx={{ mr: 1 }} /> Edit Profile
         </MenuItem>
         <Divider sx={{ my: 1 }} />
-        <MenuItem
-          onClick={() => {
-            handleClose();
-            onNavigate("/profile/activity");
-          }}
-          sx={{ py: 1.2 }}
+        {/* <MenuItem
+        onClick={() => {
+          handleClose();
+          onNavigate("/profile/activity");
+        }}
+        sx={{ py: 1.2 }}
         >
           <BarChartIcon sx={{ mr: 1 }} /> User Activity
-        </MenuItem>
+          </MenuItem> */}
         <MenuItem
           onClick={() => {
             handleClose();
@@ -163,7 +164,16 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
           }}
           sx={{ py: 1.2 }}
         >
-          <GroupIcon sx={{ mr: 1 }} /> Following
+          <GroupIcon sx={{ mr: 1 }} /> Connections
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            //onNavigate("/profile/activity");
+          }}
+          sx={{ py: 1.2 }}
+        >
+          <StarIcon sx={{ mr: 1 }} /> Starred
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -172,7 +182,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
           }}
           sx={{ py: 1.2 }}
         >
-          <StarIcon sx={{ mr: 1 }} /> Liked Items
+          <ThumbUpAltIcon sx={{ mr: 1 }} /> Liked Items
         </MenuItem>
         {/* Divider above logout */}
         <Divider sx={{ my: 1, bgcolor: "#fdecea" }} />
