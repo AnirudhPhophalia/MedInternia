@@ -37,7 +37,7 @@ initializeApp();
 app.use(helmet());
 const allowedOrigins = [
   "https://med-internia.vercel.app",
-  "http://localhost:3000"
+  "http://localhost:3001"
 ];
 app.use(cors({
   origin: function (origin, callback) {
