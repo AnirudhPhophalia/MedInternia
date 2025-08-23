@@ -1,22 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import api from "../utils/api";
 
 export default function PeoplePage() {
-  const toggleLike = (postId: number) => {
-    setLikedPosts((prev) => {
-      const newLiked = new Set(prev);
-      if (newLiked.has(postId)) {
-        newLiked.delete(postId);
-      } else {
-        newLiked.add(postId);
-      }
-      return newLiked;
-    });
-  };
+  const router = useRouter();
+  const { id } = router.query;
   const [activeTab, setActiveTab] = useState("cases");
   const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
+  const [profile, setProfile] = useState<any>(null);
+  const [posts, setPosts] = useState<any[]>([]);
 
-  // Dummy data for posts
-  const posts = [
+  // Dummy data for posts (fallback)
+  const dummyPosts = [
     {
       id: 1,
       title: "Complex Iron Deficiency Case Study",
@@ -40,6 +35,30 @@ export default function PeoplePage() {
       likes: 67,
     },
   ];
+
+  useEffect(() => {
+    if (!id) return;
+    // Fetch profile
+    api.get(`/users/${id}/profile`).then(res => {
+      setProfile(res.data?.data?.user || res.data?.user || res.data);
+    });
+    // Fetch posts/cases
+    api.get(`/cases?authorId=${id}`).then(res => {
+      setPosts(res.data?.data?.cases || res.data?.cases || res.data || []);
+    });
+  }, [id]);
+
+  const toggleLike = (postId: number) => {
+    setLikedPosts((prev) => {
+      const newLiked = new Set(prev);
+      if (newLiked.has(postId)) {
+        newLiked.delete(postId);
+      } else {
+        newLiked.add(postId);
+      }
+      return newLiked;
+    });
+  };
 
   return (
     <div
@@ -129,7 +148,11 @@ export default function PeoplePage() {
                   color: "#0284c7",
                 }}
               >
-                AV
+                {profile?.profilePicture ? (
+                  <img src={profile.profilePicture} alt="Profile" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover" }} />
+                ) : (
+                  `${(profile?.firstName?.[0] || "A").toUpperCase()}${(profile?.lastName?.[0] || "V").toUpperCase()}`
+                )}
               </div>
             </div>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -141,7 +164,7 @@ export default function PeoplePage() {
                   margin: "0 0 8px 0",
                 }}
               >
-                Dr. Anushka Verma
+                {profile ? `Dr. ${profile.firstName} ${profile.lastName}` : "Dr. Anushka Verma"}
               </h2>
               <p
                 style={{
@@ -151,7 +174,7 @@ export default function PeoplePage() {
                   lineHeight: 1.5,
                 }}
               >
-                Cardiology Specialist
+                {profile?.specialization || "Cardiology Specialist"}
               </p>
               <button
                 style={{
@@ -192,7 +215,7 @@ export default function PeoplePage() {
                 <div
                   style={{ fontSize: 16, fontWeight: 700, color: "#0ea5e9" }}
                 >
-                  1,245
+                  {profile?.followersCount ?? "1,245"}
                 </div>
                 <div
                   style={{ fontSize: 12, color: "#64748b", cursor: "pointer" }}
@@ -204,7 +227,7 @@ export default function PeoplePage() {
                 <div
                   style={{ fontSize: 16, fontWeight: 700, color: "#10b981" }}
                 >
-                  90
+                  {profile?.followingCount ?? "90"}
                 </div>
                 <div
                   style={{ fontSize: 12, color: "#64748b", cursor: "pointer" }}
@@ -305,7 +328,7 @@ export default function PeoplePage() {
                   Specialization:
                 </span>
                 <span style={{ fontWeight: 500, color: "#1e293b" }}>
-                  Cardiology
+                  {profile?.specialization || "Cardiology"}
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -315,7 +338,7 @@ export default function PeoplePage() {
                   Qualifications:
                 </span>
                 <span style={{ fontWeight: 500, color: "#1e293b" }}>
-                  MBBS MD
+                  {profile?.qualifications?.join(" ") || "MBBS MD"}
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -325,7 +348,7 @@ export default function PeoplePage() {
                   Experience:
                 </span>
                 <span style={{ fontWeight: 700, color: "#1e293b" }}>
-                  5+ Years
+                  {profile?.experience || "5+ Years"}
                 </span>
               </div>
             </div>
@@ -370,12 +393,12 @@ export default function PeoplePage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 14, color: "#64748b" }}>
-                    anushka5@gmail.com
+                    {profile?.email || "anushka5@gmail.com"}
                   </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 14, color: "#64748b" }}>
-                    +91-9876543210
+                    {profile?.phone || "+91-9876543210"}
                   </span>
                 </div>
               </div>
@@ -433,106 +456,123 @@ export default function PeoplePage() {
           </div>
           {activeTab === "cases" && (
             <div>
-              {posts.map((post, idx) => (
-                <div
-                  key={post.id}
-                  style={{
-                    background:
-                      idx === 0
-                        ? "linear-gradient(90deg, #d1fae5 100%, #10b981 100%)" // vibrant green
-                        : idx === 1
-                        ? "linear-gradient(90deg, #e0f2fe 100%, #38bdf8 100%)" // sky blue
-                        : "linear-gradient(90deg, #ffe7c2 10%, #fb923c 50%)", // bright orange
-                    borderRadius: 16,
-                    padding: 24,
-                    marginBottom: 16,
-                    transition: "box-shadow 0.2s, transform 0.2s",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                    cursor: "pointer",
-                    borderLeft:
-                      idx === 0
-                        ? "8px solid #10b981"
-                        : idx === 1
-                        ? "8px solid #38bdf8"
-                        : "8px solid #fb923c",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 8px 24px rgba(37,99,235,0.12)";
-                    e.currentTarget.style.transform =
-                      "translateY(-2px) scale(1.02)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 2px 8px rgba(0,0,0,0.04)";
-                    e.currentTarget.style.transform = "none";
-                  }}
-                >
-                  <h2
-                    style={{
-                      fontSize: 20,
-                      fontWeight: "bold",
-                      marginBottom: 8,
-                      color:
-                        idx === 0
-                          ? "#10b981"
-                          : idx === 1
-                          ? "#38bdf8"
-                          : "#fb923c",
-                    }}
-                  >
-                    {post.title}
-                  </h2>
-                  <p style={{ color: "#374151", marginBottom: 8 }}>
-                    {post.content}
-                  </p>
+              {(posts.length > 0 ? posts : dummyPosts).map((post, idx) => {
+                // Safely handle comments and likes
+                const commentsCount = Array.isArray(post.comments)
+                  ? post.comments.length
+                  : typeof post.comments === "object" && post.comments !== null && post.comments.length !== undefined
+                  ? post.comments.length
+                  : typeof post.comments === "number"
+                  ? post.comments
+                  : 0;
+                const likesCount = Array.isArray(post.likes)
+                  ? post.likes.length
+                  : typeof post.likes === "object" && post.likes !== null && post.likes.length !== undefined
+                  ? post.likes.length
+                  : typeof post.likes === "number"
+                  ? post.likes
+                  : 0;
+                return (
                   <div
+                    key={post.id || post._id}
                     style={{
-                      display: "flex",
-                      gap: 16,
-                      fontSize: 14,
-                      color: "#6b7280",
-                      marginBottom: 8,
+                      background:
+                        idx === 0
+                          ? "linear-gradient(90deg, #d1fae5 100%, #10b981 100%)"
+                          : idx === 1
+                          ? "linear-gradient(90deg, #e0f2fe 100%, #38bdf8 100%)"
+                          : "linear-gradient(90deg, #ffe7c2 10%, #fb923c 50%)",
+                      borderRadius: 16,
+                      padding: 24,
+                      marginBottom: 16,
+                      transition: "box-shadow 0.2s, transform 0.2s",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                      cursor: "pointer",
+                      borderLeft:
+                        idx === 0
+                          ? "8px solid #10b981"
+                          : idx === 1
+                          ? "8px solid #38bdf8"
+                          : "8px solid #fb923c",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow =
+                        "0 8px 24px rgba(37,99,235,0.12)";
+                      e.currentTarget.style.transform =
+                        "translateY(-2px) scale(1.02)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow =
+                        "0 2px 8px rgba(0,0,0,0.04)";
+                      e.currentTarget.style.transform = "none";
                     }}
                   >
-                    <span style={{ color: "#6366f1", fontWeight: 500 }}>
-                      {post.date}
-                    </span>
-                    <span
+                    <h2
                       style={{
+                        fontSize: 20,
+                        fontWeight: "bold",
+                        marginBottom: 8,
                         color:
                           idx === 0
                             ? "#10b981"
                             : idx === 1
                             ? "#38bdf8"
                             : "#fb923c",
-                        fontWeight: 500,
                       }}
                     >
-                      {post.privacy}
-                    </span>
-                    <span>{post.views} views</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 16 }}>
-                    <button
+                      {post.title || post.content?.title || "Untitled"}
+                    </h2>
+                    <p style={{ color: "#374151", marginBottom: 8 }}>
+                      {post.content || post.description || "No description"}
+                    </p>
+                    <div
                       style={{
-                        background: likedPosts.has(post.id)
-                          ? "#fee2e2"
-                          : "#e5e7eb",
-                        color: likedPosts.has(post.id) ? "#dc2626" : "#374151",
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "4px 12px",
-                        fontWeight: "bold",
+                        display: "flex",
+                        gap: 16,
+                        fontSize: 14,
+                        color: "#6b7280",
+                        marginBottom: 8,
                       }}
-                      onClick={() => toggleLike(post.id)}
                     >
-                      ❤️{post.likes + (likedPosts.has(post.id) ? 1 : 0)}
-                    </button>
-                    <span>📜 {post.comments}</span>
+                      <span style={{ color: "#6366f1", fontWeight: 500 }}>
+                        {post.date || post.createdAt || "Date unknown"}
+                      </span>
+                      <span
+                        style={{
+                          color:
+                            idx === 0
+                              ? "#10b981"
+                              : idx === 1
+                              ? "#38bdf8"
+                              : "#fb923c",
+                          fontWeight: 500,
+                        }}
+                      >
+                        {post.privacy || post.status || "Public"}
+                      </span>
+                      <span>{post.views || post.viewCount || 0} views</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 16 }}>
+                      <button
+                        style={{
+                          background: likedPosts.has(post.id || post._id)
+                            ? "#fee2e2"
+                            : "#e5e7eb",
+                          color: likedPosts.has(post.id || post._id) ? "#dc2626" : "#374151",
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "4px 12px",
+                          fontWeight: "bold",
+                        }}
+                        onClick={() => toggleLike(post.id || post._id)}
+                      >
+                        ❤️{likesCount + (likedPosts.has(post.id || post._id) ? 1 : 0)}
+                      </button>
+                      <span>📜 {commentsCount}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {activeTab === "research" && (
