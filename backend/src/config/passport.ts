@@ -2,7 +2,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import crypto from 'crypto';
-import User from '../models/User'; // User schema import kar rahe hain
+import User from '../models/User';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -15,31 +15,25 @@ passport.use(
     },
     async (accessToken: any, refreshToken: any, profile: any, done: any) => {
       try {
-        // 1. Check if user email is available from Google  
         const email = profile.emails?.[0].value;
         if (!email) {
           return done(new Error("No email found from Google"), undefined);
         }
 
-        // 2. Check if user already exists in our MongoDB
         let existingUser = await User.findOne({ email: email });
 
         if (existingUser) {
-          // Agar user pehle se hai, toh usko seedha login karwa do
           return done(null, existingUser);
         } else {
-          // 3. Agar user nahi hai, toh ek naya user create karo
-          
-          // Generate a highly secure random password to satisfy the User Schema
           const randomPassword = crypto.randomBytes(20).toString('hex') + "A1@!";
 
           const newUser = new User({
             firstName: profile.name?.givenName || 'Google',
             lastName: profile.name?.familyName || 'User',
             email: email,
-            password: randomPassword, // Dummy password
-            userType: 'patient', // Defaulting to patient
-            isVerified: true, // Google accounts are implicitly verified
+            password: randomPassword,
+            userType: 'intern', // Changed from 'patient' to 'intern' to natively match dashboard permissions
+            isVerified: true,
             profilePicture: profile.photos?.[0]?.value || '',
           });
 
