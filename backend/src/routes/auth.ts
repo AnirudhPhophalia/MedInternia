@@ -1,92 +1,79 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
-import User from '../models/User';
+import { Router } from 'express';
+import {
+  register,
+  login,
+  getProfile,
+  updateProfile,
+  changePassword
+} from '../controllers/authController';
+import { sendOtp, verifyOtp, forgotPassword, resetPassword, uploadProfilePicture } from '../controllers/authController';
+import { authenticate } from '../middleware/auth';
+import multer from 'multer';
+import path from 'path';
 
-export interface AuthRequest extends Request {
-  user?: any;
-}
+// --- NEW IMPORTS FOR GOOGLE AUTH ---
+import passport from 'passport';
+import jwt from 'jsonwebtoken';
 
-export const authenticate = async (req: any, res: Response, next: NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access token is required'
-      });
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token) as any;
-
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid or expired token'
-      });
-    }
-    
-    const userId = decoded.id || decoded.userId;
-    const user = await User.findById(userId).select('-password');
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token - user not found'
-      });
-    }
-
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated'
-      });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../../uploads/profiles'));
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
   }
-};
+});
+const upload = multer({ storage });
 
-export const authorize = (...userTypes: ('patient' | 'doctor' | 'intern')[]) => {
-  return (req: any, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
+const router = Router();
 
-    if (!userTypes.includes(req.user.userType)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied - insufficient permissions'
-      });
-    }
+// ==========================================
+// GOOGLE AUTHENTICATION ROUTES
+// ==========================================
 
-    next();
-  };
-};
+// 1. Initiate Google OAuth Flow
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-export const logger = (req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-};
+// 2. Google Callback URL after successful login
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { failureRedirect: 'http://localhost:3000/auth/login', session: false }),
+  (req: any, res: any) => {
+    // Authentication successful, generate JWT Token
+    const user: any = req.user; 
 
-export const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey) {
-    return res.status(401).json({
-      success: false,
-      message: 'API key is required'
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.userType || 'intern' },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '30d' }
+    );
+
+    // Dynamic environmental fallback configuration redirect
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/auth-success?token=${token}`);
   }
-  next();
-};
+);
+
+// ==========================================
+
+// Forgot password routes
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+
+// OTP routes
+router.post('/send-otp', sendOtp);
+router.post('/verify-otp', verifyOtp);
+
+// Public routes
+router.post('/register', register);
+router.post('/login', login);
+
+// Protected routes (require authentication)
+router.get('/profile', authenticate as any, getProfile as any);
+
+// Profile image upload
+router.post('/profile/upload-picture', authenticate as any, upload.single('profilePicture'), uploadProfilePicture as any);
+router.put('/profile', authenticate as any, updateProfile as any);
+router.put('/change-password', authenticate as any, changePassword as any);
+
+export default router;
