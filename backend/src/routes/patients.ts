@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 const router = Router();
 
 // Get all patients (only doctors can access)
-router.get('/', authenticate, authorize('doctor'), async (req: AuthRequest, res) => {
+router.get('/', authenticate as any, authorize('doctor')as any, async (req: any, res:any) => {
   try {
     const patients = await User.find({ userType: 'patient', isActive: true })
       .select('-password')
@@ -29,7 +29,7 @@ router.get('/', authenticate, authorize('doctor'), async (req: AuthRequest, res)
 });
 
 // Get patient by ID (doctors can access, patients can only access their own)
-router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+router.get('/:id', authenticate as any, async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const currentUser = req.user!;
@@ -71,7 +71,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Update patient medical information (doctors can update, patients can update their own)
-router.put('/:id/medical-info', authenticate, async (req: AuthRequest, res) => {
+router.put('/:id/medical-info', authenticate as any, async (req: any, res:any) => {
   try {
     const { id } = req.params;
     const currentUser = req.user!;

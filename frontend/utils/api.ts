@@ -5,14 +5,11 @@ const ensureApiPath = (baseUrl: string): string => {
   return normalized.endsWith('/api') ? normalized : `${normalized}/api`;
 };
 
-const rawBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'https://med-internia-earj.onrender.com/api';
+const rawBaseUrl = 'http://localhost:5000/api';
 
 const API_BASE_URL = ensureApiPath(rawBaseUrl);
 
-const api = axios.create({
+const api = axios.create({  
   baseURL: API_BASE_URL,
 });
 
@@ -21,8 +18,7 @@ api.interceptors.request.use(
   (config) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (token) {
-      config.headers = config.headers || {};
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },

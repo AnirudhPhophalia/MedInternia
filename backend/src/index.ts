@@ -1,5 +1,15 @@
-﻿import express, { Application, Request, Response } from 'express';
+﻿// Global Master Key: Passport aur Custom Types ka jhagda hamesha ke liye khatam
+declare global {
+  namespace Express {
+    interface User {
+      [key: string]: any;
+    }
+  }
+}
+
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import './config/passport';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
