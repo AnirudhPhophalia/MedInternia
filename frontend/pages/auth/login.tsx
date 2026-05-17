@@ -28,8 +28,10 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:5000/api/auth/google';
+ const handleGoogleLogin = () => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+    const backendRoot = apiBase.replace(/\/api$/, '');
+    window.location.href = `${backendRoot}/auth/google`;
   };
 
   return (

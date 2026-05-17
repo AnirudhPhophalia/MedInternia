@@ -37,7 +37,7 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 // 2. Google Callback URL after successful login
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: 'http://localhost:3000/auth/login', session: false }),
+  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/login`, session: false }),
   (req: any, res: any) => {
     // Authentication successful, generate JWT Token
     const user: any = req.user; 
