@@ -1,17 +1,14 @@
 // removed unused qrcode.react import (caused TypeScript default-export error)
 import {
-  Container,
-  Typography,
+  Alert,
   Box,
   Button,
   Paper,
-  Divider,
-  Stack,
   Snackbar,
-  Alert,
+  Stack,
+  Typography
 } from "@mui/material";
 // import Link from 'next/link';
-import Link from "next/link";
 
 import React, { useState } from "react";
 
@@ -120,6 +117,7 @@ const HomePage = () => {
         >
           Get Started
         </Button>
+
       </Box>
       {/* Local video player below Hero section */}
       <Box sx={{ mt: 2, mb: 4, display: 'flex', justifyContent: 'center' }}>
@@ -398,6 +396,55 @@ const HomePage = () => {
             </Typography>
           </Paper>
         </Stack>
+      </Box>
+      <Box
+        sx={{
+          maxWidth: 900,
+          mx: "auto",
+          py: 4,
+          textAlign: "center",
+        }}
+      >
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            borderRadius: 4,
+            background: "linear-gradient(120deg, #e0f7fa 0%, #f8f9fa 100%)",
+          }}
+        >
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            color="#1565c0"
+            mb={2}
+          >
+            Need Help or Have Questions?
+          </Typography>
+
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            mb={3}
+          >
+            Reach out to the MedInternia team for support and inquiries.
+          </Typography>
+
+          <Button
+            variant="contained"
+            href="/contact"
+            sx={{
+              borderRadius: 30,
+              px: 4,
+              py: 1,
+              fontWeight: 700,
+              background:
+                "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+            }}
+          >
+            Contact Us
+          </Button>
+        </Paper>
       </Box>
     </Box>
   );

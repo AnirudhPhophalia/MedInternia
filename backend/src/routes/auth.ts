@@ -9,17 +9,20 @@ import {
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import multer from 'multer';
-import path from 'path';
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../../uploads/profiles'));
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
   }
 });
-const upload = multer({ storage });
 
 const router = Router();
 // Forgot password routes
@@ -37,7 +40,12 @@ router.post('/login', login);
 // Protected routes (require authentication)
 router.get('/profile', authenticate, getProfile);
 // Profile image upload
-router.post('/profile/upload-picture', authenticate, upload.single('profilePicture'), uploadProfilePicture);
+router.post(
+  '/profile/upload-picture',
+  authenticate,
+  upload.single('profilePicture'),
+  uploadProfilePicture
+);
 router.put('/profile', authenticate, updateProfile);
 router.put('/change-password', authenticate, changePassword);
 

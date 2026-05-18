@@ -1,52 +1,52 @@
-// Upload profile picture
-export const uploadProfilePicture = async (req: AuthRequest, res: Response) => {
-  try {
-    console.log('---UPLOAD PROFILE PICTURE DEBUG---');
-    console.log('Headers:', req.headers);
-    console.log('User from auth middleware:', req.user);
-    console.log('File:', req.file);
-    if (!req.user) {
-      console.error('No user found in request. Token may be missing or invalid.');
-      return res.status(401).json({ success: false, message: 'User not authenticated' });
-    }
-    if (!req.file) {
-      console.error('No file uploaded.');
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
-  // Save full URL for profile picture to pass Mongoose validation
-  const protocol = req.protocol;
-  const host = req.get('host');
-  const imagePath = `${protocol}://${host}/uploads/profiles/${req.file.filename}`;
-    try {
-      const updatedUser = await User.findByIdAndUpdate(
-        req.user._id,
-        { profilePicture: imagePath },
-        { new: true, runValidators: true }
-      ).select('-password');
-      if (!updatedUser) {
-        console.error('User not found in database:', req.user._id);
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-      res.json({
-        success: true,
-        message: 'Profile picture updated successfully',
-        data: { user: updatedUser }
-      });
-    } catch (dbError) {
-      console.error('Database error:', dbError);
-      res.status(500).json({ success: false, message: 'Database error', error: dbError });
-    }
-  } catch (error) {
-    console.error('Upload profile picture error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error', error });
-  }
-};
 import nodemailer from 'nodemailer';
 const otpStore: Record<string, string> = {};
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import { generateToken } from '../utils/jwt';
 import { AuthRequest } from '../middleware/auth';
+import { uploadProfileImage } from '../utils/cloudinary';
+
+// Upload profile picture
+export const uploadProfilePicture = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const uploadResult = await uploadProfileImage(req.file, String(req.user._id));
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { profilePicture: uploadResult.secure_url },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Profile picture updated successfully',
+      data: {
+        user: updatedUser,
+        profilePicture: {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Upload profile picture error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Internal server error'
+    });
+  }
+};
 
 // Register a new user (patient or doctor)
 export const register = async (req: Request, res: Response) => {
