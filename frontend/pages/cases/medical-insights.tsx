@@ -8,7 +8,6 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Grid,
   MenuItem,
   Stack,
   TextField,
@@ -104,8 +103,15 @@ export default function MedicalInsights() {
         </Typography>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={5}>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 3,
+          gridTemplateColumns: { xs: "1fr", md: "minmax(320px, 5fr) 7fr" },
+          alignItems: "start",
+        }}
+      >
+        <Box>
           <Card sx={{ borderRadius: 4, boxShadow: "0 8px 32px #1565c022" }}>
             <CardContent>
               <Stack spacing={2.5}>
@@ -174,9 +180,9 @@ export default function MedicalInsights() {
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={7}>
+        <Box>
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
               <CircularProgress />
@@ -247,8 +253,15 @@ export default function MedicalInsights() {
                       </Stack>
                     </Box>
 
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                      <Grid item xs={12} sm={6}>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gap: 2,
+                        gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                        mt: 1,
+                      }}
+                    >
+                      <Box>
                         <Typography fontWeight={800}>
                           After-effect risks
                         </Typography>
@@ -257,8 +270,8 @@ export default function MedicalInsights() {
                             <li key={item}>{item}</li>
                           ))}
                         </ul>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
+                      </Box>
+                      <Box>
                         <Typography fontWeight={800}>
                           Recommended support
                         </Typography>
@@ -267,8 +280,8 @@ export default function MedicalInsights() {
                             <li key={item}>{item}</li>
                           ))}
                         </ul>
-                      </Grid>
-                    </Grid>
+                      </Box>
+                    </Box>
                   </CardContent>
                 </Card>
               ))}
@@ -298,8 +311,8 @@ export default function MedicalInsights() {
               <Alert severity="warning">{insight.disclaimer}</Alert>
             </Stack>
           )}
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Container>
   );
 }
