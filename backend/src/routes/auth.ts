@@ -4,26 +4,31 @@ import {
   login,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  sendOtp,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+  uploadProfilePicture
 } from '../controllers/authController';
-import { sendOtp, verifyOtp, forgotPassword, resetPassword, uploadProfilePicture } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import multer from 'multer';
-import path from 'path';
-
-// --- NEW IMPORTS FOR GOOGLE AUTH ---
 import passport from 'passport';
-import jwt from 'jsonwebtoken';
+import { generateToken } from '../utils/jwt';
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../../uploads/profiles'));
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed'));
+      return;
+    }
+    cb(null, true);
   }
 });
-const upload = multer({ storage });
 
 const router = Router();
 
@@ -37,20 +42,29 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 // 2. Google Callback URL after successful login
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/login`, session: false }),
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/login`, 
+    session: false 
+  }),
   (req: any, res: any) => {
-    // Authentication successful, generate JWT Token
-    const user: any = req.user; 
+    const user = req.user; 
 
-    const token = jwt.sign(
-      { id: user._id, role: user.userType || 'intern' },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '30d' }
-    );
+    // Generate token matching exact app standards (userId, email, userType)
+    const token = generateToken(user._id.toString(), user.email, user.userType || 'patient');
+
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Store the JWT in an HttpOnly cookie instead of exposing it in the URL
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
 
     // Dynamic environmental fallback configuration redirect
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/auth-success?token=${token}`);
+    res.redirect(`${frontendUrl}/auth-success`);
   }
 );
 
@@ -69,11 +83,17 @@ router.post('/register', register);
 router.post('/login', login);
 
 // Protected routes (require authentication)
-router.get('/profile', authenticate as any, getProfile as any);
+router.get('/profile', authenticate, getProfile);
 
 // Profile image upload
-router.post('/profile/upload-picture', authenticate as any, upload.single('profilePicture'), uploadProfilePicture as any);
-router.put('/profile', authenticate as any, updateProfile as any);
-router.put('/change-password', authenticate as any, changePassword as any);
+router.post(
+  '/profile/upload-picture',
+  authenticate,
+  upload.single('profilePicture'),
+  uploadProfilePicture
+);
+
+router.put('/profile', authenticate, updateProfile);
+router.put('/change-password', authenticate, changePassword);
 
 export default router;

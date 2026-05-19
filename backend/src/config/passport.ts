@@ -1,4 +1,3 @@
-// @ts-nocheck
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import crypto from 'crypto';
@@ -15,24 +14,28 @@ passport.use(
     },
     async (accessToken: any, refreshToken: any, profile: any, done: any) => {
       try {
-        const email = profile.emails?.[0].value;
-        if (!email) {
+        const rawEmail = profile.emails?.[0].value;
+        if (!rawEmail) {
           return done(new Error("No email found from Google"), undefined);
         }
+
+        // Lowercase email to avoid case-sensitive duplicate accounts
+        const email = rawEmail.toLowerCase();
 
         let existingUser = await User.findOne({ email: email });
 
         if (existingUser) {
           return done(null, existingUser);
         } else {
-          const randomPassword = crypto.randomBytes(20).toString('hex') + "A1@!";
+          // Standard high-entropy random password
+          const randomPassword = crypto.randomBytes(24).toString('hex');
 
           const newUser = new User({
             firstName: profile.name?.givenName || 'Google',
             lastName: profile.name?.familyName || 'User',
             email: email,
             password: randomPassword,
-            userType: 'intern', // Changed from 'patient' to 'intern' to natively match dashboard permissions
+            userType: 'patient', // Reverted to 'patient' to avoid strict Mongoose validation crashes (intern requires medicalSchool)
             isVerified: true,
             profilePicture: profile.photos?.[0]?.value || '',
           });

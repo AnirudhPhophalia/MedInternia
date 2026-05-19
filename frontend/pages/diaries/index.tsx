@@ -305,7 +305,7 @@ const DiariesPage: React.FC = () => {
                     )}
                     {/* Profile Card */}
                     {profile && (
-                        <div className="med-card" style={{ padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 32 }}>
+                        <div className="med-card" style={{ padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 4 }} className="med-blue">{profile.name} <span style={{ background: '#e3eafe', color: '#74a9bf', borderRadius: 8, padding: '2px 8px', fontSize: 13, marginLeft: 8 }}>{profile.badge}</span></div>
                                 <div style={{ color: '#555', fontSize: 15, marginBottom: 2 }}>{profile.email}</div>
@@ -316,18 +316,18 @@ const DiariesPage: React.FC = () => {
                                 </div>
                                 <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Stats: Diaries: {diaries.length}, Days Logged: {diaries.reduce((a, d) => a + d.entries.length, 0)}, Avg Entries/Week: {Math.round(diaries.reduce((a, d) => a + d.entries.length, 0) / 2)}</div>
                             </div>
-                            <div style={{ display: 'flex', gap: 18 }}>
-                                <div className="med-card" style={{ padding: 18, minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, flex: '0 1 360px', minWidth: 240 }}>
+                                <div className="med-card" style={{ padding: 14, minWidth: 75, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <FaBookOpen size={28} color="#74a9bf" style={{ marginBottom: 6 }} />
                                     <span className="med-blue" style={{ fontWeight: 700, fontSize: 15 }}>7 days</span>
                                     <span style={{ color: '#888', fontSize: 13 }}>Streak</span>
                                 </div>
-                                <div className="med-card" style={{ padding: 18, minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div className="med-card" style={{ padding: 14, minWidth: 75, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <FaBookOpen size={28} color="#74a9bf" style={{ marginBottom: 6 }} />
                                     <span className="med-blue" style={{ fontWeight: 700, fontSize: 15 }}>#3</span>
                                     <span style={{ color: '#888', fontSize: 13 }}>Leaderboard</span>
                                 </div>
-                                <div className="med-card" style={{ padding: 18, minWidth: 90, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div className="med-card" style={{ padding: 14, minWidth: 75, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                     <FaPlusCircle size={28} color="#74a9bf" style={{ marginBottom: 6 }} />
                                     <span className="med-blue" style={{ fontWeight: 700, fontSize: 15 }}>+10</span>
                                     <span style={{ color: '#888', fontSize: 13 }}>Credits</span>
