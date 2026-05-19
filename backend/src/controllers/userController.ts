@@ -1,8 +1,9 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import User from '../models/User';
 import UserBadge from '../models/UserBadge';
 import Case from '../models/Case';
+import ScoreHistory from '../models/ScoreHistory';
 import { checkAndAwardAutoBadges } from './badgeController';
 
 // Define CaseSummary type for recentCases
@@ -421,21 +422,45 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
   try {
     const doctor = req.user;
     const { internId } = req.params;
-    const { points } = req.body;
+    const { rubric } = req.body;
+    
     if (!doctor || doctor.userType !== 'doctor') {
       return res.status(403).json({ success: false, message: 'Only doctors can award points.' });
     }
-    if (typeof points !== 'number' || points <= 0) {
-      return res.status(400).json({ success: false, message: 'Points must be a positive number.' });
+    
+    if (!rubric || 
+        typeof rubric.diagnosticReasoning !== 'number' || 
+        typeof rubric.completeness !== 'number' ||
+        typeof rubric.evidenceSupport !== 'number' ||
+        typeof rubric.riskAwareness !== 'number' ||
+        typeof rubric.communicationClarity !== 'number') {
+      return res.status(400).json({ success: false, message: 'Invalid rubric scoring provided.' });
     }
+
     const intern = await User.findById(internId);
     if (!intern || intern.userType !== 'intern') {
       return res.status(404).json({ success: false, message: 'Intern not found.' });
     }
+
+    // Calculate total points (sum of all 5 categories, max 25 points)
+    const points = rubric.diagnosticReasoning + rubric.completeness + 
+                   rubric.evidenceSupport + rubric.riskAwareness + 
+                   rubric.communicationClarity;
+
+    // Save score history
+    await ScoreHistory.create({
+      doctor: doctor._id,
+      intern: intern._id,
+      rubric,
+      pointsAwarded: points
+    });
+
     intern.points = (intern.points || 0) + points;
     await intern.save();
+    
     res.json({ success: true, points: intern.points });
   } catch (error) {
+    console.error('Award points error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
