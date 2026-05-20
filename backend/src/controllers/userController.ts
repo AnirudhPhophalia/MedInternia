@@ -428,13 +428,21 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, message: 'Only doctors can award points.' });
     }
     
-    if (!rubric || 
-        typeof rubric.diagnosticReasoning !== 'number' || 
-        typeof rubric.completeness !== 'number' ||
-        typeof rubric.evidenceSupport !== 'number' ||
-        typeof rubric.riskAwareness !== 'number' ||
-        typeof rubric.communicationClarity !== 'number') {
-      return res.status(400).json({ success: false, message: 'Invalid rubric scoring provided.' });
+    // Validate rubric structure and values
+    if (!rubric || typeof rubric !== 'object') {
+      return res.status(400).json({ success: false, message: 'Rubric scoring object is required.' });
+    }
+    
+    const requiredCategories = ['diagnosticReasoning', 'completeness', 'evidenceSupport', 'riskAwareness', 'communicationClarity'];
+    
+    for (const category of requiredCategories) {
+      const value = rubric[category];
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 1 || value > 5) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `${category} must be a finite number between 1 and 5.` 
+        });
+      }
     }
 
     const intern = await User.findById(internId);
@@ -443,6 +451,8 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
     }
 
     // Calculate total points (sum of all 5 categories, max 25 points)
+    // Note: Currently using unweighted simple sum as mentioned in PR scope
+    // If weighted scoring is needed, implement weights here and persist them
     const points = rubric.diagnosticReasoning + rubric.completeness + 
                    rubric.evidenceSupport + rubric.riskAwareness + 
                    rubric.communicationClarity;
@@ -455,10 +465,14 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
       pointsAwarded: points
     });
 
-    intern.points = (intern.points || 0) + points;
-    await intern.save();
+    // Use atomic update to prevent race conditions
+    const updatedIntern = await User.findByIdAndUpdate(
+      internId,
+      { $inc: { points: points } },
+      { new: true }
+    );
     
-    res.json({ success: true, points: intern.points });
+    res.json({ success: true, points: updatedIntern!.points });
   } catch (error) {
     console.error('Award points error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

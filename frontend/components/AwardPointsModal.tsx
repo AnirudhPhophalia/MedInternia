@@ -51,10 +51,7 @@ export default function AwardPointsModal({ open, onClose, internId, internName, 
     setLoading(true);
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.post(`/users/${internId}/award-points`, { rubric }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post(`/users/${internId}/award-points`, { rubric });
       if (res.data.success) {
         onSuccess(res.data.points);
         onClose();
