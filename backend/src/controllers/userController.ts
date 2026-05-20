@@ -446,52 +446,90 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    if (!mongoose.Types.ObjectId.isValid(internId)) {
+      return res.status(400).json({ success: false, message: 'Invalid intern ID format.' });
+    }
+
     const intern = await User.findById(internId);
     if (!intern || intern.userType !== 'intern') {
       return res.status(404).json({ success: false, message: 'Intern not found.' });
     }
 
-    // Calculate total points (sum of all 5 categories, max 25 points)
-    // Note: Currently using unweighted simple sum as mentioned in PR scope
-    // If weighted scoring is needed, implement weights here and persist them
+    // Calculate total points (unweighted sum of all 5 categories, max 25 points)
+    // Per PR scope, scoring uses equal-weight simple sum.
+    // To switch to weighted scoring: add weights (e.g. diagnosticReasoning * 2)
+    // and store the weight version in ScoreHistory for auditability.
     const points = rubric.diagnosticReasoning + rubric.completeness + 
                    rubric.evidenceSupport + rubric.riskAwareness + 
                    rubric.communicationClarity;
 
+    // Use transaction for consistency (requires replica set).
+    // Falls back to non-transactional writes on standalone MongoDB.
+    let supportsTransactions = true;
     const session = await mongoose.startSession();
-    session.startTransaction();
     try {
-      // Save score history
-      await ScoreHistory.create([{
+      session.startTransaction();
+    } catch {
+      supportsTransactions = false;
+      session.endSession();
+    }
+
+    if (supportsTransactions) {
+      try {
+        // Save score history
+        await ScoreHistory.create([{
+          doctor: doctor._id,
+          intern: intern._id,
+          rubric,
+          pointsAwarded: points
+        }], { session });
+
+        // Use atomic update to prevent race conditions
+        const updatedIntern = await User.findByIdAndUpdate(
+          internId,
+          { $inc: { points: points } },
+          { new: true, session }
+        );
+
+        if (!updatedIntern) {
+          await session.abortTransaction();
+          session.endSession();
+          return res.status(404).json({ success: false, message: 'Intern not found.' });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        await checkAndAwardAutoBadges(internId);
+
+        res.json({ success: true, points: updatedIntern.points });
+      } catch (txnError) {
+        await session.abortTransaction();
+        session.endSession();
+        throw txnError;
+      }
+    } else {
+      // Fallback for standalone MongoDB (no transaction support)
+      await ScoreHistory.create({
         doctor: doctor._id,
         intern: intern._id,
         rubric,
         pointsAwarded: points
-      }], { session });
+      });
 
-      // Use atomic update to prevent race conditions
       const updatedIntern = await User.findByIdAndUpdate(
         internId,
         { $inc: { points: points } },
-        { new: true, session }
+        { new: true }
       );
 
       if (!updatedIntern) {
-        await session.abortTransaction();
-        session.endSession();
         return res.status(404).json({ success: false, message: 'Intern not found.' });
       }
 
-      await session.commitTransaction();
-      session.endSession();
-
       await checkAndAwardAutoBadges(internId);
-      
+
       res.json({ success: true, points: updatedIntern.points });
-    } catch (txnError) {
-      await session.abortTransaction();
-      session.endSession();
-      throw txnError;
     }
   } catch (error) {
     console.error('Award points error:', error);
