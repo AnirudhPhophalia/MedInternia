@@ -471,8 +471,12 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
       { $inc: { points: points } },
       { new: true }
     );
+
+    if (!updatedIntern) {
+      return res.status(404).json({ success: false, message: 'Intern not found.' });
+    }
     
-    res.json({ success: true, points: updatedIntern!.points });
+    res.json({ success: true, points: updatedIntern.points });
   } catch (error) {
     console.error('Award points error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
