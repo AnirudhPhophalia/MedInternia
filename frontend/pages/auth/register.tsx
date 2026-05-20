@@ -34,6 +34,8 @@ export default function Register() {
     allergies: '',
   });
   const [error, setError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState('');
   const [step, setStep] = useState(1);
   const router = useRouter();
   // OTP verification states
@@ -68,8 +70,29 @@ export default function Register() {
     }
   }
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const validatePhone = (value: string) => /^\d{10}$/.test(value);
+
+  const getOptionalPhoneError = (value: string, label = 'mobile number') => {
+    if (!value) return '';
+    return validatePhone(value) ? '' : `Enter a valid 10-digit ${label}.`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    setForm({ ...form, [name]: digits });
+
+    const errorMessage = getOptionalPhoneError(digits);
+
+    if (name === 'phone') {
+      setPhoneError(errorMessage);
+    } else if (name === 'emergencyContactPhone') {
+      setEmergencyPhoneError(errorMessage);
+    }
   };
 
   // Email change triggers OTP send
@@ -146,6 +169,23 @@ export default function Register() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setError('');
+
+    const phoneValidationError = getOptionalPhoneError(form.phone);
+    const emergencyPhoneValidationError = getOptionalPhoneError(form.emergencyContactPhone, 'emergency contact number');
+
+    setPhoneError(phoneValidationError);
+    setEmergencyPhoneError(emergencyPhoneValidationError);
+
+    if (phoneValidationError) {
+      setError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (emergencyPhoneValidationError) {
+      setError('Please enter a valid 10-digit emergency contact number.');
+      return;
+    }
+
     // Check all required fields in step 2 are filled
     const fields = getStep2Fields();
     const missing = fields.filter(f => !form[f]);
@@ -218,7 +258,17 @@ export default function Register() {
                 )}
                 {step === 2 && (
                   <>
-                    <TextField label="Phone" name="phone" fullWidth margin="normal" value={form.phone} onChange={handleChange} />
+                    <TextField
+                      label="Phone"
+                      name="phone"
+                      fullWidth
+                      margin="normal"
+                      value={form.phone}
+                      onChange={handlePhoneChange}
+                      error={Boolean(phoneError)}
+                      helperText={phoneError || 'Enter a 10-digit mobile number'}
+                      inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
+                    />
                     <TextField label="Date of Birth" name="dateOfBirth" type="date" fullWidth margin="normal" value={form.dateOfBirth} onChange={handleChange} InputLabelProps={{ shrink: true }} />
                     <TextField select label="Gender" name="gender" fullWidth margin="normal" value={form.gender} onChange={handleChange}>
                       <MenuItem value="male">Male</MenuItem>
@@ -255,7 +305,17 @@ export default function Register() {
                       <Fade in timeout={600}>
                         <Box>
                           <TextField label="Emergency Contact Name" name="emergencyContactName" fullWidth margin="normal" value={form.emergencyContactName} onChange={handleChange} />
-                          <TextField label="Emergency Contact Phone" name="emergencyContactPhone" fullWidth margin="normal" value={form.emergencyContactPhone} onChange={handleChange} />
+                          <TextField
+                            label="Emergency Contact Phone"
+                            name="emergencyContactPhone"
+                            fullWidth
+                            margin="normal"
+                            value={form.emergencyContactPhone}
+                            onChange={handlePhoneChange}
+                            error={Boolean(emergencyPhoneError)}
+                            helperText={emergencyPhoneError || 'Enter a 10-digit mobile number'}
+                            inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
+                          />
                           <TextField label="Emergency Contact Relationship" name="emergencyContactRelationship" fullWidth margin="normal" value={form.emergencyContactRelationship} onChange={handleChange} />
                           <TextField label="Medical History (comma separated)" name="medicalHistory" fullWidth margin="normal" value={form.medicalHistory} onChange={handleChange} />
                           <TextField label="Allergies (comma separated)" name="allergies" fullWidth margin="normal" value={form.allergies} onChange={handleChange} />

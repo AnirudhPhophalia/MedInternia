@@ -43,7 +43,7 @@ interface NavButtonProps {
 // Reusable component for navigation buttons
 const NavButton: React.FC<NavButtonProps> = ({ href, icon, label, isActive }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), { noSsr: true });
 
   if (isMobile) {
     return (
@@ -95,7 +95,7 @@ const NavButton: React.FC<NavButtonProps> = ({ href, icon, label, isActive }) =>
 export default function Navbar({ route }: { route?: string }) {
   const router = useRouter();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), { noSsr: true });
 
   const handleHomeNav = () => {
     if (typeof window !== 'undefined') {
@@ -248,7 +248,16 @@ React.useEffect(() => {
               >
                 <Paper
                   component="form"
-                  onSubmit={(e) => e.preventDefault()}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = search?.trim();
+                    if (q) {
+                      setShowSuggestions(false);
+                      router.push(`/search?q=${encodeURIComponent(q)}`);
+                    } else {
+                      router.push('/search');
+                    }
+                  }}
                   sx={{
                     p: "4px 8px",
                     display: "flex",
