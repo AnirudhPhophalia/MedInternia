@@ -351,16 +351,16 @@ export default function UploadRawPage() {
           </Stack>
           <TextField label="Ayushman Reference ID" fullWidth variant="outlined" sx={{ mt: 2 }} />
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", mt: 3, mb: 2 }}>
-  <Button variant="contained" component="label" sx={{ borderRadius: 2, background: "#2193b0", minHeight: 48 }}>
-    Upload Medical Files
-    <input type="file" hidden multiple />
-  </Button>
+            <Button variant="contained" component="label" sx={{ borderRadius: 2, background: "#2193b0", minHeight: 48 }}>
+              Upload Medical Files
+              <input type="file" hidden multiple />
+            </Button>
 
-  <Button variant="outlined" component="label" sx={{ borderRadius: 2, minHeight: 48 }}>
-    Upload Bills (Optional)
-    <input type="file" hidden multiple />
-  </Button>
-</Box>
+            <Button variant="outlined" component="label" sx={{ borderRadius: 2, minHeight: 48 }}>
+              Upload Bills (Optional)
+              <input type="file" hidden multiple />
+            </Button>
+          </Box>
           <TextField
             label="Additional Medical Data"
             multiline
