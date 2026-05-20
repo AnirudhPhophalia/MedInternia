@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
+import mongoose from 'mongoose';
 import User from '../models/User';
 import UserBadge from '../models/UserBadge';
 import Case from '../models/Case';
@@ -437,10 +438,10 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
     
     for (const category of requiredCategories) {
       const value = rubric[category];
-      if (typeof value !== 'number' || !Number.isFinite(value) || value < 1 || value > 5) {
+      if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value) || value < 1 || value > 5) {
         return res.status(400).json({ 
           success: false, 
-          message: `${category} must be a finite number between 1 and 5.` 
+          message: `${category} must be an integer between 1 and 5.` 
         });
       }
     }
@@ -457,26 +458,41 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
                    rubric.evidenceSupport + rubric.riskAwareness + 
                    rubric.communicationClarity;
 
-    // Save score history
-    await ScoreHistory.create({
-      doctor: doctor._id,
-      intern: intern._id,
-      rubric,
-      pointsAwarded: points
-    });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      // Save score history
+      await ScoreHistory.create([{
+        doctor: doctor._id,
+        intern: intern._id,
+        rubric,
+        pointsAwarded: points
+      }], { session });
 
-    // Use atomic update to prevent race conditions
-    const updatedIntern = await User.findByIdAndUpdate(
-      internId,
-      { $inc: { points: points } },
-      { new: true }
-    );
+      // Use atomic update to prevent race conditions
+      const updatedIntern = await User.findByIdAndUpdate(
+        internId,
+        { $inc: { points: points } },
+        { new: true, session }
+      );
 
-    if (!updatedIntern) {
-      return res.status(404).json({ success: false, message: 'Intern not found.' });
+      if (!updatedIntern) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ success: false, message: 'Intern not found.' });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      await checkAndAwardAutoBadges(internId);
+      
+      res.json({ success: true, points: updatedIntern.points });
+    } catch (txnError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txnError;
     }
-    
-    res.json({ success: true, points: updatedIntern.points });
   } catch (error) {
     console.error('Award points error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });

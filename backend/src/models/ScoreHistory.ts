@@ -18,27 +18,30 @@ const ScoreHistorySchema = new Schema<IScoreHistory>({
   doctor: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    immutable: true
   },
   intern: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    immutable: true
   },
   rubric: {
-    diagnosticReasoning: { type: Number, required: true, min: 1, max: 5 },
-    completeness: { type: Number, required: true, min: 1, max: 5 },
-    evidenceSupport: { type: Number, required: true, min: 1, max: 5 },
-    riskAwareness: { type: Number, required: true, min: 1, max: 5 },
-    communicationClarity: { type: Number, required: true, min: 1, max: 5 }
+    diagnosticReasoning: { type: Number, required: true, min: 1, max: 5, immutable: true },
+    completeness: { type: Number, required: true, min: 1, max: 5, immutable: true },
+    evidenceSupport: { type: Number, required: true, min: 1, max: 5, immutable: true },
+    riskAwareness: { type: Number, required: true, min: 1, max: 5, immutable: true },
+    communicationClarity: { type: Number, required: true, min: 1, max: 5, immutable: true }
   },
   pointsAwarded: {
     type: Number,
     required: true,
-    min: 0
+    min: 0,
+    immutable: true
   }
 }, {
-  timestamps: { createdAt: true, updatedAt: false } // Immutable, so only createdAt
+  timestamps: { createdAt: true, updatedAt: false }
 });
 
 // Indexes for fast querying of an intern's performance trends

@@ -67,7 +67,7 @@ export default function UserProfile() {
           internId={user._id}
           internName={`${user.firstName} ${user.lastName}`}
           onSuccess={(newPoints) => {
-            setUser({ ...user, points: newPoints });
+            setUser(prev => prev ? { ...prev, points: newPoints } : prev);
           }}
         />
       )}

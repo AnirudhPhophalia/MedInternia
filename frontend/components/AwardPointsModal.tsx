@@ -13,6 +13,16 @@ import {
 } from '@mui/material';
 import api from '../utils/api';
 
+type RubricKey = 'diagnosticReasoning' | 'completeness' | 'evidenceSupport' | 'riskAwareness' | 'communicationClarity';
+
+interface RubricScores {
+  diagnosticReasoning: number;
+  completeness: number;
+  evidenceSupport: number;
+  riskAwareness: number;
+  communicationClarity: number;
+}
+
 interface AwardPointsModalProps {
   open: boolean;
   onClose: () => void;
@@ -21,7 +31,7 @@ interface AwardPointsModalProps {
   onSuccess: (newPoints: number) => void;
 }
 
-const categories = [
+const categories: { key: RubricKey; label: string }[] = [
   { key: 'diagnosticReasoning', label: 'Diagnostic Reasoning' },
   { key: 'completeness', label: 'Completeness' },
   { key: 'evidenceSupport', label: 'Evidence Support' },
@@ -30,7 +40,7 @@ const categories = [
 ];
 
 export default function AwardPointsModal({ open, onClose, internId, internName, onSuccess }: AwardPointsModalProps) {
-  const [rubric, setRubric] = useState({
+  const [rubric, setRubric] = useState<RubricScores>({
     diagnosticReasoning: 3,
     completeness: 3,
     evidenceSupport: 3,
@@ -40,11 +50,11 @@ export default function AwardPointsModal({ open, onClose, internId, internName, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleChange = (key: string) => (event: Event, newValue: number | number[]) => {
-    setRubric({
-      ...rubric,
+  const handleChange = (key: RubricKey) => (_event: Event, newValue: number | number[]) => {
+    setRubric(prev => ({
+      ...prev,
       [key]: newValue as number
-    });
+    }));
   };
 
   const handleSubmit = async () => {
@@ -79,17 +89,18 @@ export default function AwardPointsModal({ open, onClose, internId, internName, 
 
         {categories.map((cat) => (
           <Box key={cat.key} sx={{ mb: 3 }}>
-            <Typography gutterBottom>
-              {cat.label}: {(rubric as any)[cat.key]} / 5
+            <Typography gutterBottom id={`slider-label-${cat.key}`}>
+              {cat.label}: {rubric[cat.key]} / 5
             </Typography>
             <Slider
-              value={(rubric as any)[cat.key]}
+              value={rubric[cat.key]}
               onChange={handleChange(cat.key)}
               step={1}
               marks
               min={1}
               max={5}
               valueLabelDisplay="auto"
+              aria-labelledby={`slider-label-${cat.key}`}
             />
           </Box>
         ))}
