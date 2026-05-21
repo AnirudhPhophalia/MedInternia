@@ -20,11 +20,11 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       tags
     } = req.body;
 
-    // Only doctors can create webinars
-    if (req.user!.userType !== 'doctor') {
+    // Webinar managers can create webinars after route-level permission checks.
+    if (req.user!.userType !== 'doctor' && req.user!.userType !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only doctors can create webinars'
+        message: 'Only doctors or admins can create webinars'
       });
     }
 
@@ -53,7 +53,7 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     const interns = await User.find({ userType: 'intern' });
       const notifications = interns.map(intern => ({
         recipient: intern._id,
-        message: `New webinar scheduled: ${webinar.title} by Dr. ${host.firstName} ${host.lastName}`,
+        message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
         type: 'webinar',
         link: webinar.meetingLink
       }));

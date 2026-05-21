@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
+import type { AppRole } from '../middleware/permissions';
 
 export interface JwtPayload {
   userId: string;
   email: string;
-  userType: 'patient' | 'doctor' | 'intern';
+  userType: AppRole;
 }
 
 export const generateToken = (payload: JwtPayload): string => {

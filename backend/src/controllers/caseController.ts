@@ -3,6 +3,9 @@ import Case, { ICase } from '../models/Case';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 
+const canModerateComments = (userType?: string) => ['admin', 'doctor', 'moderator'].includes(userType ?? '');
+const canAddCaseFollowUp = (userType?: string) => ['admin', 'doctor', 'intern', 'hospital_staff'].includes(userType ?? '');
+
 // Reply to a comment
 export const replyToComment = async (req: AuthRequest, res: Response) => {
   try {
@@ -540,8 +543,8 @@ export const pinComment = async (req: AuthRequest, res: Response) => {
     if (!caseDoc) return res.status(404).json({ success: false, message: 'Case not found' });
     const comment = caseDoc.comments.find((c: any) => c._id?.toString() === commentId);
     if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
-    // Doctors can pin any comment, others can only pin their own
-    if (user.userType === 'doctor' || (comment.author?.toString() === user._id?.toString())) {
+    // Moderation roles can pin any comment; other permitted users can pin their own.
+    if (canModerateComments(user.userType) || (comment.author?.toString() === user._id?.toString())) {
       comment.pinned = true;
       await caseDoc.save();
       return res.json({ success: true, comment });
@@ -558,8 +561,8 @@ export const unpinComment = async (req: AuthRequest, res: Response) => {
   try {
     const { caseId, commentId } = req.params;
     const user = req.user;
-    if (!user || user.userType !== 'doctor') {
-      return res.status(403).json({ success: false, message: 'Only doctors can unpin comments' });
+    if (!user || !canModerateComments(user.userType)) {
+      return res.status(403).json({ success: false, message: 'Only comment moderators can unpin comments' });
     }
     const caseDoc = await Case.findById(caseId);
     if (!caseDoc) return res.status(404).json({ success: false, message: 'Case not found' });
@@ -760,14 +763,14 @@ export const addFollowUp = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Only the original case author or doctors can add follow-ups
+    // Original authors and roles with follow-up permission can add follow-ups.
     const userIdString = (user._id as any).toString();
-    const canAddFollowUp = caseData.doctor.toString() === userIdString || user.userType === 'doctor';
+    const canAddFollowUp = caseData.doctor.toString() === userIdString || canAddCaseFollowUp(user.userType);
 
     if (!canAddFollowUp) {
       return res.status(403).json({
         success: false,
-        message: 'Only the case author or doctors can add follow-ups'
+        message: 'Only the case author or permitted care team members can add follow-ups'
       });
     }
 

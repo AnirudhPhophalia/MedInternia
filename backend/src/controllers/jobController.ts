@@ -21,11 +21,11 @@ export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
       externalUrl
     } = req.body;
 
-    // Only doctors can post job opportunities
-    if (req.user!.userType !== 'doctor') {
+    // Job managers can post after route-level permission checks.
+    if (req.user!.userType !== 'doctor' && req.user!.userType !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only doctors can post job opportunities'
+        message: 'Only doctors or admins can post job opportunities'
       });
     }
 

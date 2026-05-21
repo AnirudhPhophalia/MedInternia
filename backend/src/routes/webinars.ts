@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/permissions';
 import {
   createWebinar,
   getWebinars,
@@ -16,7 +17,7 @@ import {
 const router = Router();
 
 // Create webinar
-router.post('/', authenticate, authorize('doctor'), createWebinar);
+router.post('/', authenticate, requirePermission('webinar:manage'), createWebinar);
 
 // Get all webinars
 router.get('/', getWebinars);
@@ -28,21 +29,21 @@ router.get('/my', authenticate, getUserWebinars);
 router.get('/:id', getWebinarById);
 
 // Register for webinar
-router.post('/:id/register', authenticate, registerForWebinar);
+router.post('/:id/register', authenticate, requirePermission('webinar:attend'), registerForWebinar);
 
 // Unregister from webinar
-router.delete('/:id/register', authenticate, unregisterFromWebinar);
+router.delete('/:id/register', authenticate, requirePermission('webinar:attend'), unregisterFromWebinar);
 
 // Update webinar
-router.put('/:id', authenticate, authorize('doctor'), updateWebinar);
+router.put('/:id', authenticate, requirePermission('webinar:manage'), updateWebinar);
 
 // Mark attendance
-router.patch('/:id/attendance', authenticate, authorize('doctor'), markAttendance);
+router.patch('/:id/attendance', authenticate, requirePermission('webinar:manage'), markAttendance);
 
 // Submit feedback
-router.post('/:id/feedback', authenticate, submitFeedback);
+router.post('/:id/feedback', authenticate, requirePermission('webinar:feedback'), submitFeedback);
 
 // Generate meeting link
-router.post('/:id/meeting-link', authenticate, authorize('doctor'), generateMeetingLink);
+router.post('/:id/meeting-link', authenticate, requirePermission('webinar:manage'), generateMeetingLink);
 
 export default router;

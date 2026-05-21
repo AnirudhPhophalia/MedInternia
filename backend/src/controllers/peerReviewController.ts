@@ -18,11 +18,11 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if reviewer is an intern
-    if (req.user!.userType !== 'intern') {
+    // Check if reviewer is allowed by the route-level role guard.
+    if (req.user!.userType !== 'intern' && req.user!.userType !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only interns can submit peer reviews'
+        message: 'Only interns or admins can submit peer reviews'
       });
     }
 

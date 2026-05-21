@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import type { AppRole } from '../middleware/permissions';
 
 export interface IUser extends Document {
   following?: mongoose.Types.ObjectId[];
@@ -8,7 +9,7 @@ export interface IUser extends Document {
   lastName: string;
   email: string;
   password: string;
-  userType: 'patient' | 'doctor' | 'intern';
+  userType: AppRole;
   phone?: string;
   dateOfBirth?: Date;
   gender?: 'male' | 'female' | 'other';
@@ -116,7 +117,7 @@ const UserSchema = new Schema<IUser>({
   userType: {
     type: String,
     required: [true, 'User type is required'],
-    enum: ['patient', 'doctor', 'intern']
+    enum: ['patient', 'doctor', 'intern', 'admin', 'hospital_staff', 'moderator']
   },
   phone: {
     type: String,

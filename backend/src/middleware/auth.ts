@@ -1,6 +1,8 @@
 ﻿import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt';
 import User, { IUser } from '../models/User';
+import { getUserRole } from './permissions';
+import type { AppRole } from './permissions';
 
 export interface AuthRequest extends Request {
   user?: IUser;
@@ -62,7 +64,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   }
 };
 
-export const authorize = (...userTypes: ('patient' | 'doctor' | 'intern')[]) => {
+export const authorize = (...userTypes: AppRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({
@@ -71,10 +73,16 @@ export const authorize = (...userTypes: ('patient' | 'doctor' | 'intern')[]) => 
       });
     }
 
-    if (!userTypes.includes(req.user.userType)) {
+    const role = getUserRole(req);
+    const hasAuthorizedRole = role === 'admin' || (role && userTypes.includes(role));
+
+    if (!hasAuthorizedRole) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied - insufficient permissions'
+        message: 'Access denied - insufficient permissions',
+        code: 'FORBIDDEN',
+        role,
+        allowedRoles: userTypes
       });
     }
 
