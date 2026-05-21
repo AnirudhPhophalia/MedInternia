@@ -185,9 +185,11 @@ React.useEffect(() => {
           background: "linear-gradient(90deg, #1d8299 0%, #5ac0d8 100%)",
           zIndex: theme.zIndex.drawer + 1,
           boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          height: "120px",
+          border: "5px solid red",
         }}
       >
-        <Toolbar sx={{ flexWrap: "wrap", minHeight: 64, px: { xs: 1, md: 3 } }}>
+        <Toolbar sx={{ flexWrap: "wrap", minHeight: 70, px: { xs: 2, md: 15 } }}>
           {isMobile && (
             <IconButton
               color="inherit"

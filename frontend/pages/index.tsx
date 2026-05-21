@@ -66,18 +66,23 @@ const HomePage = () => {
           position: "relative",
           zIndex: 1,
           display: 'flex',
-          flexDirection: 'row',
+          flexDirection: "column",
           alignItems: 'center',
           justifyContent: 'center',
+          paddingTop: { xs: 6, md: 10 },
         }}
       >
         <Box sx={{ textAlign: 'left' }}>
           <Typography
             variant="h1"
             fontWeight={900}
-            color="#2193b0"
+            color="#0f4c81"
             mb={2}
-            sx={{ letterSpacing: 1, fontSize: { xs: "3.5rem", md: "5rem" }, textAlign: 'center' }}
+            sx={{
+              letterSpacing: 2, fontSize: { xs: "4rem", md: "6rem" }, textAlign: 'center', background: "linear-gradient(90deg, #0f4c81, #42a5f5)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
           >
             MedInternia
           </Typography>
@@ -94,21 +99,21 @@ const HomePage = () => {
           variant="contained"
           size="large"
           sx={{
-            borderRadius: 30,
-            px: 5,
-            py: 1.5,
+            borderRadius: "16px",
+            px: "32px",
+            py: "14px",
             fontWeight: 700,
             fontSize: "1.2rem",
             background: "linear-gradient(90deg, #1de9b6 0%, #2193b0 100%)",
             boxShadow: "0 4px 24px #2193b044",
-            transition: "transform 0.2s",
-            position: 'absolute',
-            right: { xs: 16, md: 64 },
-            top: { xs: 32, md: 64 },
+            transition: "all 0.3s ease",
+            display: "block",
+            mx: "auto",
+            mt: 4,
             whiteSpace: 'nowrap',
             minWidth: '180px',
             '&:hover': {
-              transform: 'scale(1.07)',
+              transform: "translateY(-3px) scale(1.05)",
               boxShadow: '0 8px 32px #2193b066',
               background: 'linear-gradient(90deg, #2193b0 0%, #1de9b6 100%)',
             },
@@ -120,12 +125,16 @@ const HomePage = () => {
 
       </Box>
       {/* Local video player below Hero section */}
-      <Box sx={{ mt: 2, mb: 4, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{
+        mt: 2, mb: 4, display: 'flex', justifyContent: 'center', borderRadius: "28px",
+        overflow: "hidden",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+      }}>
         <video width="900" height="500" autoPlay loop muted playsInline style={{ borderRadius: 24, boxShadow: '0 8px 32px #2193b066', maxWidth: '100%' }}>
           <source src="/anushka_video.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-  </Box>
+      </Box>
       {/* 4 Main Cards Section (Cases, Jobs, Webinars, Leaderboard) */}
       <Box
         sx={{
@@ -262,7 +271,7 @@ const HomePage = () => {
           <li>Leaderboard and advanced search</li>
           <li>LinkedIn/GitHub export, video conferencing</li>
         </ul>
-  {/* Login/Register buttons removed as requested */}
+        {/* Login/Register buttons removed as requested */}
       </Box>
       <Box
         sx={{
@@ -300,24 +309,24 @@ const HomePage = () => {
           </Box>
         </Box>
         <Box
-            sx={{
-              bgcolor: '#c8d8f7ff',
-              borderRadius: 4,
-              boxShadow: '0 4px 32px #2193b044',
-              p: 3,
-              minWidth: 220,
-              textAlign: 'center',
-              display: { xs: 'none', sm: 'flex' },
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
+          sx={{
+            bgcolor: '#c8d8f7ff',
+            borderRadius: 4,
+            boxShadow: '0 4px 32px #2193b044',
+            p: 3,
+            minWidth: 220,
+            textAlign: 'center',
+            display: { xs: 'none', sm: 'flex' },
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
         >
           <div style={{ background: '#fff', padding: 8, borderRadius: 12, boxShadow: '0 2px 8px #2193b022', marginBottom: 12 }}>
             <img src="/qr-blue-spies.png" alt="Team Blue Spies QR" width={140} height={140} style={{ display: 'block', margin: '0 auto' }} />
           </div>
-            <Typography variant="h6" color="#2193b0" fontWeight={700} mb={1}>
-              MedInternia App on Mobile
-            </Typography>
+          <Typography variant="h6" color="#2193b0" fontWeight={700} mb={1}>
+            MedInternia App on Mobile
+          </Typography>
           <Typography variant="body2" color="#888">
             Scan to Download
           </Typography>
@@ -513,6 +522,7 @@ const HomePage = () => {
         </Typography>
         <Button
           variant="contained"
+          href="/jobs"
           sx={{
             borderRadius: 2,
             px: 3,
