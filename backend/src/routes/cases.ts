@@ -21,12 +21,24 @@ import {
   likeComment,
   rateComment
 } from '../controllers/caseController';
+import {
+  approveAutomatedCaseDraft,
+  createAutomatedCaseDraft,
+  getAutomatedCaseDrafts,
+  publishDueAutomatedCases,
+  rejectAutomatedCaseDraft
+} from '../controllers/automatedCaseController';
 import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
 
 // Public routes (with authentication)
 router.get('/', authenticate, getCases);
+router.post('/automated/drafts', authenticate, createAutomatedCaseDraft);
+router.get('/automated/drafts', authenticate, getAutomatedCaseDrafts);
+router.post('/automated/drafts/:id/approve', authenticate, approveAutomatedCaseDraft);
+router.post('/automated/drafts/:id/reject', authenticate, rejectAutomatedCaseDraft);
+router.post('/automated/run-due', authenticate, publishDueAutomatedCases);
 router.get('/:id', authenticate, getCaseById);
 
 // Doctor only routes
