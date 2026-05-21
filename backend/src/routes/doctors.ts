@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth';
 const router = Router();
 
 // Get all doctors
-router.get('/', authenticate, async (req: AuthRequest, res) => {
+router.get('/', authenticate as any, async (req: any, res: any) => {
   try {
     const { specialization } = req.query;
     
@@ -36,7 +36,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Get doctor by ID
-router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+router.get('/:id', authenticate as any, async (req: any, res: any) => {
   try {
     const { id } = req.params;
 
@@ -69,7 +69,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Update doctor professional information (only the doctor themselves)
-router.put('/:id/professional-info', authenticate, authorize('doctor'), async (req: AuthRequest, res) => {
+router.put('/:id/professional-info', authenticate as any, authorize('doctor') as any, async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const currentUser = req.user!;
@@ -118,7 +118,7 @@ router.put('/:id/professional-info', authenticate, authorize('doctor'), async (r
 });
 
 // Get specializations list
-router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) => {
+router.get('/meta/specializations', authenticate as any, async (req: any, res: any) => {
   try {
     const specializations = await User.distinct('specialization', {
       userType: 'doctor',

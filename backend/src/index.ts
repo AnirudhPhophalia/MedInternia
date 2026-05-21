@@ -1,11 +1,23 @@
-﻿import express, { Application, Request, Response } from 'express';
+﻿// Global Master Key: Passport aur Custom Types ka jhagda hamesha ke liye khatam
+declare global {
+  namespace Express {
+    interface User {
+      [key: string]: any;
+    }
+  }
+}
+
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import passport from 'passport'; // <-- ADDED PASSPORT IMPORT
+import './config/passport';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
+import path from 'path';
 
 dotenv.config();
 
@@ -97,8 +109,6 @@ app.options(/.*/, cors({
 }));
 app.use(morgan('combined'));
 
-// Serve uploads folder for profile images
-import path from 'path';
 // Serve uploads with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -110,6 +120,9 @@ app.use('/uploads', (req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// <-- ADDED PASSPORT INITIALIZATION HERE -->
+app.use(passport.initialize()); 
 
 // Routes
 app.get('/health', (req: Request, res: Response) => {
