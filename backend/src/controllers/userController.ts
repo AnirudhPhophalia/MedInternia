@@ -4,6 +4,7 @@ import User from '../models/User';
 import UserBadge from '../models/UserBadge';
 import Case from '../models/Case';
 import { checkAndAwardAutoBadges } from './badgeController';
+import { computeMentorScore } from '../utils/mentorScoring';
 
 // Define CaseSummary type for recentCases
 interface CaseSummary {
@@ -258,7 +259,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
   try {
     const { userType = 'intern', metric = 'points', limit = 50 } = req.query;
 
-    const validMetrics = ['points', 'casesAnalyzed', 'upvotesReceived', 'averageRating', 'streak'];
+    const validMetrics = ['points', 'casesAnalyzed', 'upvotesReceived', 'averageRating', 'streak', 'mentorScore'];
     const sortMetric = validMetrics.includes(metric as string) ? metric as string : 'points';
 
     const filter: any = { userType, isActive: true };
@@ -266,7 +267,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
     sort[sortMetric] = -1;
 
     const leaderboard = await User.find(filter)
-      .select('firstName lastName profilePicture points casesAnalyzed upvotesReceived averageRating streak medicalSchool specialization')
+      .select('firstName lastName profilePicture points casesAnalyzed upvotesReceived averageRating streak medicalSchool specialization mentorScore casesPosted internsTrainedCount discussionUsageCount isVerifiedDoctor')
       .sort(sort)
       .limit(Number(limit));
 
@@ -505,5 +506,66 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, following: me.following, followers: me.followers });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching connections" });
+  }
+};
+
+// Get doctor mentor stats (recomputes score live)
+export const getDoctorMentorStats = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const doctor = await User.findOne({ _id: userId, userType: 'doctor' }).select('-password');
+    if (!doctor) {
+      return res.status(404).json({ success: false, message: 'Doctor not found' });
+    }
+
+    const mentorScore = await computeMentorScore(userId);
+    const updated = await User.findById(userId).select('-password');
+
+    const totalDoctors = await User.countDocuments({ userType: 'doctor', isActive: true });
+    const higherRanked = await User.countDocuments({ userType: 'doctor', isActive: true, mentorScore: { $gt: mentorScore } });
+    const rank = higherRanked + 1;
+
+    const topCases = await Case.find({ doctor: userId })
+      .select('title difficulty specialization comments likes createdAt')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    const topCasesWithStats = topCases.map((c: any) => ({
+      _id: c._id,
+      title: c.title,
+      difficulty: c.difficulty,
+      specialization: c.specialization,
+      commentCount: c.comments?.length ?? 0,
+      likeCount: c.likes?.length ?? 0,
+      createdAt: c.createdAt,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        doctor: updated,
+        mentorStats: {
+          mentorScore,
+          casesPosted: updated?.casesPosted ?? 0,
+          internsTrainedCount: updated?.internsTrainedCount ?? 0,
+          discussionUsageCount: updated?.discussionUsageCount ?? 0,
+          experience: updated?.experience ?? 0,
+          specialization: updated?.specialization ?? '',
+          isVerifiedDoctor: updated?.isVerifiedDoctor ?? false,
+          mentoringCredits: updated?.mentoringCredits ?? 0,
+        },
+        ranking: {
+          current: rank,
+          total: totalDoctors,
+          percentile: totalDoctors > 0 ? Math.round(((totalDoctors - rank) / totalDoctors) * 100) : 0,
+        },
+        topCases: topCasesWithStats,
+      },
+    });
+  } catch (error) {
+    console.error('Get doctor mentor stats error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

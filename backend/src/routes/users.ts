@@ -11,7 +11,8 @@ import {
   awardPointsToIntern,
   followUser,
   unfollowUser,
-  getConnections
+  getConnections,
+  getDoctorMentorStats
 } from '../controllers/userController';
 
 const router = Router();
@@ -48,5 +49,8 @@ router.post('/unfollow', authenticate, unfollowUser);
 
 // Get connections (following and followers)
 router.get('/connections', authenticate, getConnections);
+
+// Get doctor mentor reputation stats (recomputes score on demand)
+router.get('/:userId/mentor-stats', getDoctorMentorStats);
 
 export default router;
