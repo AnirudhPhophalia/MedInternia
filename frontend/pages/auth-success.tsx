@@ -1,38 +1,50 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress, Typography, Alert } from '@mui/material';
+import api from '../../utils/api';
 
 export default function AuthSuccess() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Jab tak router poori tarah load na ho jaye, wait karo
     if (!router.isReady) return;
 
-    // URL se token nikalna
-    const { token } = router.query;
-
-    if (token && typeof token === 'string') {
+    const verifySession = async () => {
       try {
-        // 1. Token ko localStorage mein save karo
-        localStorage.setItem('token', token);
+        // We no longer rely on URL tokens (security risk).
+        // Since the backend set an HttpOnly cookie, we make a quick /profile check
+        // to verify the session and extract the required role/userId for the frontend state.
+        
+        const res = await api.get('/auth/profile', {
+          // Tell axios to explicitly send cross-origin cookies if domains differ
+          withCredentials: true 
+        });
 
-        // 2. Token ko decode karke user ki details nikalo
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        localStorage.setItem('role', payload.role || 'patient');
-        localStorage.setItem('userId', payload.id || '');
-
-        // 3. Sab save hone ke baad seedha Dashboard par bhej do!
-       window.location.href = '/dashboard';
-      } catch (error) {
-        console.error("Authentication Error:", error);
-        router.push('/auth/login');
+        if (res.data?.success && res.data?.data) {
+          const user = res.data.data;
+          
+          // Populate the required frontend state
+          localStorage.setItem('role', user.userType || 'patient');
+          localStorage.setItem('userId', user._id || user.id || '');
+          
+          // Redirect to dashboard securely
+          window.location.href = '/dashboard';
+        } else {
+          throw new Error("Invalid session profile");
+        }
+      } catch (err) {
+        console.error("Session verification failed:", err);
+        setError("Secure authentication failed. Redirecting to login...");
+        setTimeout(() => {
+          router.push('/auth/login');
+        }, 2500);
       }
-    } else {
-      // Agar URL mein token nahi mila toh wapas login par bhej do
-      router.push('/auth/login');
-    }
-  }, [router.isReady, router.query, router]);
+    };
+
+    verifySession();
+
+  }, [router.isReady, router]);
 
   return (
     <Box sx={{ 
@@ -40,13 +52,19 @@ export default function AuthSuccess() {
       justifyContent: 'center', alignItems: 'center', 
       background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)' 
     }}>
-      <CircularProgress size={60} thickness={4} sx={{ color: '#2193b0', mb: 3 }} />
-      <Typography variant="h5" sx={{ color: '#1565c0', fontWeight: 600 }}>
-        Authenticating...
-      </Typography>
-      <Typography variant="body1" sx={{ color: '#555', mt: 1 }}>
-        Securely logging you in with Google.
-      </Typography>
+      {error ? (
+        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+      ) : (
+        <>
+          <CircularProgress size={60} thickness={4} sx={{ color: '#2193b0', mb: 3 }} />
+          <Typography variant="h5" sx={{ color: '#1565c0', fontWeight: 600 }}>
+            Authenticating...
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#555', mt: 1 }}>
+            Securely logging you in. Please wait.
+          </Typography>
+        </>
+      )}
     </Box>
   );
 }
