@@ -208,8 +208,7 @@ const CaseSchema = new Schema<ICase>({
   reviewStatus: {
     type: String,
     enum: ['published', 'pending_review', 'approved', 'rejected'],
-    default: 'published',
-    index: true
+    default: 'published'
   },
   scheduledFor: {
     type: Date

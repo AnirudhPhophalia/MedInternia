@@ -21,28 +21,32 @@ const toIdString = (value: unknown): string => String(value);
 
 const publishCaseIfDue = async (caseId: string, doctorId: string) => {
   const now = new Date();
-  const caseData = await Case.findOne({
-    _id: caseId,
-    doctor: doctorId,
-    aiGenerated: true,
-    reviewStatus: "approved",
-    scheduledFor: { $lte: now },
-  });
+  const caseData = await Case.findOneAndUpdate(
+    {
+      _id: caseId,
+      doctor: doctorId,
+      aiGenerated: true,
+      reviewStatus: "approved",
+      scheduledFor: { $lte: now },
+      pointsAwarded: 0,
+    },
+    {
+      reviewStatus: "published",
+      isActive: true,
+      publishedAt: now,
+      pointsAwarded: GENERATED_CASE_POINTS,
+    },
+    { new: true },
+  );
 
   if (!caseData) return null;
 
-  caseData.reviewStatus = "published";
-  caseData.isActive = true;
-  caseData.publishedAt = now;
-
-  if (caseData.pointsAwarded === 0) {
-    caseData.pointsAwarded = GENERATED_CASE_POINTS;
+  if (caseData.pointsAwarded === GENERATED_CASE_POINTS) {
     await User.findByIdAndUpdate(doctorId, {
       $inc: { points: GENERATED_CASE_POINTS },
     });
   }
 
-  await caseData.save();
   return caseData;
 };
 
@@ -260,16 +264,12 @@ export const publishDueAutomatedCases = async (
       scheduledFor: { $lte: new Date() },
     }).select("_id");
 
-    const publishedCases = [];
-    for (const dueCase of dueCases) {
-      const publishedCase = await publishCaseIfDue(
-        toIdString(dueCase._id),
-        toIdString(user._id),
-      );
-      if (publishedCase) {
-        publishedCases.push(publishedCase);
-      }
-    }
+    const publishResults = await Promise.all(
+      dueCases.map((dueCase) =>
+        publishCaseIfDue(toIdString(dueCase._id), toIdString(user._id)),
+      ),
+    );
+    const publishedCases = publishResults.filter(Boolean);
 
     return res.json({
       success: true,

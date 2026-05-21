@@ -136,13 +136,18 @@ const normalizeSymptoms = (symptoms: unknown): string[] => {
 };
 
 const clampIntervalDays = (intervalDays: unknown): number => {
-  if (typeof intervalDays !== "number" || !Number.isFinite(intervalDays)) {
+  const parsedInterval =
+    typeof intervalDays === "string" && intervalDays.trim().length > 0
+      ? Number(intervalDays)
+      : intervalDays;
+
+  if (typeof parsedInterval !== "number" || !Number.isFinite(parsedInterval)) {
     return 1;
   }
 
   return Math.min(
     MAX_INTERVAL_DAYS,
-    Math.max(MIN_INTERVAL_DAYS, Math.round(intervalDays)),
+    Math.max(MIN_INTERVAL_DAYS, Math.round(parsedInterval)),
   );
 };
 
