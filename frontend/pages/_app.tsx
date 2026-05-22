@@ -1,3 +1,4 @@
+import { SessionProvider } from "next-auth/react";
 import type { AppProps } from "next/app";
 import { CssBaseline } from "@mui/material";
 import Navbar from "../components/Navbar";
@@ -8,8 +9,9 @@ function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const hideNavbarRoutes = ['/', '/contact', '/auth/login', '/auth/register'];
   const showNavbar = !hideNavbarRoutes.includes(router.pathname);
+  
   return (
-    <>
+    <SessionProvider session={pageProps.session}>
       <CssBaseline />
       
       {showNavbar && <Navbar route={router.pathname} />}
@@ -34,7 +36,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           100% { opacity: 0; transform: scale(0.7); }
         }
       `}</style>
-    </>
+    </SessionProvider>
   );
 }
 

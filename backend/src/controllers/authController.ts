@@ -52,127 +52,61 @@ export const uploadProfilePicture = async (req: AuthRequest, res: Response) => {
 export const register = async (req: Request, res: Response) => {
   try {
     const {
-      firstName,
-      lastName,
-      email,
-      password,
-      userType,
-      phone,
-      dateOfBirth,
-      gender,
-      address,
-      // Doctor specific
-      specialization,
-      licenseNumber,
-      experience,
-      qualifications,
-      // Intern specific
-      medicalSchool,
-      yearOfStudy,
-      interests,
-      mentorDoctor,
-      // Patient specific
-      emergencyContact,
-      medicalHistory,
-      allergies
+      firstName, lastName, email, password, userType, phone, dateOfBirth, gender, address,
+      specialization, licenseNumber, experience, qualifications,
+      medicalSchool, yearOfStudy, interests, mentorDoctor,
+      emergencyContact, medicalHistory, allergies
     } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this email already exists'
-      });
+      return res.status(400).json({ success: false, message: 'User with this email already exists' });
     }
 
-    // Validate required fields based on user type
     if (userType === 'doctor') {
       if (!specialization || !licenseNumber) {
-        return res.status(400).json({
-          success: false,
-          message: 'Specialization and license number are required for doctors'
-        });
+        return res.status(400).json({ success: false, message: 'Specialization and license number are required for doctors' });
       }
-
-      // Check if license number already exists
       const existingLicense = await User.findOne({ licenseNumber });
       if (existingLicense) {
-        return res.status(400).json({
-          success: false,
-          message: 'Doctor with this license number already exists'
-        });
+        return res.status(400).json({ success: false, message: 'Doctor with this license number already exists' });
       }
     }
 
     if (userType === 'intern') {
       if (!medicalSchool || !yearOfStudy) {
-        return res.status(400).json({
-          success: false,
-          message: 'Medical school and year of study are required for interns'
-        });
+        return res.status(400).json({ success: false, message: 'Medical school and year of study are required for interns' });
       }
     }
 
-    // Create user object
     const userData: Partial<IUser> = {
-      firstName,
-      lastName,
-      email,
-      password,
-      userType,
-      phone,
-      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-      gender,
-      address
+      firstName, lastName, email, password, userType, phone, dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined, gender, address
     };
 
-    // Add doctor-specific fields
     if (userType === 'doctor') {
-      userData.specialization = specialization;
-      userData.licenseNumber = licenseNumber;
-      userData.experience = experience;
-      userData.qualifications = qualifications;
+      userData.specialization = specialization; userData.licenseNumber = licenseNumber; userData.experience = experience; userData.qualifications = qualifications;
     }
-
-    // Add intern-specific fields
     if (userType === 'intern') {
-      userData.medicalSchool = medicalSchool;
-      userData.yearOfStudy = yearOfStudy;
-      userData.interests = interests;
-      userData.mentorDoctor = mentorDoctor;
+      userData.medicalSchool = medicalSchool; userData.yearOfStudy = yearOfStudy; userData.interests = interests; userData.mentorDoctor = mentorDoctor;
     }
-
-    // Add patient-specific fields
     if (userType === 'patient') {
-      userData.emergencyContact = emergencyContact;
-      userData.medicalHistory = medicalHistory;
-      userData.allergies = allergies;
+      userData.emergencyContact = emergencyContact; userData.medicalHistory = medicalHistory; userData.allergies = allergies;
     }
 
-    // Create new user
     const user = new User(userData);
     await user.save();
 
-    // Generate JWT token
-    const token = generateToken({
-      userId: (user._id as any).toString(),
-      email: user.email,
-      userType: user.userType
-    });
+    const token = generateToken({ userId: (user._id as any).toString(), email: user.email, userType: user.userType });
 
-    // Remove password from response
     const userResponse = user.toObject() as any;
     delete userResponse.password;
-    // If the user is an intern, create notifications for all future webinars
+    
     if (user.userType === 'intern') {
       const Webinar = require('../models/Webinar').default;
       const Notification = require('../models/Notification').default;
-  // Find all webinars (past and future)
-  const webinars = await Webinar.find({});
+      const webinars = await Webinar.find({});
       const notifications = [];
       for (const webinar of webinars) {
-        // Populate host for message
         await webinar.populate('host', 'firstName lastName');
         const host = webinar.host as any;
         notifications.push({
@@ -187,58 +121,30 @@ export const register = async (req: Request, res: Response) => {
       }
     }
 
-    res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      data: {
-        user: userResponse,
-        token
-      }
-    });
+    res.status(201).json({ success: true, message: 'User registered successfully', data: { user: userResponse, token } });
   } catch (error: any) {
-    console.error('Registration error:', error);
-    
-    // Handle validation errors
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map((err: any) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors
-      });
+      return res.status(400).json({ success: false, message: 'Validation error', errors });
     }
-
-    // Handle duplicate key errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return res.status(400).json({
-        success: false,
-        message: `${field} already exists`
-      });
+      return res.status(400).json({ success: false, message: `${field} already exists` });
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
 export const sendOtp = async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, message: 'Email required' });
-  // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   otpStore[email] = otp;
-  // Send OTP via email (simple nodemailer example)
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
       port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
     });
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
@@ -266,239 +172,92 @@ export const verifyOtp = (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password are required' });
 
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required'
-      });
-    }
-
-    // Find user and include password for comparison
     const user = await User.findOne({ email }).select('+password');
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
+    if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
 
-    // Check if account is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Account is deactivated. Please contact support.'
-      });
-    }
+    if (!user.isActive) return res.status(401).json({ success: false, message: 'Account is deactivated. Please contact support.' });
 
-    // Compare password
     const isPasswordValid = await user.comparePassword(password);
-    
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
+    if (!isPasswordValid) return res.status(401).json({ success: false, message: 'Invalid email or password' });
 
-    // Generate JWT token
-    const token = generateToken({
-      userId: (user._id as any).toString(),
-      email: user.email,
-      userType: user.userType
-    });
+    const token = generateToken({ userId: (user._id as any).toString(), email: user.email, userType: user.userType });
 
-    // Remove password from response
     const userResponse = user.toObject() as any;
     delete userResponse.password;
 
-    res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: userResponse,
-        token
-      }
-    });
+    res.json({ success: true, message: 'Login successful', data: { user: userResponse, token } });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-// Get current user profile
 export const getProfile = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not authenticated'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        user
-      }
-    });
+    if (!user) return res.status(401).json({ success: false, message: 'User not authenticated' });
+    res.json({ success: true, data: { user } });
   } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-// Update user profile
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     const updates = req.body;
+    if (!user) return res.status(401).json({ success: false, message: 'User not authenticated' });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not authenticated'
-      });
-    }
+    delete updates.password; delete updates.email; delete updates.userType; delete updates.isActive; delete updates.isVerified;
 
-    // Remove sensitive fields that shouldn't be updated this way
-    delete updates.password;
-    delete updates.email;
-    delete updates.userType;
-    delete updates.isActive;
-    delete updates.isVerified;
+    const updatedUser = await User.findByIdAndUpdate(user._id, updates, { new: true, runValidators: true }).select('-password');
+    if (!updatedUser) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const updatedUser = await User.findByIdAndUpdate(
-      user._id,
-      updates,
-      { new: true, runValidators: true }
-    ).select('-password');
-
-    if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      data: {
-        user: updatedUser
-      }
-    });
+    res.json({ success: true, message: 'Profile updated successfully', data: { user: updatedUser } });
   } catch (error: any) {
-    console.error('Update profile error:', error);
-    
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map((err: any) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors
-      });
+      return res.status(400).json({ success: false, message: 'Validation error', errors });
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-// Change password
 export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     const { currentPassword, newPassword } = req.body;
+    if (!user) return res.status(401).json({ success: false, message: 'User not authenticated' });
+    if (!currentPassword || !newPassword) return res.status(400).json({ success: false, message: 'Current password and new password are required' });
+    if (newPassword.length < 6) return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long' });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not authenticated'
-      });
-    }
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password and new password are required'
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters long'
-      });
-    }
-
-    // Get user with password
     const userWithPassword = await User.findById(user._id).select('+password');
-    
-    if (!userWithPassword) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    if (!userWithPassword) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Verify current password
     const isCurrentPasswordValid = await userWithPassword.comparePassword(currentPassword);
-    
-    if (!isCurrentPasswordValid) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
-    }
+    if (!isCurrentPasswordValid) return res.status(400).json({ success: false, message: 'Current password is incorrect' });
 
-    // Update password
     userWithPassword.password = newPassword;
     await userWithPassword.save();
-
-    res.json({
-      success: true,
-      message: 'Password changed successfully'
-    });
+    res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-// Forgot Password: Send OTP
 export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, message: 'Email required' });
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-  // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   otpStore[email + '_reset'] = otp;
-  // Send OTP via email
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
       port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
     });
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
@@ -512,7 +271,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 };
 
-// Reset Password
 export const resetPassword = async (req: Request, res: Response) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) return res.status(400).json({ success: false, message: 'All fields required' });
@@ -524,4 +282,51 @@ export const resetPassword = async (req: Request, res: Response) => {
   await user.save();
   delete otpStore[email + '_reset'];
   return res.json({ success: true, message: 'Password reset successfully' });
+};
+
+// --- GOOGLE LOGIN (NAYA FUNCTION) ---
+export const googleLogin = async (req: Request, res: Response) => {
+  try {
+    const { email, firstName, lastName, profilePicture } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required from Google' });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+      user = new User({
+        email,
+        firstName: firstName || 'Google User',
+        lastName: lastName || '',
+        password: randomPassword,
+        userType: 'patient', 
+        profilePicture: profilePicture || '',
+      });
+      await user.save();
+    }
+
+    const token = generateToken({
+      userId: (user._id as any).toString(),
+      email: user.email,
+      userType: user.userType
+    });
+
+    const userResponse = user.toObject() as any;
+    delete userResponse.password;
+
+    res.json({
+      success: true,
+      message: 'Google Login successful',
+      data: {
+        user: userResponse,
+        token
+      }
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 };

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getSession } from 'next-auth/react'; // ✨ Ye naya import hai NextAuth ke liye
 
 const ensureApiPath = (baseUrl: string): string => {
   const normalized = baseUrl.replace(/\/+$/, '');
@@ -18,8 +19,16 @@ const api = axios.create({
 
 // Add interceptor to include JWT token in all requests
 api.interceptors.request.use(
-  (config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  async (config) => { // ✨ Isey async bana diya taaki tijori khulne ka wait kar sake
+    // 1. Pehle Google/NextAuth ka token dhoondho
+    const session: any = await getSession();
+    
+    // 2. Phir normal login (localStorage) ka token dhoondho
+    const localToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    
+    // 3. Dono mein se jo bhi mil jaye (Google ka ya normal), use select kar lo
+    const token = session?.backendToken || localToken;
+
     if (token) {
       config.headers = config.headers || {};
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -28,7 +37,6 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
-
 
 // Fetch intern profile
 export const getInternProfile = async () => {

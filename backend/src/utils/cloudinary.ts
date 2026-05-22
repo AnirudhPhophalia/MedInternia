@@ -54,7 +54,7 @@ export const uploadProfileImage = async (
           }
         ]
       },
-      (error, result) => {
+      (error: any, result: any) => {
         if (error || !result) {
           reject(error ?? new Error('Cloudinary upload failed without a result'));
           return;

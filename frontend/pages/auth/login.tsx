@@ -3,6 +3,7 @@ import { Container, Typography, TextField, Button, Box, Alert, Paper, Divider } 
 import Link from 'next/link';
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
+import { signIn } from "next-auth/react"; // Google Auth Import
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,16 +15,15 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-  const res = await api.post('/auth/login', { email, password });
-  const token = res.data?.data?.token;
-  const user = res.data?.data?.user;
-  const role = user?.role || '';
-  const userId = user?._id || user?.id || '';
-  localStorage.setItem('token', token);
-  localStorage.setItem('role', role);
-  localStorage.setItem('userId', userId);
-  // Optionally show a toast/snackbar for success, but do not show token
-  router.push('/dashboard');
+      const res = await api.post('/auth/login', { email, password });
+      const token = res.data?.data?.token;
+      const user = res.data?.data?.user;
+      const role = user?.role || '';
+      const userId = user?._id || user?.id || '';
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', role);
+      localStorage.setItem('userId', userId);
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
     }
@@ -41,9 +41,9 @@ export default function Login() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-  {/* Removed decorative circle at top right */}
         <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#1565c0', letterSpacing: 1, zIndex: 1, position: 'relative' }}>Login</Typography>
-        {error && <Alert severity="error" sx={{ zIndex: 1, position: 'relative' }}>{error}</Alert>}
+        {error && <Alert severity="error" sx={{ zIndex: 1, position: 'relative', mb: 2 }}>{error}</Alert>}
+        
         <form onSubmit={handleSubmit} style={{ zIndex: 1, position: 'relative' }}>
           <TextField
             label="Email"
@@ -89,7 +89,35 @@ export default function Login() {
             Login
           </Button>
         </form>
+
         <Divider sx={{ my: 3, zIndex: 1, position: 'relative' }}>or</Divider>
+
+        {/* --- Google Authentication Button --- */}
+        <Button
+          fullWidth
+          variant="outlined"
+          onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+          sx={{
+            mb: 3,
+            py: 1.2,
+            borderRadius: 3,
+            fontWeight: 700,
+            color: '#424242',
+            borderColor: '#e0e0e0',
+            textTransform: 'none',
+            fontSize: '1.05rem',
+            zIndex: 1,
+            position: 'relative',
+            '&:hover': {
+              borderColor: '#bdbdbd',
+              background: '#f5f5f5',
+            }
+          }}
+          startIcon={<img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 24, height: 24 }} />}
+        >
+          Continue with Google
+        </Button>
+
         <Box textAlign="center" sx={{ zIndex: 1, position: 'relative' }}>
           <Typography variant="body2" sx={{ mb: 1 }}>Don't have an account?</Typography>
           <Link href="/auth/register" passHref>

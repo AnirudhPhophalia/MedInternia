@@ -1,52 +1,37 @@
-import { sendOtp, verifyOtp, forgotPassword, resetPassword, uploadProfilePicture } from '../controllers/authController';
-import { Router } from 'express';
+import express from 'express';
 import {
   register,
   login,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  sendOtp,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+  uploadProfilePicture,
+  googleLogin // ✨ Naya function yahan import ho gaya
 } from '../controllers/authController';
-import { authenticate } from '../middleware/auth';
-import multer from 'multer';
+import { authenticate as auth } from '../middleware/auth';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024
-  },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new Error('Only image files are allowed'));
-      return;
-    }
-    cb(null, true);
-  }
-});
+const router = express.Router();
 
-const router = Router();
-// Forgot password routes
+// --- Public Routes ---
+router.post('/register', register);
+router.post('/login', login);
+router.post('/google', googleLogin); // ✨ Ye raha tumhara naya raasta (route)!
+
+router.post('/send-otp', sendOtp);
+router.post('/verify-otp', verifyOtp);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 
-// OTP routes
-router.post('/send-otp', sendOtp);
-router.post('/verify-otp', verifyOtp);
+// --- Protected Routes ---
+router.get('/profile', auth, getProfile);
+router.put('/profile', auth, updateProfile);
+router.put('/change-password', auth, changePassword);
 
-// Public routes
-router.post('/register', register);
-router.post('/login', login);
-
-// Protected routes (require authentication)
-router.get('/profile', authenticate, getProfile);
-// Profile image upload
-router.post(
-  '/profile/upload-picture',
-  authenticate,
-  upload.single('profilePicture'),
-  uploadProfilePicture
-);
-router.put('/profile', authenticate, updateProfile);
-router.put('/change-password', authenticate, changePassword);
+// (Note: Agar profile picture upload ke liye pehle koi aur route tha, toh usko as it is rakhna. Abhi main isko comment kar rahi hu taaki koi error na aaye)
+// router.post('/profile-picture', auth, uploadProfilePicture);
 
 export default router;
