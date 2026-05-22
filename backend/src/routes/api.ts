@@ -14,6 +14,8 @@ import webinarRoutes from './webinars';
 import userRoutes from './users';
 import integrationRoutes from './integration';
 import notificationRoutes from './notifications';
+import diseaseInsightRoutes from './diseaseInsights';
+import symptomRoutes from './symptoms';
 
 const router = Router();
 
@@ -37,11 +39,13 @@ router.get('/', (req: Request, res: Response) => {
       patients: '/api/patients',
       doctors: '/api/doctors',
       cases: '/api/cases',
+      diseaseInsights: '/api/ai-disease-insights',
       badges: '/api/badges',
       peerReviews: '/api/peer-reviews',
       jobs: '/api/jobs',
       certificates: '/api/certificates',
       webinars: '/api/webinars',
+      symptoms: '/api/symptoms/extract',
       leaderboard: '/api/leaderboard',
       search: '/api/search'
     }
@@ -61,6 +65,7 @@ router.use('/users', userRoutes);
 router.use('/patients', patientRoutes);
 router.use('/doctors', doctorRoutes);
 router.use('/cases', caseRoutes);
+router.use('/ai-disease-insights', diseaseInsightRoutes);
 router.use('/badges', badgeRoutes);
 router.use('/peer-reviews', peerReviewRoutes);
 router.use('/jobs', jobRoutes);
@@ -68,6 +73,7 @@ router.use('/certificates', certificateRoutes);
 router.use('/webinars', webinarRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/integration', integrationRoutes);
+router.use('/symptoms', symptomRoutes);
 router.use('/', enhancedRoutes);
 router.use('/research-papers', researchPaperRoutes);
 
