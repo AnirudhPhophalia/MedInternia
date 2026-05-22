@@ -46,6 +46,11 @@ export interface IUser extends Document {
   isVerifiedDoctor?: boolean; // KYC verification
   verificationDocuments?: string[];
   mentoringCredits?: number; // Credits for mentoring interns
+  // Mentor reputation fields (doctors)
+  mentorScore?: number;
+  casesPosted?: number;
+  internsTrainedCount?: number;
+  discussionUsageCount?: number;
   // Intern specific fields
   medicalSchool?: string;
   yearOfStudy?: number;
@@ -244,6 +249,11 @@ const UserSchema = new Schema<IUser>({
     default: 0,
     min: [0, 'Mentoring credits cannot be negative']
   },
+  // Mentor reputation fields (doctors)
+  mentorScore: { type: Number, default: 0, min: 0 },
+  casesPosted: { type: Number, default: 0, min: 0 },
+  internsTrainedCount: { type: Number, default: 0, min: 0 },
+  discussionUsageCount: { type: Number, default: 0, min: 0 },
   // Intern specific fields
   medicalSchool: {
     type: String,
