@@ -1,8 +1,10 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
+import mongoose from 'mongoose';
 import User from '../models/User';
 import UserBadge from '../models/UserBadge';
 import Case from '../models/Case';
+import ScoreHistory from '../models/ScoreHistory';
 import { checkAndAwardAutoBadges } from './badgeController';
 
 // Define CaseSummary type for recentCases
@@ -421,21 +423,116 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
   try {
     const doctor = req.user;
     const { internId } = req.params;
-    const { points } = req.body;
+    const { rubric } = req.body;
+    
     if (!doctor || doctor.userType !== 'doctor') {
       return res.status(403).json({ success: false, message: 'Only doctors can award points.' });
     }
-    if (typeof points !== 'number' || points <= 0) {
-      return res.status(400).json({ success: false, message: 'Points must be a positive number.' });
+    
+    // Validate rubric structure and values
+    if (!rubric || typeof rubric !== 'object') {
+      return res.status(400).json({ success: false, message: 'Rubric scoring object is required.' });
     }
+    
+    const requiredCategories = ['diagnosticReasoning', 'completeness', 'evidenceSupport', 'riskAwareness', 'communicationClarity'];
+    
+    for (const category of requiredCategories) {
+      const value = rubric[category];
+      if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value) || value < 1 || value > 5) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `${category} must be an integer between 1 and 5.` 
+        });
+      }
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(internId)) {
+      return res.status(400).json({ success: false, message: 'Invalid intern ID format.' });
+    }
+
     const intern = await User.findById(internId);
     if (!intern || intern.userType !== 'intern') {
       return res.status(404).json({ success: false, message: 'Intern not found.' });
     }
-    intern.points = (intern.points || 0) + points;
-    await intern.save();
-    res.json({ success: true, points: intern.points });
+
+    // Calculate total points (unweighted sum of all 5 categories, max 25 points)
+    // Per PR scope, scoring uses equal-weight simple sum.
+    // To switch to weighted scoring: add weights (e.g. diagnosticReasoning * 2)
+    // and store the weight version in ScoreHistory for auditability.
+    const points = rubric.diagnosticReasoning + rubric.completeness + 
+                   rubric.evidenceSupport + rubric.riskAwareness + 
+                   rubric.communicationClarity;
+
+    // Use transaction for consistency (requires replica set).
+    // Falls back to non-transactional writes on standalone MongoDB.
+    let supportsTransactions = true;
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+    } catch {
+      supportsTransactions = false;
+      session.endSession();
+    }
+
+    if (supportsTransactions) {
+      try {
+        // Save score history
+        await ScoreHistory.create([{
+          doctor: doctor._id,
+          intern: intern._id,
+          rubric,
+          pointsAwarded: points
+        }], { session });
+
+        // Use atomic update to prevent race conditions
+        const updatedIntern = await User.findByIdAndUpdate(
+          internId,
+          { $inc: { points: points } },
+          { new: true, session }
+        );
+
+        if (!updatedIntern) {
+          await session.abortTransaction();
+          session.endSession();
+          return res.status(404).json({ success: false, message: 'Intern not found.' });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        await checkAndAwardAutoBadges(internId);
+
+        res.json({ success: true, points: updatedIntern.points });
+      } catch (txnError) {
+        await session.abortTransaction();
+        session.endSession();
+        throw txnError;
+      }
+    } else {
+      // Fallback for standalone MongoDB (no transaction support)
+      await ScoreHistory.create({
+        doctor: doctor._id,
+        intern: intern._id,
+        rubric,
+        pointsAwarded: points
+      });
+
+      const updatedIntern = await User.findByIdAndUpdate(
+        internId,
+        { $inc: { points: points } },
+        { new: true }
+      );
+
+      if (!updatedIntern) {
+        return res.status(404).json({ success: false, message: 'Intern not found.' });
+      }
+
+      await checkAndAwardAutoBadges(internId);
+
+      res.json({ success: true, points: updatedIntern.points });
+    }
   } catch (error) {
+    console.error('Award points error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

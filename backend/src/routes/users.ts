@@ -38,7 +38,7 @@ router.post('/:userId/grant-contributor', authenticate, grantContributorBadge);
 router.patch('/upgrade-profile', authenticate, upgradeProfile);
 
 // Doctor awards points to intern as recommendation
-router.post('/:internId/award-points', authenticate, awardPointsToIntern);
+router.post('/:internId/award-points', authenticate, authorize('doctor'), awardPointsToIntern);
 
 // Follow a user
 router.post('/follow', authenticate, followUser);
