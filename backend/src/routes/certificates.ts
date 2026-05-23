@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/permissions';
 import {
   generateCertificate,
   getUserCertificates,
@@ -13,7 +14,7 @@ import {
 const router = Router();
 
 // Generate certificate
-router.post('/generate', authenticate, authorize('doctor'), generateCertificate);
+router.post('/generate', authenticate, requirePermission('certificate:issue'), generateCertificate);
 
 // Get certificates for user
 router.get('/user/:userId', getUserCertificates);
@@ -25,10 +26,10 @@ router.get('/:certificateId', getCertificateById);
 router.post('/verify', verifyCertificate);
 
 // Get certificates issued by doctor
-router.get('/doctor/issued', authenticate, authorize('doctor'), getDoctorIssuedCertificates);
+router.get('/doctor/issued', authenticate, requirePermission('certificate:issue'), getDoctorIssuedCertificates);
 
 // Revoke certificate
-router.patch('/:certificateId/revoke', authenticate, authorize('doctor'), revokeCertificate);
+router.patch('/:certificateId/revoke', authenticate, requirePermission('certificate:issue'), revokeCertificate);
 
 // Export certificate data
 router.get('/:certificateId/export', exportCertificateData);

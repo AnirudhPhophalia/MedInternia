@@ -20,16 +20,16 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
 
     const doctorId = req.user!._id;
 
-    // Verify doctor has enough mentoring credits
+    // Certificate issuers can generate certificates after route-level permission checks.
     const doctor = await User.findById(doctorId);
-    if (!doctor || doctor.userType !== 'doctor') {
+    if (!doctor || (doctor.userType !== 'doctor' && doctor.userType !== 'admin')) {
       return res.status(403).json({
         success: false,
-        message: 'Only doctors can generate certificates'
+        message: 'Only doctors or admins can generate certificates'
       });
     }
 
-    if ((doctor.mentoringCredits || 0) < casesReviewed) {
+    if (doctor.userType !== 'admin' && (doctor.mentoringCredits || 0) < casesReviewed) {
       return res.status(400).json({
         success: false,
         message: 'Insufficient mentoring credits'

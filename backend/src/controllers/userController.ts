@@ -300,10 +300,10 @@ export const verifyDoctor = async (req: AuthRequest, res: Response) => {
     const { isVerified, verificationDocuments } = req.body;
 
     // Only admins or verified doctors can verify other doctors
-    if (req.user!.userType !== 'doctor' || !req.user!.isVerifiedDoctor) {
+    if (req.user!.userType !== 'admin' && (req.user!.userType !== 'doctor' || !req.user!.isVerifiedDoctor)) {
       return res.status(403).json({
         success: false,
-        message: 'Only verified doctors can verify other doctors'
+        message: 'Only admins or verified doctors can verify other doctors'
       });
     }
 
@@ -422,8 +422,8 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
     const doctor = req.user;
     const { internId } = req.params;
     const { points } = req.body;
-    if (!doctor || doctor.userType !== 'doctor') {
-      return res.status(403).json({ success: false, message: 'Only doctors can award points.' });
+    if (!doctor || (doctor.userType !== 'doctor' && doctor.userType !== 'admin')) {
+      return res.status(403).json({ success: false, message: 'Only doctors or admins can award points.' });
     }
     if (typeof points !== 'number' || points <= 0) {
       return res.status(400).json({ success: false, message: 'Points must be a positive number.' });

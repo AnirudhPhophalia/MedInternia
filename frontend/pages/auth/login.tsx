@@ -39,7 +39,16 @@ export default function Login() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Box
+  sx={{
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    pt: 6,
+  }}
+>
       <Paper elevation={8} sx={{
         p: 4,
         borderRadius: 4,
@@ -50,6 +59,32 @@ export default function Login() {
         position: 'relative',
         overflow: 'hidden',
       }}>
+       <Box
+  sx={{
+    display: 'flex',
+    justifyContent: 'center',
+    mb: 3,
+  }}
+>
+  <Box
+    sx={{
+      width: 90,
+      height: 90,
+
+      borderRadius: '50%',
+      overflow: 'hidden',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      backgroundColor: '#fff',
+      p: 1,
+    }}
+  >
+    <img
+      src="/med-internia-logo.jpg"
+      alt="MedInternia Logo"
+      style={{ width: '100%', height: '100%' }}
+    />
+  </Box>
+</Box>
   {/* Removed decorative circle at top right */}
         <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#1565c0', letterSpacing: 1, zIndex: 1, position: 'relative' }}>Login</Typography>
         {error && <Alert severity="error" sx={{ zIndex: 1, position: 'relative' }}>{error}</Alert>}
@@ -184,7 +219,15 @@ export default function Login() {
                 background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
                 transform: 'scale(1.03)',
                 boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)'
-              }
+              },
+              '&:active': {
+  color: '#ffffff',
+},
+
+'&:focus': {
+  color: '#ffffff',
+},
+              
             }}
           >
             Login

@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/permissions';
 import {
   createJobOpportunity,
   getJobOpportunities,
@@ -14,22 +15,22 @@ import {
 const router = Router();
 
 // Create job opportunity
-router.post('/', authenticate, authorize('doctor'), createJobOpportunity);
+router.post('/', authenticate, requirePermission('job:manage'), createJobOpportunity);
 
 // Get all job opportunities
 router.get('/', getJobOpportunities);
 
 // Get my job opportunities
-router.get('/my', authenticate, authorize('doctor'), getMyJobOpportunities);
+router.get('/my', authenticate, requirePermission('job:manage'), getMyJobOpportunities);
 
 // Get job opportunity by ID
 router.get('/:id', getJobOpportunityById);
 
 // Update job opportunity
-router.put('/:id', authenticate, authorize('doctor'), updateJobOpportunity);
+router.put('/:id', authenticate, requirePermission('job:manage'), updateJobOpportunity);
 
 // Delete job opportunity
-router.delete('/:id', authenticate, authorize('doctor'), deleteJobOpportunity);
+router.delete('/:id', authenticate, requirePermission('job:manage'), deleteJobOpportunity);
 
 // Check job eligibility
 router.get('/:id/eligibility', authenticate, checkJobEligibility);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -153,8 +153,6 @@ const groupedCases: {
     ],
   },
 ];
-import { fetchCurrentUserProfile } from "../utils/fetchCurrentUserProfile";
-
 const statusColor = {
   approved: "#b9f6ca",
   pending: "#fff9c4",
@@ -186,12 +184,22 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
   if (!caseData) return null;
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700, fontSize: 24 }}>
+      <DialogTitle
+        sx={{
+          fontWeight: 700,
+          fontSize: 22,
+          background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+          color: "#fff",
+          borderTopLeftRadius: 4,
+          borderTopRightRadius: 4,
+          pr: 6,
+        }}
+      >
         {caseData.title} Details
         <IconButton
           aria-label="close"
           onClick={onClose}
-          sx={{ position: "absolute", right: 16, top: 16 }}
+          sx={{ position: "absolute", right: 16, top: 12, color: "#fff" }}
         >
           <CloseIcon />
         </IconButton>
@@ -303,8 +311,18 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
       {caseData.description}
     </Box>
   </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="primary" variant="outlined">
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          sx={{
+            borderColor: "#2193b0",
+            color: "#2193b0",
+            fontWeight: 600,
+            borderRadius: 2,
+            "&:hover": { background: "#e0f7fa", borderColor: "#1565c0", color: "#1565c0" },
+          }}
+        >
           Close
         </Button>
       </DialogActions>
@@ -313,32 +331,79 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
 }
 
 export default function UploadRawPage() {
-  // Page is now open to all users (patients, doctors, interns)
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedCase, setSelectedCase] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  useEffect(() => {
-    fetchCurrentUserProfile().then((data) => {
-      setProfile(data);
-      setLoadingProfile(false);
-    });
-  }, []);
 
   return (
-    <Box sx={{ minHeight: "100vh", background: "#f5f8fa", py: 6 }}>
-  {/* Profile section at top removed as requested */}
-      {/* Upload section */}
-      <Box sx={{ maxWidth: 700, mx: "auto", mb: 4 }}>
-        <Card sx={{ p: 4, borderRadius: 4, boxShadow: "0 2px 12px #2193b022" }}>
-          <Typography variant="h4" fontWeight={900} mb={2} color="#1565c0">
-            Upload RAW Medical Data
-          </Typography>
-          <Typography color="text.secondary" mb={1}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "linear-gradient(120deg, #e0eafc 0%, #cfdef3 100%)",
+        py: 6,
+        px: { xs: 2, md: 4 },
+      }}
+    >
+      {/* Page header */}
+      <Box sx={{ maxWidth: 700, mx: "auto", mb: 4, textAlign: "center" }}>
+        <Typography
+          variant="h3"
+          fontWeight={900}
+          mb={1}
+          sx={{
+            background: "linear-gradient(90deg, #1565c0 0%, #2193b0 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
+          Upload RAW Medical Data
+        </Typography>
+        <Typography color="text.secondary" fontSize={16}>
+          Securely upload your medical records, bills, and clinical data.
+        </Typography>
+      </Box>
+
+      {/* Upload form card */}
+      <Box sx={{ maxWidth: 700, mx: "auto", mb: 5 }}>
+        <Card
+          sx={{
+            p: 4,
+            borderRadius: 4,
+            boxShadow: "0 4px 24px #2193b033",
+            border: "1px solid #e0eafc",
+            background: "#fff",
+            overflow: "hidden",
+          }}
+        >
+          {/* Card accent bar */}
+          <Box
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+              mb: 3,
+              mx: -4,
+              mt: -4,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+            }}
+          />
+          <Typography color="text.secondary" mb={1} fontSize={15}>
             Upload your raw medical files, bills, and additional data. Only you and authorized medical staff can view your uploads.
           </Typography>
-          <Typography color="success.main" fontWeight={600} mb={2}>
+          <Typography
+            mb={3}
+            fontSize={14}
+            sx={{
+              color: "#2193b0",
+              fontWeight: 600,
+              background: "#e0f7fa",
+              borderRadius: 2,
+              px: 2,
+              py: 1,
+              display: "inline-block",
+            }}
+          >
             Your data is hidden and secured. It will not be copied or shared with anyone else.
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -350,54 +415,152 @@ export default function UploadRawPage() {
             <TextField label="Doctor Name" fullWidth variant="outlined" />
           </Stack>
           <TextField label="Ayushman Reference ID" fullWidth variant="outlined" sx={{ mt: 2 }} />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", mt: 3, mb: 2 }}>
-            <Button variant="contained" component="label" sx={{ borderRadius: 2, background: "#2193b0", minHeight: 48 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={3} mb={1}>
+            <Button
+              variant="contained"
+              component="label"
+              sx={{
+                borderRadius: 2,
+                fontWeight: 700,
+                background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+                color: "#fff",
+                boxShadow: "0 2px 8px #2193b033",
+                "&:hover": {
+                  background: "linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)",
+                  boxShadow: "0 4px 16px #2193b055",
+                },
+              }}
+            >
               Upload Medical Files
               <input type="file" hidden multiple />
             </Button>
-
-            <Button variant="outlined" component="label" sx={{ borderRadius: 2, minHeight: 48 }}>
+            <Button
+              variant="outlined"
+              component="label"
+              sx={{
+                borderRadius: 2,
+                fontWeight: 600,
+                borderColor: "#2193b0",
+                color: "#2193b0",
+                "&:hover": {
+                  background: "#e0f7fa",
+                  borderColor: "#1565c0",
+                  color: "#1565c0",
+                },
+              }}
+            >
               Upload Bills (Optional)
               <input type="file" hidden multiple />
             </Button>
-          </Box>
+          </Stack>
           <TextField
             label="Additional Medical Data"
             multiline
             minRows={3}
             fullWidth
             variant="outlined"
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, mt: 2 }}
             placeholder="Enter symptoms, diagnosis, treatment details, medications prescribed, or any other relevant medical information..."
           />
-          <Button variant="contained" color="success" sx={{ borderRadius: 2, fontWeight: 700, fontSize: 17, mt: 1 }}>
+          <Button
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              fontWeight: 700,
+              fontSize: 16,
+              mt: 1,
+              px: 4,
+              background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+              color: "#fff",
+              boxShadow: "0 2px 12px #2193b044",
+              "&:hover": {
+                background: "linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)",
+                boxShadow: "0 4px 20px #2193b066",
+                transform: "scale(1.03)",
+              },
+              transition: "transform 0.2s",
+            }}
+          >
             Submit Case
           </Button>
         </Card>
       </Box>
+
       {/* Grouped cases by doctor section */}
       <Box sx={{ maxWidth: 1100, mx: "auto" }}>
-        <Typography variant="h5" fontWeight={800} mb={2} color="#222">
+        <Typography variant="h5" fontWeight={800} mb={3} color="#1565c0">
           Your Medical Cases
         </Typography>
         <Stack spacing={4}>
-          {groupedCases.map((group, idx) => (
+          {groupedCases.map((group) => (
             <Box key={group.doctor}>
-              <Box display="flex" alignItems="center" gap={2} mb={1}>
-                <Avatar src={group.doctorPhoto} sx={{ width: 40, height: 40 }} />
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={2}
+                mb={2}
+                sx={{
+                  background: "linear-gradient(90deg, #e0f7fa 0%, #e0eafc 100%)",
+                  borderRadius: 3,
+                  px: 2,
+                  py: 1.5,
+                  boxShadow: "0 1px 6px #2193b022",
+                }}
+              >
+                <Avatar
+                  src={group.doctorPhoto}
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    border: "2px solid #2193b0",
+                    boxShadow: "0 2px 8px #2193b033",
+                  }}
+                />
                 <Box>
-                  <Typography fontWeight={700} fontSize={18}>{group.cases[0]?.description?.split('.')[1]?.trim() || group.cases[0]?.description?.split('.')[0]?.trim() || 'Medical Situation'}</Typography>
-                  <Typography fontSize={14} color="#888">Medical Situation</Typography>
+                  <Typography fontWeight={700} fontSize={17} color="#1565c0">
+                    {group.doctor}
+                  </Typography>
+                  <Typography fontSize={13} color="#2193b0">
+                    {group.doctorSpecialization}
+                  </Typography>
                 </Box>
               </Box>
               <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
                 {group.cases.map((c) => (
                   <Card
                     key={c.id}
-                    sx={{ p: 3, borderRadius: 3, minWidth: 270, boxShadow: "0 2px 8px #2193b022", cursor: "pointer", transition: "box-shadow 0.2s", '&:hover': { boxShadow: "0 6px 24px #2193b044" } }}
+                    sx={{
+                      p: 3,
+                      borderRadius: 3,
+                      minWidth: 270,
+                      flex: 1,
+                      boxShadow: "0 2px 12px #2193b022",
+                      border: "1px solid #e0eafc",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      transition: "box-shadow 0.2s, transform 0.2s",
+                      "&:hover": {
+                        boxShadow: "0 8px 32px #2193b044",
+                        transform: "translateY(-2px)",
+                        borderColor: "#2193b0",
+                      },
+                    }}
                     onClick={() => { setSelectedCase(c); setOpenDialog(true); }}
                   >
-                    <Typography fontWeight={700} fontSize={19} mb={1}>
+                    {/* Top accent bar on case card */}
+                    <Box
+                      sx={{
+                        height: 4,
+                        borderRadius: 2,
+                        background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+                        mb: 2,
+                        mx: -3,
+                        mt: -3,
+                        borderTopLeftRadius: 12,
+                        borderTopRightRadius: 12,
+                      }}
+                    />
+                    <Typography fontWeight={700} fontSize={17} mb={1} color="#1565c0">
                       {c.title}
                     </Typography>
                     <Chip
@@ -407,31 +570,31 @@ export default function UploadRawPage() {
                         color: "#222",
                         fontWeight: 600,
                         textTransform: "capitalize",
-                        fontSize: 15,
-                        px: 2,
-                        mb: 1,
+                        fontSize: 14,
+                        px: 1,
+                        mb: 1.5,
                       }}
                     />
-                    <Typography fontSize={15} mb={0.5}>
-                      <b>{c.patient}</b>
+                    <Typography fontSize={15} mb={0.5} fontWeight={600} color="#222">
+                      {c.patient}
                     </Typography>
-                    <Typography fontSize={14} color="#888" mb={0.5}>
+                    <Typography fontSize={13} color="#888" mb={0.5}>
                       {c.date}
                     </Typography>
-                    <Typography fontSize={14} color="#888" mb={0.5}>
+                    <Typography fontSize={13} color="#888" mb={0.5}>
                       {c.location}
                     </Typography>
-                    <Typography fontSize={14} color="#888" mb={0.5}>
+                    <Typography fontSize={13} color="#2193b0" mb={0.5} fontWeight={500}>
                       {c.doctor}
                     </Typography>
-                    <Typography fontSize={14} color="#888" mb={1}>
+                    <Typography fontSize={13} color="#888" mb={1.5}>
                       {c.description.slice(0, 60)}{c.description.length > 60 ? "..." : ""}
                     </Typography>
-                    <Stack direction="row" spacing={2} alignItems="center" mt={1}>
-                      <Typography fontSize={13} color="#888">
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Typography fontSize={12} color="#2193b0" fontWeight={600}>
                         {c.files.length} files
                       </Typography>
-                      <Typography fontSize={13} color="#888">
+                      <Typography fontSize={12} color="#2193b0" fontWeight={600}>
                         {c.bills.length} bills
                       </Typography>
                     </Stack>

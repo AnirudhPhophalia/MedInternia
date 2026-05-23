@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/permissions';
 import {
   createBadge,
   getAllBadges,
@@ -10,14 +11,14 @@ import {
 
 const router = Router();
 
-// Create badge (admin only)
-router.post('/', authenticate, authorize('doctor'), createBadge);
+// Create badge
+router.post('/', authenticate, requirePermission('badge:manage'), createBadge);
 
 // Get all badges
 router.get('/', getAllBadges);
 
 // Award badge to user
-router.post('/award', authenticate, authorize('doctor'), awardBadge);
+router.post('/award', authenticate, requirePermission('badge:manage'), awardBadge);
 
 // Get user badges
 router.get('/user/:userId', getUserBadges);
