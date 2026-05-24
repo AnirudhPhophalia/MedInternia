@@ -270,11 +270,13 @@ export const getCases = async (req: AuthRequest, res: Response) => {
     const {
       specialization,
       difficulty,
+      status,
       tags,
       doctor,
       page = 1,
       limit = 10,
-      search
+      search,
+      sort = 'newest'
     } = req.query;
 
     const filter: any = { isActive: true };
@@ -285,6 +287,10 @@ export const getCases = async (req: AuthRequest, res: Response) => {
 
     if (difficulty) {
       filter.difficulty = difficulty;
+    }
+
+    if (status) {
+      filter.status = status;
     }
 
     if (tags) {
@@ -304,28 +310,66 @@ export const getCases = async (req: AuthRequest, res: Response) => {
       ];
     }
 
+
+
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    const cases = await Case.find(filter)
-      .populate('doctor', 'firstName lastName specialization')
-      .populate('comments.author', 'firstName lastName userType')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+    let cases: any[];
 
-    const total = await Case.countDocuments(filter);
+    if (sort === 'most_discussed') {
+      cases = await Case.aggregate([
+        { $match: filter },
+        { $addFields: { commentsCount: { $size: '$comments' } } },
+        { $sort: { commentsCount: -1, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limitNum }
+      ]);
+      await Case.populate(cases, [
+        { path: 'doctor', select: 'firstName lastName specialization' },
+        { path: 'comments.author', select: 'firstName lastName userType' }
+      ]);
+    } else {
+      const sortQuery: Record<string, any> =
+        sort === 'most_rated' ? { likesCount: -1, createdAt: -1 } : { createdAt: -1 };
+
+      if (sort === 'most_rated') {
+        cases = await Case.aggregate([
+          { $match: filter },
+          { $addFields: { likesCount: { $size: '$likes' } } },
+          { $sort: sortQuery },
+          { $skip: skip },
+          { $limit: limitNum }
+        ]);
+        await Case.populate(cases, [
+          { path: 'doctor', select: 'firstName lastName specialization' },
+          { path: 'comments.author', select: 'firstName lastName userType' }
+        ]);
+      } else {
+        cases = await Case.find(filter)
+          .populate('doctor', 'firstName lastName specialization')
+          .populate('comments.author', 'firstName lastName userType')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum);
+      }
+    }
+
+    const totalCount = await Case.countDocuments(filter);
 
     res.json({
       success: true,
       data: {
         cases,
+        totalCount,
+        page: pageNum,
+        limit: limitNum,
         pagination: {
           page: pageNum,
           limit: limitNum,
-          total,
-          pages: Math.ceil(total / limitNum)
+          total: totalCount,
+          pages: Math.ceil(totalCount / limitNum)
         }
       }
     });
