@@ -38,7 +38,7 @@ export interface ICase extends Document {
   canRepost: boolean; // Indicates if the case can be reposted
   aiGenerated?: boolean;
   generationSource?: 'deterministic-template' | 'external-ai';
-  reviewStatus: 'published' | 'pending_review' | 'approved' | 'rejected';
+  reviewStatus?: 'published' | 'pending_review' | 'approved' | 'rejected';
   scheduledFor?: Date;
   publishedAt?: Date;
   learningObjectives?: string[];

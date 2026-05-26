@@ -192,7 +192,7 @@ export const buildAutomatedCaseDraft = (
   const scheduledFor = new Date(
     Date.now() + intervalDays * 24 * 60 * 60 * 1000,
   );
-  const specialization = input.specialization ?? template.specialization;
+  const specialization = template.specialization;
   const difficulty = input.difficulty ?? "intermediate";
   const focus = input.focus ? ` Focus area: ${input.focus}.` : "";
 

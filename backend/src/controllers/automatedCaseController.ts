@@ -88,8 +88,17 @@ export const createAutomatedCaseDraft = async (
         reviewChecklist: draft.reviewChecklist,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create automated case draft error:", error);
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -146,29 +155,42 @@ export const approveAutomatedCaseDraft = async (
       });
     }
 
-    const caseData = await Case.findOne({
-      _id: req.params.id,
-      doctor: user._id,
-      aiGenerated: true,
-    });
+    const caseData = await Case.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        doctor: user._id,
+        aiGenerated: true,
+        reviewStatus: "pending_review",
+      },
+      {
+        reviewStatus: "approved",
+        isActive: false,
+      },
+      { new: true },
+    );
 
     if (!caseData) {
-      return res.status(404).json({
-        success: false,
-        message: "AI-assisted case draft not found",
+      const existingCase = await Case.findOne({
+        _id: req.params.id,
+        doctor: user._id,
+        aiGenerated: true,
       });
-    }
 
-    if (caseData.reviewStatus === "rejected") {
+      if (!existingCase) {
+        return res.status(404).json({
+          success: false,
+          message: "AI-assisted case draft not found",
+        });
+      }
+
       return res.status(400).json({
         success: false,
-        message: "Rejected drafts must be regenerated before approval",
+        message:
+          existingCase.reviewStatus === "published"
+            ? "Published AI-assisted cases cannot be approved again"
+            : "Only pending AI-assisted drafts can be approved",
       });
     }
-
-    caseData.reviewStatus = "approved";
-    caseData.isActive = false;
-    await caseData.save();
 
     const publishedCase = await publishCaseIfDue(
       toIdString(caseData._id),
@@ -213,6 +235,7 @@ export const rejectAutomatedCaseDraft = async (
         _id: req.params.id,
         doctor: user._id,
         aiGenerated: true,
+        reviewStatus: { $in: ["pending_review", "approved"] },
       },
       {
         reviewStatus: "rejected",
@@ -222,6 +245,22 @@ export const rejectAutomatedCaseDraft = async (
     );
 
     if (!caseData) {
+      const existingCase = await Case.findOne({
+        _id: req.params.id,
+        doctor: user._id,
+        aiGenerated: true,
+      });
+
+      if (existingCase) {
+        return res.status(400).json({
+          success: false,
+          message:
+            existingCase.reviewStatus === "published"
+              ? "Published AI-assisted cases cannot be rejected"
+              : "Only pending or approved AI-assisted drafts can be rejected",
+        });
+      }
+
       return res.status(404).json({
         success: false,
         message: "AI-assisted case draft not found",
