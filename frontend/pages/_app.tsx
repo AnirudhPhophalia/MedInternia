@@ -6,7 +6,7 @@ import "../styles/globals.css";
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  const hideNavbarRoutes = ['/', '/auth/login', '/auth/register'];
+  const hideNavbarRoutes = ['/', '/contact', '/auth/login', '/auth/register'];
   const showNavbar = !hideNavbarRoutes.includes(router.pathname);
   return (
     <>

@@ -13,11 +13,12 @@ import {
 import AddIcon from '@mui/icons-material/Add';
     import api from '../utils/api';
 import WebinarJoin from "../components/WebinarJoin";
+import { canUser } from "../utils/permissions";
 
 export default function WebinarsPage() {
   const [webinars, setWebinars] = useState<any[]>([]);
   const [selectedWebinar, setSelectedWebinar] = useState<any>(null);
-  const [isDoctor, setIsDoctor] = useState(false);
+  const [canManageWebinars, setCanManageWebinars] = useState(false);
 
 
     useEffect(() => {
@@ -25,16 +26,13 @@ export default function WebinarsPage() {
         .then(res => setWebinars(res.data.data.webinars || []))
         .catch(() => setWebinars([]));
 
-      // Fetch user profile to check if doctor
+      // Fetch user profile to check whether the current role can manage webinars.
       api.get('/auth/profile')
         .then(res => {
-          if (res.data?.data?.user?.userType === 'doctor') {
-            setIsDoctor(true);
-          } else {
-            setIsDoctor(false);
-          }
+          const userType = res.data?.data?.user?.userType;
+          setCanManageWebinars(canUser(userType, 'webinar:manage'));
         })
-        .catch(() => setIsDoctor(false));
+        .catch(() => setCanManageWebinars(false));
     }, []);
 
   if (selectedWebinar) {
@@ -49,7 +47,7 @@ export default function WebinarsPage() {
           <Typography variant="h3" fontWeight={900} color="#1565c0" sx={{ letterSpacing: 1 }}>
             Webinars
           </Typography>
-          {isDoctor && (
+          {canManageWebinars && (
             <IconButton
               onClick={() => window.location.href = '/webinars/create'}
               color="primary"

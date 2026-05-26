@@ -1,9 +1,11 @@
 
 import { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
-import { Container, Typography, TextField, Button, Box, Alert, MenuItem, Card, Avatar, Fade, Grow, Stack, LinearProgress } from '@mui/material';
+import { Container, Typography, TextField, Button, Box, Alert, MenuItem, Card, Avatar, Fade, Grow, Stack, LinearProgress, IconButton, InputAdornment } from '@mui/material';
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 
 export default function Register() {
@@ -34,8 +36,17 @@ export default function Register() {
     allergies: '',
   });
   const [error, setError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState('');
   const [step, setStep] = useState(1);
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
   // OTP verification states
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otp, setOtp] = useState('');
@@ -68,8 +79,29 @@ export default function Register() {
     }
   }
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const validatePhone = (value: string) => /^\d{10}$/.test(value);
+
+  const getOptionalPhoneError = (value: string, label = 'mobile number') => {
+    if (!value) return '';
+    return validatePhone(value) ? '' : `Enter a valid 10-digit ${label}.`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    setForm({ ...form, [name]: digits });
+
+    const errorMessage = getOptionalPhoneError(digits);
+
+    if (name === 'phone') {
+      setPhoneError(errorMessage);
+    } else if (name === 'emergencyContactPhone') {
+      setEmergencyPhoneError(errorMessage);
+    }
   };
 
   // Email change triggers OTP send
@@ -146,6 +178,23 @@ export default function Register() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setError('');
+
+    const phoneValidationError = getOptionalPhoneError(form.phone);
+    const emergencyPhoneValidationError = getOptionalPhoneError(form.emergencyContactPhone, 'emergency contact number');
+
+    setPhoneError(phoneValidationError);
+    setEmergencyPhoneError(emergencyPhoneValidationError);
+
+    if (phoneValidationError) {
+      setError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (emergencyPhoneValidationError) {
+      setError('Please enter a valid 10-digit emergency contact number.');
+      return;
+    }
+
     // Check all required fields in step 2 are filled
     const fields = getStep2Fields();
     const missing = fields.filter(f => !form[f]);
@@ -193,7 +242,106 @@ export default function Register() {
                     <TextField label="First Name" name="firstName" fullWidth margin="normal" value={form.firstName} onChange={handleChange} required autoFocus />
                     <TextField label="Last Name" name="lastName" fullWidth margin="normal" value={form.lastName} onChange={handleChange} required />
                     <TextField label="Email" name="email" type="email" fullWidth margin="normal" value={form.email} onChange={handleChange} required />
-                    <TextField label="Password" name="password" type="password" fullWidth margin="normal" value={form.password} onChange={handleChange} required />
+                    <TextField
+                      label="Password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      fullWidth
+                      margin="normal"
+                      value={form.password}
+                      onChange={handleChange}
+                      required
+                      sx={{
+                        '& .MuiInputBase-input': {
+                          animation: showPassword
+                            ? 'revealPassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                            : 'hidePassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                          '@keyframes revealPassword': {
+                            '0%': {
+                              filter: 'blur(5px)',
+                              letterSpacing: '0.12em',
+                              opacity: 0,
+                              clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                            },
+                            '40%': {
+                              opacity: 0.6,
+                            },
+                            '100%': {
+                              filter: 'blur(0)',
+                              letterSpacing: 'normal',
+                              opacity: 1,
+                              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                            }
+                          },
+                          '@keyframes hidePassword': {
+                            '0%': {
+                              filter: 'blur(5px)',
+                              letterSpacing: '0.12em',
+                              opacity: 0,
+                              clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                            },
+                            '40%': {
+                              opacity: 0.6,
+                            },
+                            '100%': {
+                              filter: 'blur(0)',
+                              letterSpacing: 'normal',
+                              opacity: 1,
+                              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                            }
+                          }
+                        }
+                      }}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              onClick={handleClickShowPassword}
+                              onMouseDown={handleMouseDownPassword}
+                              edge="end"
+                              sx={{
+                                color: 'text.secondary',
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                  transform: 'scale(1.12)',
+                                  color: '#1565c0',
+                                  filter: 'drop-shadow(0 0 4px rgba(21, 147, 176, 0.4))',
+                                },
+                                '&:active': {
+                                  transform: 'scale(0.93)',
+                                },
+                                mr: 0.5,
+                              }}
+                            >
+                              {showPassword ? (
+                                <VisibilityOff
+                                  sx={{
+                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    animation: 'premiumRotateOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                    '@keyframes premiumRotateOut': {
+                                      '0%': { opacity: 0, transform: 'rotate(-25deg) scale(0.8)' },
+                                      '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <Visibility
+                                  sx={{
+                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    animation: 'premiumRotateIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                    '@keyframes premiumRotateIn': {
+                                      '0%': { opacity: 0, transform: 'rotate(25deg) scale(0.8)' },
+                                      '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
+                                    }
+                                  }}
+                                />
+                              )}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
                     <TextField select label="User Type" name="userType" fullWidth margin="normal" value={form.userType} onChange={handleChange} required>
                       <MenuItem value="patient">Patient</MenuItem>
                       <MenuItem value="doctor">Doctor</MenuItem>
@@ -218,7 +366,17 @@ export default function Register() {
                 )}
                 {step === 2 && (
                   <>
-                    <TextField label="Phone" name="phone" fullWidth margin="normal" value={form.phone} onChange={handleChange} />
+                    <TextField
+                      label="Phone"
+                      name="phone"
+                      fullWidth
+                      margin="normal"
+                      value={form.phone}
+                      onChange={handlePhoneChange}
+                      error={Boolean(phoneError)}
+                      helperText={phoneError || 'Enter a 10-digit mobile number'}
+                      inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
+                    />
                     <TextField label="Date of Birth" name="dateOfBirth" type="date" fullWidth margin="normal" value={form.dateOfBirth} onChange={handleChange} InputLabelProps={{ shrink: true }} />
                     <TextField select label="Gender" name="gender" fullWidth margin="normal" value={form.gender} onChange={handleChange}>
                       <MenuItem value="male">Male</MenuItem>
@@ -255,7 +413,17 @@ export default function Register() {
                       <Fade in timeout={600}>
                         <Box>
                           <TextField label="Emergency Contact Name" name="emergencyContactName" fullWidth margin="normal" value={form.emergencyContactName} onChange={handleChange} />
-                          <TextField label="Emergency Contact Phone" name="emergencyContactPhone" fullWidth margin="normal" value={form.emergencyContactPhone} onChange={handleChange} />
+                          <TextField
+                            label="Emergency Contact Phone"
+                            name="emergencyContactPhone"
+                            fullWidth
+                            margin="normal"
+                            value={form.emergencyContactPhone}
+                            onChange={handlePhoneChange}
+                            error={Boolean(emergencyPhoneError)}
+                            helperText={emergencyPhoneError || 'Enter a 10-digit mobile number'}
+                            inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
+                          />
                           <TextField label="Emergency Contact Relationship" name="emergencyContactRelationship" fullWidth margin="normal" value={form.emergencyContactRelationship} onChange={handleChange} />
                           <TextField label="Medical History (comma separated)" name="medicalHistory" fullWidth margin="normal" value={form.medicalHistory} onChange={handleChange} />
                           <TextField label="Allergies (comma separated)" name="allergies" fullWidth margin="normal" value={form.allergies} onChange={handleChange} />

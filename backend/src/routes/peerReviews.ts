@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { requirePermission } from '../middleware/permissions';
 import {
   submitPeerReview,
   getCommentReviews,
@@ -27,6 +28,6 @@ router.get('/user/:userId/given', getReviewsByUser);
 router.patch('/:reviewId/helpful', authenticate, markReviewHelpful);
 
 // Get peer review analytics for user
-router.get('/user/:userId/analytics', getPeerReviewAnalytics);
+router.get('/user/:userId/analytics', authenticate, requirePermission('analytics:read'), getPeerReviewAnalytics);
 
 export default router;

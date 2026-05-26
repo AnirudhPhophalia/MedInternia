@@ -1,14 +1,23 @@
 import { useState } from 'react';
-import { Container, Typography, TextField, Button, Box, Alert, Paper, Divider } from '@mui/material';
+import { Container, Typography, TextField, Button, Box, Alert, Paper, Divider, IconButton, InputAdornment } from '@mui/material';
 import Link from 'next/link';
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +39,16 @@ export default function Login() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Box
+  sx={{
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    pt: 6,
+  }}
+>
       <Paper elevation={8} sx={{
         p: 4,
         borderRadius: 4,
@@ -41,6 +59,32 @@ export default function Login() {
         position: 'relative',
         overflow: 'hidden',
       }}>
+       <Box
+  sx={{
+    display: 'flex',
+    justifyContent: 'center',
+    mb: 3,
+  }}
+>
+  <Box
+    sx={{
+      width: 90,
+      height: 90,
+
+      borderRadius: '50%',
+      overflow: 'hidden',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      backgroundColor: '#fff',
+      p: 1,
+    }}
+  >
+    <img
+      src="/med-internia-logo.jpg"
+      alt="MedInternia Logo"
+      style={{ width: '100%', height: '100%' }}
+    />
+  </Box>
+</Box>
   {/* Removed decorative circle at top right */}
         <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#1565c0', letterSpacing: 1, zIndex: 1, position: 'relative' }}>Login</Typography>
         {error && <Alert severity="error" sx={{ zIndex: 1, position: 'relative' }}>{error}</Alert>}
@@ -57,13 +101,105 @@ export default function Login() {
           />
           <TextField
             label="Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             fullWidth
             margin="normal"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+            sx={{
+              bgcolor: '#f8fafd',
+              borderRadius: 2,
+              '& .MuiInputBase-input': {
+                animation: showPassword
+                  ? 'revealPassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                  : 'hidePassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                '@keyframes revealPassword': {
+                  '0%': {
+                    filter: 'blur(5px)',
+                    letterSpacing: '0.12em',
+                    opacity: 0,
+                    clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                  },
+                  '40%': {
+                    opacity: 0.6,
+                  },
+                  '100%': {
+                    filter: 'blur(0)',
+                    letterSpacing: 'normal',
+                    opacity: 1,
+                    clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                  }
+                },
+                '@keyframes hidePassword': {
+                  '0%': {
+                    filter: 'blur(5px)',
+                    letterSpacing: '0.12em',
+                    opacity: 0,
+                    clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                  },
+                  '40%': {
+                    opacity: 0.6,
+                  },
+                  '100%': {
+                    filter: 'blur(0)',
+                    letterSpacing: 'normal',
+                    opacity: 1,
+                    clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                  }
+                }
+              }
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
+                    onClick={handleClickShowPassword}
+                    onMouseDown={handleMouseDownPassword}
+                    edge="end"
+                    sx={{
+                      color: 'text.secondary',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        transform: 'scale(1.12)',
+                        color: '#1565c0',
+                        filter: 'drop-shadow(0 0 4px rgba(21, 147, 176, 0.4))',
+                      },
+                      '&:active': {
+                        transform: 'scale(0.93)',
+                      },
+                      mr: 0.5,
+                    }}
+                  >
+                    {showPassword ? (
+                      <VisibilityOff
+                        sx={{
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          animation: 'premiumRotateOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                          '@keyframes premiumRotateOut': {
+                            '0%': { opacity: 0, transform: 'rotate(-25deg) scale(0.8)' },
+                            '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Visibility
+                        sx={{
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          animation: 'premiumRotateIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                          '@keyframes premiumRotateIn': {
+                            '0%': { opacity: 0, transform: 'rotate(25deg) scale(0.8)' },
+                            '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
+                          }
+                        }}
+                      />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
           <Button
             type="submit"
@@ -83,7 +219,15 @@ export default function Login() {
                 background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
                 transform: 'scale(1.03)',
                 boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)'
-              }
+              },
+              '&:active': {
+  color: '#ffffff',
+},
+
+'&:focus': {
+  color: '#ffffff',
+},
+              
             }}
           >
             Login

@@ -4,7 +4,7 @@ import User from '../models/User';
 import Rating from '../models/Rating';
 import { AuthRequest } from '../middleware/auth';
 
-// Rate a comment (Doctor only)
+// Rate and award points for a comment
 export const rateComment = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
@@ -18,10 +18,10 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (user.userType !== 'doctor') {
+    if (user.userType !== 'doctor' && user.userType !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only doctors can rate comments'
+        message: 'Only doctors or admins can rate comments'
       });
     }
 

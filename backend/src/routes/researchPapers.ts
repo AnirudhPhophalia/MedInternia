@@ -2,11 +2,13 @@ import express from 'express';
 import { createResearchPaper, getAllResearchPapers, getResearchPaperById } from '../controllers/researchPaperController';
 import path from 'path';
 import fs from 'fs';
+import { authenticate } from '../middleware/auth';
+import { requirePermission } from '../middleware/permissions';
 
 const router = express.Router();
 
 
-router.post('/', createResearchPaper);
+router.post('/', authenticate, requirePermission('import:run'), createResearchPaper);
 router.get('/', getAllResearchPapers);
 router.get('/:id', getResearchPaperById);
 

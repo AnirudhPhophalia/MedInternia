@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"No backend tests configured\"",
+    "test": "echo \"No backend tests configured yet\"",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
