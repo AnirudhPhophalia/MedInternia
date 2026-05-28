@@ -1,17 +1,17 @@
-import { Response } from "express";
-import Case from "../models/Case";
-import User from "../models/User";
-import { AuthRequest } from "../middleware/auth";
+import { Response } from 'express';
+import Case from '../models/Case';
+import User from '../models/User';
+import { AuthRequest } from '../middleware/auth';
 import {
   buildAutomatedCaseDraft,
   parseGeneratedCaseInput,
-} from "../services/automatedCasePostingService";
+} from '../services/automatedCasePostingService';
 
 const GENERATED_CASE_POINTS = 10;
 
 const getDoctorUser = (req: AuthRequest) => {
   const user = req.user;
-  if (!user || user.userType !== "doctor") {
+  if (!user || user.userType !== 'doctor') {
     return null;
   }
   return user;
@@ -26,12 +26,12 @@ const publishCaseIfDue = async (caseId: string, doctorId: string) => {
       _id: caseId,
       doctor: doctorId,
       aiGenerated: true,
-      reviewStatus: "approved",
+      reviewStatus: 'approved',
       scheduledFor: { $lte: now },
       pointsAwarded: 0,
     },
     {
-      reviewStatus: "published",
+      reviewStatus: 'published',
       isActive: true,
       publishedAt: now,
       pointsAwarded: GENERATED_CASE_POINTS,
@@ -59,7 +59,7 @@ export const createAutomatedCaseDraft = async (
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors can create AI-assisted case drafts",
+        message: 'Only doctors can create AI-assisted case drafts',
       });
     }
 
@@ -72,36 +72,36 @@ export const createAutomatedCaseDraft = async (
       isActive: false,
       isPatientCase: false,
       aiGenerated: true,
-      generationSource: "deterministic-template",
-      reviewStatus: "pending_review",
+      generationSource: 'deterministic-template',
+      reviewStatus: 'pending_review',
       pointsAwarded: 0,
       canRepost: false,
     });
 
-    await caseData.populate("doctor", "firstName lastName specialization");
+    await caseData.populate('doctor', 'firstName lastName specialization');
 
     return res.status(201).json({
       success: true,
-      message: "AI-assisted case draft generated and queued for review",
+      message: 'AI-assisted case draft generated and queued for review',
       data: {
         case: caseData,
         reviewChecklist: draft.reviewChecklist,
       },
     });
   } catch (error: any) {
-    console.error("Create automated case draft error:", error);
-    if (error.name === "ValidationError") {
+    console.error('Create automated case draft error:', error);
+    if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map((err: any) => err.message);
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message: 'Validation error',
         errors,
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
 };
@@ -115,7 +115,7 @@ export const getAutomatedCaseDrafts = async (
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors can view AI-assisted case drafts",
+        message: 'Only doctors can view AI-assisted case drafts',
       });
     }
 
@@ -123,7 +123,7 @@ export const getAutomatedCaseDrafts = async (
       doctor: user._id,
       aiGenerated: true,
     })
-      .populate("doctor", "firstName lastName specialization")
+      .populate('doctor', 'firstName lastName specialization')
       .sort({ scheduledFor: 1, createdAt: -1 });
 
     return res.json({
@@ -134,10 +134,10 @@ export const getAutomatedCaseDrafts = async (
       },
     });
   } catch (error) {
-    console.error("Get automated case drafts error:", error);
+    console.error('Get automated case drafts error:', error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
 };
@@ -151,7 +151,7 @@ export const approveAutomatedCaseDraft = async (
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors can approve AI-assisted case drafts",
+        message: 'Only doctors can approve AI-assisted case drafts',
       });
     }
 
@@ -160,10 +160,10 @@ export const approveAutomatedCaseDraft = async (
         _id: req.params.id,
         doctor: user._id,
         aiGenerated: true,
-        reviewStatus: "pending_review",
+        reviewStatus: 'pending_review',
       },
       {
-        reviewStatus: "approved",
+        reviewStatus: 'approved',
         isActive: false,
       },
       { new: true },
@@ -179,16 +179,16 @@ export const approveAutomatedCaseDraft = async (
       if (!existingCase) {
         return res.status(404).json({
           success: false,
-          message: "AI-assisted case draft not found",
+          message: 'AI-assisted case draft not found',
         });
       }
 
       return res.status(400).json({
         success: false,
         message:
-          existingCase.reviewStatus === "published"
-            ? "Published AI-assisted cases cannot be approved again"
-            : "Only pending AI-assisted drafts can be approved",
+          existingCase.reviewStatus === 'published'
+            ? 'Published AI-assisted cases cannot be approved again'
+            : 'Only pending AI-assisted drafts can be approved',
       });
     }
 
@@ -201,18 +201,18 @@ export const approveAutomatedCaseDraft = async (
     return res.json({
       success: true,
       message:
-        responseCase.reviewStatus === "published"
-          ? "AI-assisted case approved and published"
-          : "AI-assisted case approved and scheduled for posting",
+        responseCase.reviewStatus === 'published'
+          ? 'AI-assisted case approved and published'
+          : 'AI-assisted case approved and scheduled for posting',
       data: {
         case: responseCase,
       },
     });
   } catch (error) {
-    console.error("Approve automated case draft error:", error);
+    console.error('Approve automated case draft error:', error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
 };
@@ -226,7 +226,7 @@ export const rejectAutomatedCaseDraft = async (
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors can reject AI-assisted case drafts",
+        message: 'Only doctors can reject AI-assisted case drafts',
       });
     }
 
@@ -235,10 +235,10 @@ export const rejectAutomatedCaseDraft = async (
         _id: req.params.id,
         doctor: user._id,
         aiGenerated: true,
-        reviewStatus: { $in: ["pending_review", "approved"] },
+        reviewStatus: { $in: ['pending_review', 'approved'] },
       },
       {
-        reviewStatus: "rejected",
+        reviewStatus: 'rejected',
         isActive: false,
       },
       { new: true },
@@ -255,30 +255,30 @@ export const rejectAutomatedCaseDraft = async (
         return res.status(400).json({
           success: false,
           message:
-            existingCase.reviewStatus === "published"
-              ? "Published AI-assisted cases cannot be rejected"
-              : "Only pending or approved AI-assisted drafts can be rejected",
+            existingCase.reviewStatus === 'published'
+              ? 'Published AI-assisted cases cannot be rejected'
+              : 'Only pending or approved AI-assisted drafts can be rejected',
         });
       }
 
       return res.status(404).json({
         success: false,
-        message: "AI-assisted case draft not found",
+        message: 'AI-assisted case draft not found',
       });
     }
 
     return res.json({
       success: true,
-      message: "AI-assisted case draft rejected",
+      message: 'AI-assisted case draft rejected',
       data: {
         case: caseData,
       },
     });
   } catch (error) {
-    console.error("Reject automated case draft error:", error);
+    console.error('Reject automated case draft error:', error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
 };
@@ -292,16 +292,16 @@ export const publishDueAutomatedCases = async (
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Only doctors can publish scheduled AI-assisted cases",
+        message: 'Only doctors can publish scheduled AI-assisted cases',
       });
     }
 
     const dueCases = await Case.find({
       doctor: user._id,
       aiGenerated: true,
-      reviewStatus: "approved",
+      reviewStatus: 'approved',
       scheduledFor: { $lte: new Date() },
-    }).select("_id");
+    }).select('_id');
 
     const publishResults = await Promise.all(
       dueCases.map((dueCase) =>
@@ -312,17 +312,17 @@ export const publishDueAutomatedCases = async (
 
     return res.json({
       success: true,
-      message: "Scheduled AI-assisted cases processed",
+      message: 'Scheduled AI-assisted cases processed',
       data: {
         published: publishedCases.length,
         cases: publishedCases,
       },
     });
   } catch (error) {
-    console.error("Publish due automated cases error:", error);
+    console.error('Publish due automated cases error:', error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: 'Internal server error',
     });
   }
 };
