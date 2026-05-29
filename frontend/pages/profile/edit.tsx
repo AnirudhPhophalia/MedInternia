@@ -33,6 +33,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import api from "../../utils/api";
 
 // Defines the shape of the form data for type safety
 interface ProfileFormData {
@@ -175,6 +176,9 @@ const initialFormState: ProfileFormData = {
   yearsOfExperience: "",
 };
 
+const resolveProfileUser = (payload: any) =>
+  payload?.data?.user || payload?.user || payload?.data || payload;
+
 export default function EditProfilePage() {
 
   const router = useRouter();
@@ -231,18 +235,12 @@ export default function EditProfilePage() {
    React.useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
-        if (!token || !userId) return;
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
-        const res = await fetch(`${API_BASE_URL}/users/${userId}/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-        if (data.success && data.data && data.data.user) {
-          const user = data.data.user;
+        const response = userId
+          ? await api.get(`/users/${userId}/profile`)
+          : await api.get('/auth/profile');
+        const user = resolveProfileUser(response.data);
+        if (user) {
             setForm(prevForm => ({
               ...prevForm,
               name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
@@ -268,7 +266,8 @@ export default function EditProfilePage() {
             }));
         }
       } catch (err) {
-        // Optionally handle error
+        console.error("Failed to fetch profile:", err);
+        setMessage("Failed to load saved profile details.");
       }
     };
     fetchProfile();
@@ -342,17 +341,10 @@ export default function EditProfilePage() {
       let profilePictureUrl = (typeof form.image === 'string' && /^https?:\/\//.test(form.image)) ? form.image : '';
       // If a new image file is selected, upload it first
       if (selectedImageFile) {
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
         const formData = new FormData();
         formData.append('profilePicture', selectedImageFile);
-        const resImg = await fetch(`${API_BASE_URL}/auth/profile/upload-picture`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-        const dataImg = await resImg.json();
+        const resImg = await api.post('/auth/profile/upload-picture', formData);
+        const dataImg = resImg.data;
         if (dataImg.success && dataImg.data && dataImg.data.user && dataImg.data.user.profilePicture) {
           profilePictureUrl = dataImg.data.user.profilePicture;
         } else {
@@ -387,16 +379,8 @@ export default function EditProfilePage() {
         experience: form.yearsOfExperience ? Number(form.yearsOfExperience) : undefined,
         linkedInProfile: form.linkedInUrl,
       };
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
-      const res = await fetch(`${API_BASE_URL}/users/${userId}/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      const res = await api.put(`/users/${userId}/profile`, payload);
+      const data = res.data;
       if (data.success) {
         setMessage("Profile updated successfully!");
         setIsSaved(true);

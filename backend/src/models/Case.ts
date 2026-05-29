@@ -35,8 +35,19 @@ export interface ICase extends Document {
   likes: mongoose.Types.ObjectId[];
   isActive: boolean;
   isPatientCase: boolean;
-  pointsAwarded: number;
-  canRepost: boolean;
+  
+  moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+  moderationReason?: string;
+  reviewedBy?: mongoose.Types.ObjectId;
+  reviewedAt?: Date;
+  moderationAuditTrail: {
+    status: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+    reason?: string;
+    reviewedBy?: mongoose.Types.ObjectId;
+    reviewedAt: Date;
+  }[];
+  pointsAwarded: number; // Points given to doctor for posting
+  canRepost: boolean; // Indicates if the case can be reposted
   followUps: {
     author: mongoose.Types.ObjectId;
     content: string;
@@ -182,6 +193,43 @@ const CaseSchema = new Schema<ICase>({
     type: Boolean,
     default: false
   },
+  moderationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'changes_requested'],
+    default: 'approved'
+  },
+  moderationReason: {
+    type: String,
+    trim: true,
+    maxlength: [1000, 'Moderation reason cannot be more than 1000 characters']
+  },
+  reviewedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  reviewedAt: {
+    type: Date
+  },
+  moderationAuditTrail: [{
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'changes_requested'],
+      required: true
+    },
+    reason: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Moderation reason cannot be more than 1000 characters']
+    },
+    reviewedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reviewedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   pointsAwarded: {
     type: Number,
     default: 0,

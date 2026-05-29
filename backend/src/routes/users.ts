@@ -5,6 +5,7 @@ import {
   getUserProfile,
   updateUserProfile,
   getInternScorecard,
+  getDoctorMentorSummary,
   getLeaderboard,
   verifyDoctor,
   grantContributorBadge,
@@ -25,6 +26,9 @@ router.put('/:userId/profile', authenticate, updateUserProfile);
 
 // Get intern scorecard
 router.get('/:userId/scorecard', getInternScorecard);
+
+// Get doctor mentorship score and resume-style summary
+router.get('/:userId/mentor-summary', getDoctorMentorSummary);
 
 // Get leaderboard
 router.get('/leaderboard', getLeaderboard);

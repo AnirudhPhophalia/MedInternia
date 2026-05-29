@@ -10,8 +10,10 @@ import {
   getMyCases,
   addFollowUp,
   getCaseFollowUps,
+  getCaseModerationQueue,
   generateAISuggestions,
   getCaseAISuggestions,
+  moderateCase,
   pinComment,
   unpinComment,
   getPinnedComments,
@@ -29,12 +31,14 @@ const router = express.Router();
 // Authenticated case browsing routes
 router.get('/', authenticate, getCases);
 router.get('/my/cases', authenticate, getMyCases);
+router.get('/moderation/queue', authenticate, requirePermission('comment:moderate'), getCaseModerationQueue);
 
 // Permission-guarded case management routes
 router.post('/', authenticate, requirePermission('case:create'), createCase);
 router.get('/:id', authenticate, getCaseById);
 router.put('/:id', authenticate, requirePermission('case:update'), updateCase);
 router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
+router.patch('/:id/moderation', authenticate, requirePermission('comment:moderate'), moderateCase);
 
 // Permission-guarded interactive routes
 router.post('/:id/comments', authenticate, requirePermission('comment:create'), addComment);
