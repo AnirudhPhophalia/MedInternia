@@ -269,6 +269,7 @@ export const getCases = async (req: AuthRequest, res: Response) => {
   try {
     const {
       specialization,
+      specialty,
       difficulty,
       status,
       tags,
@@ -280,9 +281,10 @@ export const getCases = async (req: AuthRequest, res: Response) => {
     } = req.query;
 
     const filter: any = { isActive: true };
+    const spec = specialization || specialty;
 
-    if (specialization) {
-      filter.specialization = { $regex: specialization, $options: 'i' };
+    if (spec) {
+      filter.specialization = { $regex: spec, $options: 'i' };
     }
 
     if (difficulty) {
@@ -290,7 +292,11 @@ export const getCases = async (req: AuthRequest, res: Response) => {
     }
 
     if (status) {
-      filter.status = status;
+      const statusValues = (Array.isArray(status) ? status : [status]).map(String);
+      // Treat legacy documents without `status` as the default "Open".
+      filter.status = statusValues.includes('Open')
+        ? { $in: [...new Set([...statusValues, null])] }
+        : { $in: statusValues };
     }
 
     if (tags) {
@@ -303,14 +309,8 @@ export const getCases = async (req: AuthRequest, res: Response) => {
     }
 
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(search as string, 'i')] } }
-      ];
+      filter.$text = { $search: search as string };
     }
-
-
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);

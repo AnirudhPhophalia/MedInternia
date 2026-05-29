@@ -243,7 +243,6 @@ CaseSchema.index({ difficulty: 1 });
 CaseSchema.index({ status: 1 });
 CaseSchema.index({ tags: 1 });
 CaseSchema.index({ createdAt: -1 });
-CaseSchema.index({ likes: 1 });
 CaseSchema.index({ 'comments.author': 1 });
 CaseSchema.index({ title: 'text', description: 'text' });
 

@@ -18,7 +18,6 @@ import {
   Select,
   FormControl,
   InputLabel,
-  Stack,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -70,6 +69,12 @@ export default function Cases() {
   const [totalCount, setTotalCount] = useState(0);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
 
   const fetchCases = useCallback(
     async (params: {
@@ -225,7 +230,7 @@ export default function Cases() {
         </Box>
 
         {/* Specialty chips */}
-        {SPECIALTIES.slice(0, 6).map((s) => (
+        {SPECIALTIES.map((s) => (
           <Chip
             key={s}
             label={s}
