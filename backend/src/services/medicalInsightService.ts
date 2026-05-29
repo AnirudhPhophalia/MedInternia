@@ -252,15 +252,46 @@ function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function tokenizeSignal(value: string): string[] {
+  return normalize(value)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+}
+
 function includesSignal(text: string, signal: string): boolean {
-  return text.includes(signal) || signal.includes(text);
+  const normalizedText = normalize(text);
+  const normalizedSignal = normalize(signal);
+
+  if (!normalizedText || !normalizedSignal) {
+    return false;
+  }
+
+  if (normalizedText === normalizedSignal) {
+    return true;
+  }
+
+  const textTokens = tokenizeSignal(normalizedText);
+  const signalTokens = tokenizeSignal(normalizedSignal);
+  const signalTokenSet = new Set(signalTokens);
+
+  if (textTokens.some((token) => signalTokenSet.has(token))) {
+    return true;
+  }
+
+  const shorterSignalLength = Math.min(
+    normalizedText.length,
+    normalizedSignal.length,
+  );
+  return (
+    shorterSignalLength >= 4 &&
+    (normalizedText.includes(normalizedSignal) ||
+      normalizedSignal.includes(normalizedText))
+  );
 }
 
 function scoreSignals(inputs: string[], targets: string[]): string[] {
   return targets.filter((target) =>
-    inputs.some(
-      (input) => includesSignal(input, target) || includesSignal(target, input),
-    ),
+    inputs.some((input) => includesSignal(input, target)),
   );
 }
 
@@ -281,7 +312,7 @@ async function getCaseOutcomeBoost(inputSignals: string[]) {
     isActive: true,
     diagnosis: { $exists: true, $ne: "" },
   })
-    .select("title symptoms tags diagnosis specialization difficulty")
+    .select("symptoms tags diagnosis")
     .limit(80)
     .lean();
 
@@ -290,8 +321,6 @@ async function getCaseOutcomeBoost(inputSignals: string[]) {
       const caseSignals = [
         ...(caseItem.symptoms ?? []),
         ...(caseItem.tags ?? []),
-        caseItem.title ?? "",
-        caseItem.specialization ?? "",
       ].map(normalize);
       const matches = scoreSignals(inputSignals, caseSignals);
 

@@ -45,6 +45,14 @@ const urgencyColor = {
   urgent: "error",
 } as const;
 
+type ApiError = {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+};
+
 function splitList(value: string) {
   return value
     .split(",")
@@ -81,9 +89,11 @@ export default function MedicalInsights() {
       });
 
       setInsight(response.data.data);
-    } catch {
+    } catch (err) {
+      const apiError = err as ApiError;
       setError(
-        "Unable to generate medical insight. Please check the symptom list and try again.",
+        apiError.response?.data?.message ||
+          "Unable to generate medical insight. Please check the symptom list and try again.",
       );
     } finally {
       setLoading(false);

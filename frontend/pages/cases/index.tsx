@@ -30,6 +30,7 @@ export default function Cases() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [openDiscussionId, setOpenDiscussionId] = useState<string | null>(null);
   const [canCreateCases, setCanCreateCases] = useState(false);
+  const [canUseMedicalInsights, setCanUseMedicalInsights] = useState(false);
 
   useEffect(() => {
     api
@@ -46,10 +47,15 @@ export default function Cases() {
     api
       .get("/auth/profile")
       .then((res) => {
-        const userType = res.data?.data?.user?.userType;
+        const user = res.data?.data?.user;
+        const userType = user?.userType ?? user?.role;
         setCanCreateCases(canUser(userType, "case:create"));
+        setCanUseMedicalInsights(canUser(userType, "analytics:read"));
       })
-      .catch(() => setCanCreateCases(false));
+      .catch(() => {
+        setCanCreateCases(false);
+        setCanUseMedicalInsights(false);
+      });
   }, []);
 
   if (loading) {
@@ -109,22 +115,24 @@ export default function Cases() {
               + Create New Case
             </Button>
           )}
-          <Button
-            variant="outlined"
-            color="primary"
-            sx={{
-              mb: 2,
-              borderRadius: 3,
-              fontWeight: 700,
-              px: 4,
-              py: 1.2,
-              fontSize: "1.08rem",
-            }}
-            component={Link}
-            href="/cases/medical-insights"
-          >
-            Medical Insight Assistant
-          </Button>
+          {canUseMedicalInsights && (
+            <Button
+              variant="outlined"
+              color="primary"
+              sx={{
+                mb: 2,
+                borderRadius: 3,
+                fontWeight: 700,
+                px: 4,
+                py: 1.2,
+                fontSize: "1.08rem",
+              }}
+              component={Link}
+              href="/cases/medical-insights"
+            >
+              Medical Insight Assistant
+            </Button>
+          )}
         </Stack>
       </Box>
       <Box

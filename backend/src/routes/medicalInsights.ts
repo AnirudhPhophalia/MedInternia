@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import { AuthRequest, authenticate } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { generateMedicalInsight } from "../services/medicalInsightService";
 
 const router = Router();
@@ -7,6 +8,7 @@ const router = Router();
 router.post(
   "/predict",
   authenticate,
+  requirePermission("analytics:read"),
   async (req: AuthRequest, res: Response) => {
     try {
       const { symptoms, patientContext, notes } = req.body ?? {};
