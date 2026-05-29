@@ -5,6 +5,13 @@ import { AuthRequest } from '../middleware/auth';
 
 const canModerateComments = (userType?: string) => ['admin', 'doctor', 'moderator'].includes(userType ?? '');
 const canAddCaseFollowUp = (userType?: string) => ['admin', 'doctor', 'intern', 'hospital_staff'].includes(userType ?? '');
+const canModerateCases = (userType?: string) => ['admin', 'doctor', 'moderator'].includes(userType ?? '');
+const publicCaseFilter = {
+  $or: [
+    { moderationStatus: 'approved' },
+    { moderationStatus: { $exists: false } }
+  ]
+};
 
 // Reply to a comment
 export const replyToComment = async (req: AuthRequest, res: Response) => {
@@ -183,7 +190,13 @@ export const createCase = async (req: AuthRequest, res: Response) => {
         difficulty: 'beginner', // Default for patient cases
         specialization: 'General Medicine', // Default for patients
         doctor: user._id as any,
-        isPatientCase: true
+        isPatientCase: true,
+        moderationStatus: 'pending',
+        moderationAuditTrail: [{
+          status: 'pending',
+          reason: 'Patient-submitted case awaiting review',
+          reviewedAt: new Date()
+        }]
       });
 
       await newCase.save();
@@ -219,7 +232,14 @@ export const createCase = async (req: AuthRequest, res: Response) => {
       difficulty,
       specialization: specialization || user.specialization,
       doctor: user._id as any,
-      isPatientCase: false
+      isPatientCase: false,
+      moderationStatus: 'approved',
+      moderationAuditTrail: [{
+        status: 'approved',
+        reason: 'Doctor-authored case published automatically',
+        reviewedBy: user._id as any,
+        reviewedAt: new Date()
+      }]
     });
 
     await newCase.save();
@@ -279,7 +299,7 @@ export const getCases = async (req: AuthRequest, res: Response) => {
       sort = 'newest'
     } = req.query;
 
-    const filter: any = { isActive: true };
+    const filter: any = { isActive: true, $and: [publicCaseFilter] };
 
     if (specialization) {
       filter.specialization = { $regex: specialization, $options: 'i' };
@@ -406,6 +426,16 @@ export const getCaseById = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const user = req.user as { _id?: string; userType?: string } | undefined;
+    const isOwner = user?._id && caseData.doctor.toString() === user._id.toString();
+    const isApproved = !caseData.moderationStatus || caseData.moderationStatus === 'approved';
+    if (!isApproved && !isOwner && !canModerateCases(user?.userType)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Case is awaiting moderation'
+      });
+    }
+
     res.json({
       success: true,
       data: {
@@ -454,6 +484,11 @@ export const updateCase = async (req: AuthRequest, res: Response) => {
     delete updates.doctor; // Prevent changing the doctor
     delete updates.comments; // Comments are handled separately
     delete updates.likes; // Likes are handled separately
+    delete updates.moderationStatus; // Moderation is handled through dedicated endpoints
+    delete updates.moderationReason;
+    delete updates.reviewedBy;
+    delete updates.reviewedAt;
+    delete updates.moderationAuditTrail;
 
     const updatedCase = await Case.findByIdAndUpdate(
       id,
@@ -792,6 +827,159 @@ export const getMyCases = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Get moderation queue counts and pending items
+export const getCaseModerationQueue = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user as { userType?: string };
+    if (!canModerateCases(user?.userType)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only moderators, admins, and doctors can review case submissions'
+      });
+    }
+
+    const {
+      status = 'pending',
+      page = 1,
+      limit = 10
+    } = req.query;
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'changes_requested'];
+    const queueStatus = allowedStatuses.includes(status as string) ? status as string : 'pending';
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter = { isActive: true, moderationStatus: queueStatus };
+    const [cases, total, counts] = await Promise.all([
+      Case.find(filter)
+        .populate('doctor', 'firstName lastName userType specialization')
+        .populate('reviewedBy', 'firstName lastName userType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      Case.countDocuments(filter),
+      Case.aggregate([
+        { $match: { isActive: true } },
+        { $group: { _id: '$moderationStatus', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const queueCounts = counts.reduce((acc: Record<string, number>, item: { _id?: string; count: number }) => {
+      acc[item._id || 'approved'] = item.count;
+      return acc;
+    }, {
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      changes_requested: 0
+    });
+
+    res.json({
+      success: true,
+      data: {
+        cases,
+        counts: queueCounts,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get case moderation queue error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Approve, reject, or request changes for a case before public publishing
+export const moderateCase = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user as { _id: string; userType?: string };
+    if (!canModerateCases(user?.userType)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only moderators, admins, and doctors can review case submissions'
+      });
+    }
+
+    const { id } = req.params;
+    const { status, reason } = req.body;
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'changes_requested'];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be pending, approved, rejected, or changes_requested'
+      });
+    }
+
+    if ((status === 'rejected' || status === 'changes_requested') && !reason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'A review reason is required when rejecting or requesting changes'
+      });
+    }
+
+    const reviewedAt = new Date();
+    const updatedCase = await Case.findByIdAndUpdate(
+      id,
+      {
+        moderationStatus: status,
+        moderationReason: reason?.trim() || undefined,
+        reviewedBy: user._id as any,
+        reviewedAt,
+        $push: {
+          moderationAuditTrail: {
+            status,
+            reason: reason?.trim() || undefined,
+            reviewedBy: user._id as any,
+            reviewedAt
+          }
+        }
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('doctor', 'firstName lastName userType specialization')
+      .populate('reviewedBy', 'firstName lastName userType');
+
+    if (!updatedCase) {
+      return res.status(404).json({
+        success: false,
+        message: 'Case not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Case ${status.replace('_', ' ')} successfully`,
+      data: {
+        case: updatedCase
+      }
+    });
+  } catch (error: any) {
+    console.error('Moderate case error:', error);
+
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err: any) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Add follow-up to case
 export const addFollowUp = async (req: AuthRequest, res: Response) => {
   try {
@@ -897,12 +1085,17 @@ export const generateAISuggestions = async (req: AuthRequest, res: Response) => 
     // In production, this would use AI/ML algorithms
     const similarCases = await Case.find({
       _id: { $ne: id },
-      $or: [
-        { specialization: caseData.specialization },
-        { difficulty: caseData.difficulty },
-        { tags: { $in: caseData.tags } }
-      ],
-      isActive: true
+      isActive: true,
+      $and: [
+        publicCaseFilter,
+        {
+          $or: [
+            { specialization: caseData.specialization },
+            { difficulty: caseData.difficulty },
+            { tags: { $in: caseData.tags } }
+          ]
+        }
+      ]
     })
       .select('title description specialization difficulty tags')
       .limit(5)
