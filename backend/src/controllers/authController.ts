@@ -86,6 +86,10 @@ export const register = async (req: Request, res: Response) => {
       allergies
     } = req.body;
 
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Password is required' });
+    }
+
     const passwordError = validatePassword(password);
     if (passwordError) {
       return res.status(400).json({ success: false, message: passwordError });
