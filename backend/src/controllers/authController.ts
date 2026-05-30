@@ -528,7 +528,8 @@ export const forgotPassword = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) return res.status(400).json({ success: false, message: 'All fields required' });
-  if (newPassword.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+  const passwordError = validatePassword(newPassword);
+if (passwordError) return res.status(400).json({ success: false, message: passwordError });
   if (otpStore[email + '_reset'] !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
