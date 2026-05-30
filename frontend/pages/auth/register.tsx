@@ -41,6 +41,8 @@ export default function Register() {
   const [step, setStep] = useState(1);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  // GSSoC: Loading state for submit button
+  const [loading, setLoading] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
 const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 const [confirmPasswordError, setConfirmPasswordError] = useState('');
@@ -226,11 +228,15 @@ setStep(2);
       setError('Please fill all required fields.');
       return;
     }
+    // GSSoC: Show loading spinner while request is in-flight
+    setLoading(true);
     try {
       await api.post('/auth/register', form);
       router.push('/auth/login');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -244,7 +250,8 @@ setStep(2);
       py: 6
     }}>
       <Fade in timeout={900}>
-        <Card elevation={8} sx={{ p: 4, borderRadius: 5, minWidth: 370, maxWidth: 450, width: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)' }}>
+        {/* GSSoC: card-enter adds fade-in-up; mobile width improved */}
+        <Card elevation={8} className="card-enter" sx={{ p: { xs: 3, sm: 4 }, borderRadius: 5, minWidth: { xs: 0, sm: 370 }, maxWidth: 450, width: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)' }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
             <Avatar sx={{ bgcolor: 'white', width: 80, height: 80, mb: 1, boxShadow: 3 }}>
               <img src="/med-internia-logo.jpg" alt="MedInternia Logo" style={{ width: '100%', height: '100%' }} />
@@ -416,9 +423,26 @@ setStep(2);
                     <Button
                       type="submit"
                       variant="contained"
-                      color="primary"
                       fullWidth
-                      sx={{ mt: 2, py: 1.3, fontWeight: 700, fontSize: '1.1rem', borderRadius: 3, boxShadow: '0 4px 20px 0 rgba(31, 38, 135, 0.10)', transition: 'all 0.2s', '&:hover': { background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)', transform: 'scale(1.03)', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)' } }}
+                      sx={{
+                        mt: 2,
+                        py: 1.3,
+                        fontWeight: 800,
+                        fontSize: '1.1rem',
+                        borderRadius: 3,
+                        letterSpacing: 0.5,
+                        background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
+                        color: '#ffffff',
+                        boxShadow: '0 4px 20px 0 rgba(33, 147, 176, 0.13)',
+                        transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                        textTransform: 'uppercase',
+                        '&:hover': {
+                          background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
+                          transform: 'scale(1.03)',
+                          boxShadow: '0 8px 32px 0 rgba(33, 147, 176, 0.18)',
+                          color: '#ffffff'
+                        }
+                      }}
                     >
                       Next
                     </Button>
@@ -497,11 +521,34 @@ setStep(2);
                       </Fade>
                     )}
                     <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                      <Button variant="outlined" color="primary" onClick={handleBack} sx={{ flex: 1, py: 1.3, fontWeight: 700, fontSize: '1.1rem', borderRadius: 3 }}>Back</Button>
+                      <Button
+                        variant="outlined"
+                        onClick={handleBack}
+                        sx={{
+                          flex: 1,
+                          py: 1.3,
+                          fontWeight: 700,
+                          fontSize: '1.1rem',
+                          borderRadius: 3,
+                          border: '2px solid #2193b0',
+                          color: '#2193b0',
+                          transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                          '&:hover': {
+                            border: '2px solid #1565c0',
+                            background: 'rgba(33, 147, 176, 0.05)',
+                            color: '#1565c0',
+                            transform: 'scale(1.02)'
+                          }
+                        }}
+                      >
+                        Back
+                      </Button>
+                      {/* GSSoC: Disabled + spinner when loading */}
                       <Button
                         type="submit"
                         variant="contained"
-                        color="primary"
+                        disabled={loading}
+                        aria-label="Register"
                         sx={{
                           flex: 1,
                           py: 1.3,
@@ -510,17 +557,19 @@ setStep(2);
                           borderRadius: 3,
                           letterSpacing: 1,
                           background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
+                          color: '#ffffff',
                           boxShadow: '0 4px 20px 0 rgba(33,147,176,0.13)',
-                          transition: 'all 0.18s',
+                          transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
                           textTransform: 'uppercase',
                           '&:hover': {
                             background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
                             transform: 'scale(1.04)',
-                            boxShadow: '0 8px 32px 0 rgba(33,147,176,0.18)'
+                            boxShadow: '0 8px 32px 0 rgba(33,147,176,0.18)',
+                            color: '#ffffff'
                           }
                         }}
                       >
-                        Register
+                        {loading ? <CircularProgress size={22} color="inherit" /> : 'Register'}
                       </Button>
                     </Stack>
                   </>

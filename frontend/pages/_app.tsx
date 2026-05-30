@@ -1,6 +1,8 @@
 import type { AppProps } from "next/app";
 import { CssBaseline } from "@mui/material";
 import Navbar from "../components/Navbar";
+// GSSoC: Import Footer component
+import Footer from "../components/Footer";
 import { useRouter } from "next/router";
 import "../styles/globals.css";
 
@@ -8,14 +10,18 @@ function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const hideNavbarRoutes = ['/', '/contact', '/auth/login', '/auth/register'];
   const showNavbar = !hideNavbarRoutes.includes(router.pathname);
+  // GSSoC: Hide footer on auth pages
+  const hideFooterRoutes = ['/auth/login', '/auth/register', '/auth/change-password', '/auth/forgot-password'];
+  const showFooter = !hideFooterRoutes.includes(router.pathname);
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
-      
       {showNavbar && <Navbar route={router.pathname} />}
-      <div style={{ marginTop: showNavbar ? 64 : 0, minHeight: '100vh' }}>
+      <div style={{ marginTop: showNavbar ? 64 : 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Component {...pageProps} />
       </div>
+      {/* GSSoC: Render footer on non-auth pages */}
+      {showFooter && <Footer />}
       <style jsx global>{`
         .mouse-droplet {
           position: absolute;
@@ -34,7 +40,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           100% { opacity: 0; transform: scale(0.7); }
         }
       `}</style>
-    </>
+    </div>
   );
 }
 

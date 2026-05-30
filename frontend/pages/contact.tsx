@@ -1,7 +1,5 @@
-import EmailIcon from "@mui/icons-material/Email";
-import HomeIcon from "@mui/icons-material/Home";
-import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
-import PhoneIcon from "@mui/icons-material/Phone";
+// GSSoC: Replaced MUI icons with Lucide SVG icons
+import { Mail, Phone, Hospital, Home } from "lucide-react";
 import { Box, Button, Container, Paper, Stack, Typography } from "@mui/material";
 import Link from "next/link";
 
@@ -9,7 +7,7 @@ export default function ContactPage() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        flex: 1,
         background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)",
         display: "flex",
         alignItems: "center",
@@ -64,7 +62,8 @@ export default function ContactPage() {
               component={Link}
               href="/"
               variant="contained"
-              startIcon={<HomeIcon />}
+              aria-label="Back to Home"
+              startIcon={<Home size={18} />}
               sx={{
                 mt: 4,
                 borderRadius: 30,
@@ -72,9 +71,16 @@ export default function ContactPage() {
                 py: 1.4,
                 fontWeight: 700,
                 background: "linear-gradient(90deg, #1de9b6 0%, #2193b0 100%)",
-                boxShadow: "0 4px 24px #2193b044",
+                color: "#ffffff",
+                boxShadow: "0 4px 14px 0 rgba(33,147,176,0.18)",
+                borderBottom: "none !important",
+                transition: "all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)",
                 "&:hover": {
                   background: "linear-gradient(90deg, #2193b0 0%, #1de9b6 100%)",
+                  transform: "scale(1.04)",
+                  boxShadow: "0 6px 20px 0 rgba(33,147,176,0.28)",
+                  color: "#ffffff",
+                  borderBottom: "none !important",
                 },
               }}
             >
@@ -82,8 +88,10 @@ export default function ContactPage() {
             </Button>
           </Box>
 
+          {/* GSSoC: card-enter adds fade-in-up entrance animation */}
           <Paper
             elevation={6}
+            className="card-enter"
             sx={{
               p: { xs: 3, sm: 4, md: 5 },
               boxSizing: "border-box",
@@ -96,8 +104,9 @@ export default function ContactPage() {
             }}
           >
             <Stack spacing={3}>
+              {/* GSSoC: Lucide Hospital icon replaces MUI LocalHospitalIcon */}
               <Box>
-                <LocalHospitalIcon sx={{ color: "#2193b0", fontSize: 42, mb: 1 }} />
+                <Hospital size={42} color="#2193b0" style={{ marginBottom: 8 }} />
                 <Typography variant="h4" fontWeight="bold">
                   We are here to help
                 </Typography>
@@ -106,7 +115,10 @@ export default function ContactPage() {
                 </Typography>
               </Box>
 
+              {/* GSSoC: Lucide Mail icon replaces MUI EmailIcon; aria-label added */}
               <Box
+                role="group"
+                aria-label="Email contact"
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -119,7 +131,7 @@ export default function ContactPage() {
                   width: "100%",
                 }}
               >
-                <EmailIcon color="primary" />
+                <Mail size={22} color="#2193b0" aria-hidden="true" />
                 <Typography
                   component="a"
                   href="mailto:medinternia@gmail.com"
@@ -135,7 +147,10 @@ export default function ContactPage() {
                 </Typography>
               </Box>
 
+              {/* GSSoC: Lucide Phone icon replaces MUI PhoneIcon; aria-label added */}
               <Box
+                role="group"
+                aria-label="Phone contact"
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -148,7 +163,7 @@ export default function ContactPage() {
                   width: "100%",
                 }}
               >
-                <PhoneIcon color="primary" />
+                <Phone size={22} color="#2193b0" aria-hidden="true" />
                 <Typography
                   component="a"
                   href="tel:8585858585"

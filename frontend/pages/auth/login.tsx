@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Container, Typography, TextField, Button, Box, Alert, Paper, Divider, IconButton, InputAdornment } from '@mui/material';
+// GSSoC: Added CircularProgress for loading state
+import { Typography, TextField, Button, Box, Alert, Paper, Divider, IconButton, InputAdornment, CircularProgress } from '@mui/material';
 import Link from 'next/link';
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
@@ -11,6 +12,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // GSSoC: Loading state for submit button
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
@@ -22,6 +25,8 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    // GSSoC: Show loading spinner while login request is in-flight
+    setLoading(true);
     try {
   const res = await api.post('/auth/login', { email, password });
   const token = res.data?.data?.token;
@@ -29,31 +34,24 @@ export default function Login() {
   const role = user?.role || '';
   const userId = user?._id || user?.id || '';
   localStorage.setItem('token', token);
-  localStorage.setItem('role', role);
   localStorage.setItem('userId', userId);
-  // Optionally show a toast/snackbar for success, but do not show token
   router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box
-  sx={{
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)',
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    pt: 6,
-  }}
->
-      <Paper elevation={8} sx={{
-        p: 4,
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 0 } }}>
+      {/* GSSoC: card-enter adds fade-in-up; mobile width fixed with width/minWidth */}
+      <Paper elevation={8} className="card-enter" sx={{
+        p: { xs: 3, sm: 4 },
         borderRadius: 4,
-        minWidth: 350,
-        maxWidth: 400,
+        width: { xs: '100%', sm: 400 },
+        minWidth: { xs: 0, sm: 350 },
+        maxWidth: 420,
         background: 'rgba(255,255,255,0.98)',
         boxShadow: '0 8px 32px 0 rgba(33,147,176,0.10)',
         position: 'relative',
@@ -201,63 +199,70 @@ export default function Login() {
               ),
             }}
           />
+          {/* GSSoC: Disabled + spinner when loading */}
           <Button
             type="submit"
             variant="contained"
-            color="primary"
             fullWidth
+            disabled={loading}
+            aria-label="Login"
             sx={{
               mt: 2,
               py: 1.3,
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: '1.1rem',
               borderRadius: 3,
-              boxShadow: '0 4px 20px 0 rgba(31, 38, 135, 0.10)',
+              letterSpacing: 0.5,
               background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
-              transition: 'all 0.2s',
+              color: '#ffffff',
+              boxShadow: '0 4px 20px 0 rgba(33, 147, 176, 0.13)',
+              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              textTransform: 'uppercase',
               '&:hover': {
                 background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
                 transform: 'scale(1.03)',
-                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)'
+                boxShadow: '0 8px 32px 0 rgba(33, 147, 176, 0.18)',
+                color: '#ffffff'
               },
               '&:active': {
-  color: '#ffffff',
-},
-
-'&:focus': {
-  color: '#ffffff',
-},
-              
+                color: '#ffffff',
+              },
+              '&:focus': {
+                color: '#ffffff',
+              }
             }}
           >
-            Login
+            {loading ? <CircularProgress size={22} color="inherit" /> : 'Login'}
           </Button>
         </form>
         <Divider sx={{ my: 3, zIndex: 1, position: 'relative' }}>or</Divider>
         <Box textAlign="center" sx={{ zIndex: 1, position: 'relative' }}>
           <Typography variant="body2" sx={{ mb: 1 }}>Don't have an account?</Typography>
-          <Link href="/auth/register" passHref>
-            <Button
-              variant="outlined"
-              color="primary"
-              fullWidth
-              sx={{
-                borderRadius: 3,
-                fontWeight: 700,
-                boxShadow: 'none',
-                border: 'none',
-                '&:hover': {
-                  boxShadow: 'none',
-                  textDecoration: 'none',
-                  border: 'none',
-                  background: '#e3f2fd',
-                  color: '#1565c0',
-                },
-              }}
-            >
-              Register
-            </Button>
-          </Link>
+          <Button
+            component={Link}
+            href="/auth/register"
+            variant="outlined"
+            color="primary"
+            fullWidth
+            sx={{
+              borderRadius: 3,
+              fontWeight: 700,
+              py: 1.3,
+              border: '2px solid #2193b0',
+              color: '#2193b0',
+              textDecoration: 'none !important',
+              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              '&:hover': {
+                border: '2px solid #1565c0',
+                background: 'rgba(33, 147, 176, 0.05)',
+                color: '#1565c0',
+                transform: 'scale(1.02)',
+                textDecoration: 'none !important',
+              },
+            }}
+          >
+            Register
+          </Button>
         </Box>
       </Paper>
     </Box>
