@@ -1,5 +1,14 @@
 import nodemailer from 'nodemailer';
 const otpStore: Record<string, string> = {};
+
+const validatePassword = (password: string): string => {
+  if (password.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain at least one special character.';
+  return '';
+};
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import { generateToken } from '../utils/jwt';
@@ -76,6 +85,11 @@ export const register = async (req: Request, res: Response) => {
       medicalHistory,
       allergies
     } = req.body;
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -437,11 +451,9 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters long'
-      });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
 
     // Get user with password
