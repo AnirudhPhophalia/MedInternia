@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import { useRouter } from "next/router";
 import "../styles/globals.css";
 import Head from "next/head";
+import ScrollProgress from "../components/ScrollProgress";
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -26,6 +27,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="shortcut icon" href="/favicon.ico" />
       </Head>
+      <ScrollProgress />
 
       <div
         style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
