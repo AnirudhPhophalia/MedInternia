@@ -14,6 +14,7 @@ import webinarRoutes from './webinars';
 import userRoutes from './users';
 import integrationRoutes from './integration';
 import notificationRoutes from './notifications';
+import medicalInsightRoutes from './medicalInsights';
 import diseaseInsightRoutes from './diseaseInsights';
 import symptomRoutes from './symptoms';
 
@@ -23,7 +24,8 @@ router.get('/', (req: Request, res: Response) => {
   res.json({
     message: 'Doctor-Intern Collaboration Platform API',
     version: '3.0.0',
-    description: 'Comprehensive medical education platform connecting doctors, interns, and patients',
+    description:
+      'Comprehensive medical education platform connecting doctors, interns, and patients',
     features: [
       'Case-based learning',
       'Peer review system',
@@ -31,7 +33,7 @@ router.get('/', (req: Request, res: Response) => {
       'Job opportunities board',
       'Webinars & AMAs',
       'AI-powered suggestions',
-      'Live video conferencing'
+      'Live video conferencing',
     ],
     endpoints: {
       auth: '/api/auth',
@@ -39,23 +41,26 @@ router.get('/', (req: Request, res: Response) => {
       patients: '/api/patients',
       doctors: '/api/doctors',
       cases: '/api/cases',
+      medicalInsights: '/api/medical-insights',
       diseaseInsights: '/api/ai-disease-insights',
       badges: '/api/badges',
       peerReviews: '/api/peer-reviews',
       jobs: '/api/jobs',
       certificates: '/api/certificates',
       webinars: '/api/webinars',
+      notifications: '/api/notifications',
+      integration: '/api/integration',
       symptoms: '/api/symptoms/extract',
       leaderboard: '/api/leaderboard',
-      search: '/api/search'
-    }
+      search: '/api/search',
+    },
   });
 });
 
 router.get('/test', (req: Request, res: Response) => {
   res.json({
     message: 'Test route is working!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -65,6 +70,7 @@ router.use('/users', userRoutes);
 router.use('/patients', patientRoutes);
 router.use('/doctors', doctorRoutes);
 router.use('/cases', caseRoutes);
+router.use('/medical-insights', medicalInsightRoutes);
 router.use('/ai-disease-insights', diseaseInsightRoutes);
 router.use('/badges', badgeRoutes);
 router.use('/peer-reviews', peerReviewRoutes);

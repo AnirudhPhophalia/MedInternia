@@ -12,16 +12,16 @@ import {
   Stack,
   Collapse,
   Modal,
-  IconButton
+  IconButton,
 } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
-import CaseCard from '../../components/CaseCard';
+import CloseIcon from "@mui/icons-material/Close";
+import CaseCard from "../../components/CaseCard";
 import api from "../../utils/api";
 import Link from "next/link";
 import { canUser } from "../../utils/permissions";
 
-import dynamic from 'next/dynamic';
-const CaseDiscussion = dynamic(() => import('./[id]'), { ssr: false });
+import dynamic from "next/dynamic";
+const CaseDiscussion = dynamic(() => import("./[id]"), { ssr: false });
 
 export default function Cases() {
   const [cases, setCases] = useState<any[]>([]);
@@ -30,6 +30,7 @@ export default function Cases() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [openDiscussionId, setOpenDiscussionId] = useState<string | null>(null);
   const [canCreateCases, setCanCreateCases] = useState(false);
+  const [canUseMedicalInsights, setCanUseMedicalInsights] = useState(false);
 
   useEffect(() => {
     api
@@ -46,10 +47,15 @@ export default function Cases() {
     api
       .get("/auth/profile")
       .then((res) => {
-        const userType = res.data?.data?.user?.userType;
+        const user = res.data?.data?.user;
+        const userType = user?.userType ?? user?.role;
         setCanCreateCases(canUser(userType, "case:create"));
+        setCanUseMedicalInsights(canUser(userType, "analytics:read"));
       })
-      .catch(() => setCanCreateCases(false));
+      .catch(() => {
+        setCanCreateCases(false);
+        setCanUseMedicalInsights(false);
+      });
   }, []);
 
   if (loading) {
@@ -80,30 +86,54 @@ export default function Cases() {
           Discover, review, and contribute to real-world medical cases. Dive
           into interactive case studies and expand your clinical knowledge.
         </Typography>
-        {canCreateCases && (
-          <Button
-            variant="contained"
-            color="primary"
-            sx={{
-              mb: 2,
-              borderRadius: 3,
-              fontWeight: 700,
-              px: 4,
-              py: 1.2,
-              fontSize: "1.08rem",
-              boxShadow: "0 2px 8px #2193b044",
-              transition: "all 0.2s",
-              "&:hover": {
-                background: "#1565c0",
-                boxShadow: "0 4px 16px #2193b066",
-              },
-            }}
-            component={Link}
-            href="/cases/create"
-          >
-            + Create New Case
-          </Button>
-        )}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          justifyContent="center"
+        >
+          {canCreateCases && (
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{
+                mb: 2,
+                borderRadius: 3,
+                fontWeight: 700,
+                px: 4,
+                py: 1.2,
+                fontSize: "1.08rem",
+                boxShadow: "0 2px 8px #2193b044",
+                transition: "all 0.2s",
+                "&:hover": {
+                  background: "#1565c0",
+                  boxShadow: "0 4px 16px #2193b066",
+                },
+              }}
+              component={Link}
+              href="/cases/create"
+            >
+              + Create New Case
+            </Button>
+          )}
+          {canUseMedicalInsights && (
+            <Button
+              variant="outlined"
+              color="primary"
+              sx={{
+                mb: 2,
+                borderRadius: 3,
+                fontWeight: 700,
+                px: 4,
+                py: 1.2,
+                fontSize: "1.08rem",
+              }}
+              component={Link}
+              href="/cases/medical-insights"
+            >
+              Medical Insight Assistant
+            </Button>
+          )}
+        </Stack>
       </Box>
       <Box
         sx={{
@@ -117,17 +147,52 @@ export default function Cases() {
           <Typography>No cases found.</Typography>
         ) : (
           cases.map((c, i) => (
-            <Card key={c._id} sx={{ borderRadius: 4, boxShadow: "0 2px 16px #2193b022", p: 0, overflow: "visible", animation: `slideUp 0.6s ${i * 0.1}s both` }}>
+            <Card
+              key={c._id}
+              sx={{
+                borderRadius: 4,
+                boxShadow: "0 2px 16px #2193b022",
+                p: 0,
+                overflow: "visible",
+                animation: `slideUp 0.6s ${i * 0.1}s both`,
+              }}
+            >
               <CardContent sx={{ pb: 2 }}>
-                <CaseCard caseData={c}
+                <CaseCard
+                  caseData={c}
                   onOpenDiscussion={() => setOpenDiscussionId(c._id)}
-                  onReadMore={() => setExpanded(expanded === c._id ? null : c._id)}
+                  onReadMore={() =>
+                    setExpanded(expanded === c._id ? null : c._id)
+                  }
                   isExpanded={expanded === c._id}
                 />
                 <Collapse in={expanded === c._id} timeout="auto" unmountOnExit>
-                  <Box sx={{ mt: 2, mb: 1, p: 2, borderRadius: 3, bgcolor: "#f5fafd", boxShadow: "0 2px 12px #2193b022", border: "1px solid #e3eafc" }}>
-                    <Typography variant="subtitle1" fontWeight={700} color="#1976d2" sx={{ mb: 1 }}>Full Description</Typography>
-                    <Typography color="#333" fontSize={15} sx={{ whiteSpace: "pre-line" }}>{c.description || "No description."}</Typography>
+                  <Box
+                    sx={{
+                      mt: 2,
+                      mb: 1,
+                      p: 2,
+                      borderRadius: 3,
+                      bgcolor: "#f5fafd",
+                      boxShadow: "0 2px 12px #2193b022",
+                      border: "1px solid #e3eafc",
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight={700}
+                      color="#1976d2"
+                      sx={{ mb: 1 }}
+                    >
+                      Full Description
+                    </Typography>
+                    <Typography
+                      color="#333"
+                      fontSize={15}
+                      sx={{ whiteSpace: "pre-line" }}
+                    >
+                      {c.description || "No description."}
+                    </Typography>
                   </Box>
                 </Collapse>
               </CardContent>
@@ -135,23 +200,57 @@ export default function Cases() {
           ))
         )}
         {/* Modal for Discussions */}
-        <Modal open={!!openDiscussionId} onClose={() => setOpenDiscussionId(null)} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Box sx={{ width: { xs: '98vw', sm: 600 }, maxHeight: '90vh', overflowY: 'auto', bgcolor: '#f8fafd', borderRadius: 4, boxShadow: 24, p: 2, position: 'relative' }}>
-            <IconButton onClick={() => setOpenDiscussionId(null)} sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+        <Modal
+          open={!!openDiscussionId}
+          onClose={() => setOpenDiscussionId(null)}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            sx={{
+              width: { xs: "98vw", sm: 600 },
+              maxHeight: "90vh",
+              overflowY: "auto",
+              bgcolor: "#f8fafd",
+              borderRadius: 4,
+              boxShadow: 24,
+              p: 2,
+              position: "relative",
+            }}
+          >
+            <IconButton
+              onClick={() => setOpenDiscussionId(null)}
+              sx={{ position: "absolute", top: 8, right: 8, zIndex: 10 }}
+            >
               <CloseIcon />
             </IconButton>
-            {openDiscussionId && <CaseDiscussion id={openDiscussionId} modalMode hideDescription />}
+            {openDiscussionId && (
+              <CaseDiscussion id={openDiscussionId} modalMode hideDescription />
+            )}
           </Box>
         </Modal>
       </Box>
       <style jsx global>{`
         @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
         @keyframes slideUp {
-          from { opacity: 0; transform: translateY(40px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(40px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </Container>
