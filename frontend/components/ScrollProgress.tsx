@@ -31,8 +31,8 @@ const ScrollProgress = () => {
                 left: 0,
                 width: `${scroll}%`,
                 height: "4px",
-                background: "linear-gradient(to right, #7c3aed, #06b6d4, #3b82f6)",
-                boxShadow: "0 0 10px rgba(59,130,246,0.7)",
+                background: "linear-gradient(90deg, #7c3aed, #3b82f6, #06b6d4)",
+                boxShadow: "0 0 6px rgba(59,130,246,0.5)",
                 zIndex: 9999,
                 transition: "width 0.1s ease",
             }}
