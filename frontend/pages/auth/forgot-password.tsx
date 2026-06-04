@@ -9,6 +9,16 @@ export default function ForgotPassword() {
   const [sent, setSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+
+  const validatePassword = (password: string) => {
+    if (password.length < 8) return 'Password must be at least 8 characters.';
+    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
+    if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
+    if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain at least one special character.';
+    return '';
+  };
 
   const handleSend = async (e: any) => {
     e.preventDefault();
@@ -27,6 +37,12 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    const pwdError = validatePassword(newPassword);
+    if (pwdError) {
+      setNewPasswordError(pwdError);
+      return;
+    }
+    setNewPasswordError('');
     try {
       await api.post('/auth/reset-password', { email, otp, newPassword });
       setSuccess('Password reset successfully!');
@@ -74,8 +90,13 @@ export default function ForgotPassword() {
               fullWidth
               margin="normal"
               value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
+              onChange={e => {
+                setNewPassword(e.target.value);
+                setNewPasswordError(validatePassword(e.target.value));
+              }}
               required
+              error={Boolean(newPasswordError)}
+              helperText={newPasswordError || 'Min 8 chars, uppercase, lowercase, number, special character'}
             />
             <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>Reset Password</Button>
           </form>

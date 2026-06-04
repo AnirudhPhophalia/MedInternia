@@ -44,8 +44,18 @@ export default function Register() {
   // GSSoC: Loading state for submit button
   const [loading, setLoading] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+const [confirmPasswordError, setConfirmPasswordError] = useState('');
+const [passwordError, setPasswordError] = useState('');
+
+const validatePassword = (password: string) => {
+  if (password.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain at least one special character.';
+  return '';
+};
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -172,6 +182,12 @@ export default function Register() {
       setError('Please fill all required fields.');
       return;
     }
+    const pwdError = validatePassword(form.password);
+    if (pwdError) {
+      setPasswordError(pwdError);
+      return;
+    }
+    setPasswordError('');
     if (confirmPassword !== form.password) {
       setConfirmPasswordError('Passwords do not match');
       return;
@@ -294,8 +310,13 @@ export default function Register() {
                       fullWidth
                       margin="normal"
                       value={form.password}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        handleChange(e);
+                        setPasswordError(validatePassword(e.target.value));
+                      }}
                       required
+                      error={Boolean(passwordError)}
+                      helperText={passwordError || 'Min 8 chars, uppercase, lowercase, number, special character'}
                       sx={{
                         '& .MuiInputBase-input': {
                           animation: showPassword

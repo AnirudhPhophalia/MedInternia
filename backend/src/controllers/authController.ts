@@ -1,5 +1,14 @@
 import nodemailer from 'nodemailer';
 const otpStore: Record<string, string> = {};
+
+const validatePassword = (password: string): string => {
+  if (password.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number.';
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return 'Password must contain at least one special character.';
+  return '';
+};
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import { generateToken } from '../utils/jwt';
@@ -76,6 +85,15 @@ export const register = async (req: Request, res: Response) => {
       medicalHistory,
       allergies
     } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Password is required' });
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -437,11 +455,9 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be at least 6 characters long'
-      });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
 
     // Get user with password
@@ -516,7 +532,8 @@ export const forgotPassword = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) return res.status(400).json({ success: false, message: 'All fields required' });
-  if (newPassword.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+  const passwordError = validatePassword(newPassword);
+if (passwordError) return res.status(400).json({ success: false, message: passwordError });
   if (otpStore[email + '_reset'] !== otp) return res.status(400).json({ success: false, message: 'Invalid OTP' });
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
