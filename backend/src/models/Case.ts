@@ -46,6 +46,18 @@ export interface ICase extends Document {
   }[];
   pointsAwarded: number; // Points given to doctor for posting
   canRepost: boolean; // Indicates if the case can be reposted
+  aiGenerated?: boolean;
+  generationSource?: 'deterministic-template' | 'external-ai';
+  reviewStatus?: 'published' | 'pending_review' | 'approved' | 'rejected';
+  scheduledFor?: Date;
+  publishedAt?: Date;
+  learningObjectives?: string[];
+  reviewChecklist?: string[];
+  anonymization?: {
+    patientIdentifiersRemoved: boolean;
+    source: 'synthetic' | 'anonymized';
+    notes: string[];
+  };
   followUps: {
     author: mongoose.Types.ObjectId;
     content: string;
@@ -232,6 +244,48 @@ const CaseSchema = new Schema<ICase>({
       type: Boolean,
       default: false
     },
+  aiGenerated: {
+    type: Boolean,
+    default: false
+  },
+  generationSource: {
+    type: String,
+    enum: ['deterministic-template', 'external-ai']
+  },
+  reviewStatus: {
+    type: String,
+    enum: ['published', 'pending_review', 'approved', 'rejected'],
+    default: 'published'
+  },
+  scheduledFor: {
+    type: Date
+  },
+  publishedAt: {
+    type: Date
+  },
+  learningObjectives: [{
+    type: String,
+    trim: true
+  }],
+  reviewChecklist: [{
+    type: String,
+    trim: true
+  }],
+  anonymization: {
+    patientIdentifiersRemoved: {
+      type: Boolean,
+      default: true
+    },
+    source: {
+      type: String,
+      enum: ['synthetic', 'anonymized'],
+      default: 'synthetic'
+    },
+    notes: [{
+      type: String,
+      trim: true
+    }]
+  },
   followUps: [{
     author: {
       type: Schema.Types.ObjectId,
@@ -284,5 +338,7 @@ CaseSchema.index({ difficulty: 1 });
 CaseSchema.index({ tags: 1 });
 CaseSchema.index({ createdAt: -1 });
 CaseSchema.index({ 'comments.author': 1 });
+CaseSchema.index({ reviewStatus: 1, scheduledFor: 1 });
+CaseSchema.index({ aiGenerated: 1, doctor: 1 });
 
 export default mongoose.model<ICase>('Case', CaseSchema);
