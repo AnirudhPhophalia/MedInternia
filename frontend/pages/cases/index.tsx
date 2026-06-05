@@ -128,6 +128,10 @@ export default function Cases() {
   };
 
   const clearAllFilters = () => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
     setSearchInput("");
     setSearch("");
     setSpecialty("");

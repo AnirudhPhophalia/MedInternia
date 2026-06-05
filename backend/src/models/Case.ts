@@ -29,7 +29,7 @@ export interface ICase extends Document {
   tags: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   specialization: string;
-  status: 'Open' | 'Solved' | 'Pending';
+  status?: 'Open' | 'Solved' | 'Pending';
   doctor: mongoose.Types.ObjectId;
   comments: IComment[];
   likes: mongoose.Types.ObjectId[];
@@ -292,6 +292,6 @@ CaseSchema.index({ status: 1 });
 CaseSchema.index({ tags: 1 });
 CaseSchema.index({ createdAt: -1 });
 CaseSchema.index({ 'comments.author': 1 });
-CaseSchema.index({ title: 'text', description: 'text' });
+CaseSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
 export default mongoose.model<ICase>('Case', CaseSchema);
