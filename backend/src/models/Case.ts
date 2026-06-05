@@ -29,11 +29,13 @@ export interface ICase extends Document {
   tags: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   specialization: string;
+  status?: 'Open' | 'Solved' | 'Pending';
   doctor: mongoose.Types.ObjectId;
   comments: IComment[];
   likes: mongoose.Types.ObjectId[];
   isActive: boolean;
-  isPatientCase: boolean; // True if posted by patient
+  isPatientCase: boolean;
+  
   moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested';
   moderationReason?: string;
   reviewedBy?: mongoose.Types.ObjectId;
@@ -168,6 +170,11 @@ const CaseSchema = new Schema<ICase>({
     required: [true, 'Specialization is required'],
     trim: true
   },
+  status: {
+    type: String,
+    enum: ['Open', 'Solved', 'Pending'],
+    default: 'Open'
+  },
   doctor: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -281,8 +288,10 @@ const CaseSchema = new Schema<ICase>({
 CaseSchema.index({ doctor: 1 });
 CaseSchema.index({ specialization: 1 });
 CaseSchema.index({ difficulty: 1 });
+CaseSchema.index({ status: 1 });
 CaseSchema.index({ tags: 1 });
 CaseSchema.index({ createdAt: -1 });
 CaseSchema.index({ 'comments.author': 1 });
+CaseSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
 export default mongoose.model<ICase>('Case', CaseSchema);
