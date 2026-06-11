@@ -1,4 +1,5 @@
 import videoRoutes from './video';
+import chatbotRoutes from './chatbot';
 import researchPaperRoutes from './researchPapers';
 import { Router, Request, Response } from 'express';
 import authRoutes from './auth';
@@ -61,6 +62,7 @@ router.get('/test', (req: Request, res: Response) => {
 });
 
 router.use('/auth', authRoutes);
+router.use('/chatbot', chatbotRoutes);
 router.use('/video', videoRoutes);
 router.use('/users', userRoutes);
 router.use('/patients', patientRoutes);

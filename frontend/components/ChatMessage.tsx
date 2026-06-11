@@ -16,7 +16,7 @@ const ChatMessage = ({ user, text }: Props) => {
     >
       <strong
         style={{
-          color: "#0284c7",
+          color: user === "AI Assistant" ? "#7c3aed" : "#0284c7",
           fontSize: "15px",
         }}
       >

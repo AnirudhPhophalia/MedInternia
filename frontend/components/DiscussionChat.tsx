@@ -1,8 +1,7 @@
 import { useState } from "react";
 import ChatMessage from "./ChatMessage";
-
 const DiscussionChat = () => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<{ user: string; text: string }[]>([
     {
       user: "Dr. Sharma",
       text: "Possible bacterial pneumonia based on symptoms.",
@@ -13,20 +12,54 @@ const DiscussionChat = () => {
     },
   ]);
 
-  const [input, setInput] = useState("");
 
-  const sendMessage = () => {
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async () => {
     if (!input.trim()) return;
 
-    setMessages([
-      ...messages,
-      {
-        user: "You",
-        text: input,
-      },
+    const userMessage = input.trim();
+
+    setMessages((prev) => [
+      ...prev,
+      { user: "You", text: userMessage },
     ]);
 
     setInput("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:3000/api/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      const data = await response.json();
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          user: "AI Assistant",
+          text: data.reply || "No response received.",
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          user: "AI Assistant",
+          text: "Sorry, I am unable to respond right now. Please try again later.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") sendMessage();
   };
 
   return (
@@ -39,7 +72,6 @@ const DiscussionChat = () => {
         background: "white",
       }}
     >
-      {/* HEADER */}
       <h2
         style={{
           marginBottom: "14px",
@@ -51,7 +83,6 @@ const DiscussionChat = () => {
         💬 Discussion Chat
       </h2>
 
-      {/* CHAT AREA */}
       <div
         style={{
           flex: 1,
@@ -66,9 +97,13 @@ const DiscussionChat = () => {
             text={msg.text}
           />
         ))}
+        {loading && (
+          <div style={{ color: "#6b7280", fontSize: "13px", padding: "8px 0" }}>
+            🤖 AI Assistant is typing...
+          </div>
+        )}
       </div>
 
-      {/* INPUT SECTION */}
       <div
         style={{
           display: "flex",
@@ -82,6 +117,8 @@ const DiscussionChat = () => {
           placeholder="Type your diagnosis opinion..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
           style={{
             flex: 1,
             padding: "10px 12px",
@@ -89,25 +126,26 @@ const DiscussionChat = () => {
             border: "1px solid #d1d5db",
             fontSize: "13px",
             outline: "none",
-            background: "#f9fafb",
+            background: loading ? "#f3f4f6" : "#f9fafb",
           }}
         />
 
         <button
           onClick={sendMessage}
+          disabled={loading}
           style={{
             padding: "10px 16px",
             border: "none",
             borderRadius: "10px",
-            background: "#0ea5e9",
+            background: loading ? "#93c5fd" : "#0ea5e9",
             color: "white",
             fontWeight: 600,
             fontSize: "13px",
-            cursor: "pointer",
+            cursor: loading ? "not-allowed" : "pointer",
             minWidth: "70px",
           }}
         >
-          Send
+          {loading ? "..." : "Send"}
         </button>
       </div>
     </div>
