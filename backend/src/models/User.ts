@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 import type { AppRole } from '../middleware/permissions';
 
 export interface IUser extends Document {
-  googleId?: string;
   following?: mongoose.Types.ObjectId[];
   followers?: mongoose.Types.ObjectId[];
   firstName: string;
@@ -86,7 +85,6 @@ const EmergencyContactSchema = new Schema({
 });
 
 const UserSchema = new Schema<IUser>({
-  googleId: { type: String, unique: true, sparse: true },
   following: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   followers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   firstName: {
