@@ -258,17 +258,18 @@ export default function Navbar({ route }: { route?: string }) {
               minWidth: 0,
             }}
           >
-            {/* Desktop search bar */}
-            {!isMobile && (
-              <Box
-                sx={{
-                  width: "100%",
-                  maxWidth: 420,
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
+            
+       {/* Desktop search bar */}
+{!isMobile && (
+  <Box
+    sx={{
+      width: "100%",
+      maxWidth: 420,
+      position: "relative",
+      display: "flex",
+      alignItems: "center",
+    }}
+  >
                 <Paper
                   component="form"
                   onSubmit={(e) => {

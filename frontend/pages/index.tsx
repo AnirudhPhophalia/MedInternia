@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion, Variants } from 'framer-motion';
 import { Box, Button, Typography, Paper, Stack, Container, Grid, IconButton } from '@mui/material';
-import { Search, PlayCircle, FolderOpen, Briefcase, Video, Award, ChevronRight, CheckCircle2, HeadphonesIcon, UserPlus } from 'lucide-react';
+import { PlayCircle, FolderOpen, Briefcase, Video, Award, ChevronRight, CheckCircle2, HeadphonesIcon, UserPlus } from 'lucide-react';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
 
 export default function HomePage() {
@@ -57,7 +57,7 @@ export default function HomePage() {
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
-          <IconButton size="small"><Search size={20} color="#4a5568" /></IconButton>
+         
           <Button variant="text" sx={{ color: '#0072ff', fontWeight: 700, display: { xs: 'none', sm: 'inline-flex' }, '&:hover': { bgcolor: 'rgba(0,114,255,0.08)' } }} onClick={() => router.push('/auth/login')}>Log in</Button>
           <Button variant="contained" sx={{ bgcolor: '#0072ff', color: '#fff', borderRadius: '24px', px: { xs: 2, sm: 3 }, fontWeight: 700, textTransform: 'none', boxShadow: '0 4px 14px rgba(0,114,255,0.2)', '&:hover': { bgcolor: '#005bb5', boxShadow: '0 6px 20px rgba(0,114,255,0.3)', transform: 'translateY(-1px)' }, transition: 'all 0.2s ease-in-out' }} onClick={() => router.push('/auth/register')}>Sign Up</Button>
         </Box>
