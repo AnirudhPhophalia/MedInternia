@@ -139,9 +139,16 @@ const calculateMentorStats = async (doctor: any): Promise<MentorStats> => {
 };
 
 // Get user profile
-export const getUserProfile = async (req: Request, res: Response) => {
+export const getUserProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
+
+    if (!req.user || (req.user._id.toString() !== userId && req.user.userType !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: cannot view other users\' profiles'
+      });
+    }
 
     const user = await User.findById(userId)
       .select('-password')
@@ -281,9 +288,16 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
 };
 
 // Get intern scorecard
-export const getInternScorecard = async (req: Request, res: Response) => {
+export const getInternScorecard = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
+
+    if (!req.user || (req.user._id.toString() !== userId && req.user.userType !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: cannot view other users\' scorecards'
+      });
+    }
 
     const user = await User.findOne({ _id: userId, userType: 'intern' })
       .select('-password');

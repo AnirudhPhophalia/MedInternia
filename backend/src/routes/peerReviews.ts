@@ -16,13 +16,13 @@ const router = Router();
 router.post('/', authenticate, authorize('intern'), submitPeerReview);
 
 // Get peer reviews for a comment
-router.get('/comment/:commentId', getCommentReviews);
+router.get('/comment/:commentId', authenticate, getCommentReviews);
 
 // Get peer reviews received by user
-router.get('/user/:userId/received', getUserReviews);
+router.get('/user/:userId/received', authenticate, getUserReviews);
 
 // Get peer reviews given by user
-router.get('/user/:userId/given', getReviewsByUser);
+router.get('/user/:userId/given', authenticate, getReviewsByUser);
 
 // Mark review as helpful
 router.patch('/:reviewId/helpful', authenticate, markReviewHelpful);

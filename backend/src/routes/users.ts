@@ -19,13 +19,13 @@ import {
 const router = Router();
 
 // Get user profile by ID
-router.get('/:userId/profile', getUserProfile);
+router.get('/:userId/profile', authenticate, getUserProfile);
 
 // Update user profile
 router.put('/:userId/profile', authenticate, updateUserProfile);
 
 // Get intern scorecard
-router.get('/:userId/scorecard', getInternScorecard);
+router.get('/:userId/scorecard', authenticate, getInternScorecard);
 
 // Get doctor mentorship score and resume-style summary
 router.get('/:userId/mentor-summary', getDoctorMentorSummary);
