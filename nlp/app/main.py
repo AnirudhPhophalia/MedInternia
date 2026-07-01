@@ -27,10 +27,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 import time
 from contextlib import asynccontextmanager
 from typing import Any
+
+INFERENCE_TIMEOUT = int(os.getenv("INFERENCE_TIMEOUT", "30"))
+BATCH_SEMAPHORE_LIMIT = int(os.getenv("BATCH_SEMAPHORE_LIMIT", "4"))
 
 import torch
 from fastapi import FastAPI, HTTPException, Request
@@ -87,6 +89,7 @@ MAX_CHARS = int(os.getenv("MAX_CHARS", "4000"))
 # ---------------------------------------------------------------------------
 _disease_pipeline: Pipeline | None = None
 _general_pipeline: Pipeline | None = None
+_batch_semaphore: asyncio.Semaphore | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +97,7 @@ _general_pipeline: Pipeline | None = None
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _disease_pipeline, _general_pipeline
+    global _disease_pipeline, _general_pipeline, _batch_semaphore
 
     device = 0 if torch.cuda.is_available() else -1
     log.info("Loading NER models on device=%s …", "GPU" if device == 0 else "CPU")
@@ -107,7 +110,7 @@ async def lifespan(app: FastAPI):
         return pipeline(
             "ner",
             model=DISEASE_MODEL,
-            aggregation_strategy="first",
+            aggregation_strategy="simple",
             device=device,
         )
 
@@ -115,7 +118,7 @@ async def lifespan(app: FastAPI):
         return pipeline(
             "ner",
             model=GENERAL_BIO_MODEL,
-            aggregation_strategy="first",
+            aggregation_strategy="simple",
             device=device,
         )
 
@@ -123,11 +126,13 @@ async def lifespan(app: FastAPI):
         loop.run_in_executor(None, _load_disease),
         loop.run_in_executor(None, _load_general),
     )
+    _batch_semaphore = asyncio.Semaphore(BATCH_SEMAPHORE_LIMIT)
     log.info("Both NER models ready.")
     yield
     log.info("Shutting down — releasing model resources.")
     _disease_pipeline = None
     _general_pipeline = None
+    _batch_semaphore = None
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +150,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
@@ -197,11 +202,11 @@ class HealthResponse(BaseModel):
 # ---------------------------------------------------------------------------
 def _canonical_label(raw: str) -> str | None:
     upper = raw.upper()
-    if upper in DISEASE_TAGS or "DISEASE" in upper or "DIS" == upper:
+    if upper in DISEASE_TAGS or upper == "DIS":
         return "DISEASE"
-    if upper in SYMPTOM_TAGS or "SYMPTOM" in upper or "SIGN" in upper:
+    if upper in SYMPTOM_TAGS:
         return "SYMPTOM"
-    if upper in MEDICATION_TAGS or "CHEMICAL" in upper or "DRUG" in upper:
+    if upper in MEDICATION_TAGS:
         return "MEDICATION"
     return None  # skip labels we don't care about
 
@@ -222,9 +227,6 @@ def _merge_entities(raw_entities: list[dict[str, Any]]) -> list[EntityItem]:
             continue
 
         word: str = ent["word"].strip()
-        # Clean subword artefacts (##token) — shouldn't appear with
-        # aggregation_strategy="simple" but guard anyway.
-        word = re.sub(r"\s*##\S+", "", word).strip()
         if not word:
             continue
 
@@ -250,8 +252,10 @@ def _merge_entities(raw_entities: list[dict[str, Any]]) -> list[EntityItem]:
 # Core extraction logic (runs in thread pool to avoid blocking event loop)
 # ---------------------------------------------------------------------------
 def _run_ner_sync(text: str) -> list[EntityItem]:
-    assert _disease_pipeline is not None
-    assert _general_pipeline is not None
+    if _disease_pipeline is None:
+        raise RuntimeError("Disease model pipeline not loaded")
+    if _general_pipeline is None:
+        raise RuntimeError("General model pipeline not loaded")
 
     disease_raw = _disease_pipeline(text)
     general_raw = _general_pipeline(text)
@@ -290,7 +294,10 @@ async def extract_entities(req: NERRequest):
     t0 = time.perf_counter()
 
     loop = asyncio.get_event_loop()
-    entities = await loop.run_in_executor(None, _run_ner_sync, req.text)
+    entities = await asyncio.wait_for(
+        loop.run_in_executor(None, _run_ner_sync, req.text),
+        timeout=INFERENCE_TIMEOUT,
+    )
 
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
 
@@ -328,8 +335,17 @@ async def batch_extract(requests: list[NERRequest]):
     loop = asyncio.get_event_loop()
     t0 = time.perf_counter()
 
+    sem = _batch_semaphore or asyncio.Semaphore(BATCH_SEMAPHORE_LIMIT)
+
+    async def _run_with_semaphore(text: str) -> list[EntityItem]:
+        async with sem:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _run_ner_sync, text),
+                timeout=INFERENCE_TIMEOUT,
+            )
+
     results = await asyncio.gather(
-        *[loop.run_in_executor(None, _run_ner_sync, r.text) for r in requests]
+        *[_run_with_semaphore(r.text) for r in requests]
     )
 
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)

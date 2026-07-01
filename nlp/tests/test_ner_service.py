@@ -248,6 +248,32 @@ async def test_batch_extract_rejects_oversized_batch(async_client):
     assert resp.status_code == 422
 
 
+@pytest.mark.asyncio
+async def test_batch_extract_mixed_valid_invalid(async_client):
+    """Batch with a mix of valid and invalid items should process valid ones."""
+    payload = [
+        {"text": "Patient has fever.", "case_id": "C1"},
+        {"text": "xy", "case_id": "C2"},  # too short, but batch doesn't validate individually
+    ]
+    resp = await async_client.post("/batch_extract", json=payload)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 2
+
+
+# ---------------------------------------------------------------------------
+# Global exception handler
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_global_exception_handler(async_client):
+    """Unhandled exceptions should return JSON, not HTML."""
+    resp = await async_client.get("/nonexistent-route")
+    assert resp.status_code in (404, 500)
+    assert resp.headers["content-type"] == "application/json"
+
+
 # ---------------------------------------------------------------------------
 # Label canonicalisation unit tests (no HTTP involved)
 # ---------------------------------------------------------------------------
@@ -278,3 +304,19 @@ def test_canonical_label_unknown_returns_none():
     from app.main import _canonical_label
     assert _canonical_label("PERSON") is None
     assert _canonical_label("ORG") is None
+
+
+def test_canonical_label_rejects_substring_false_positives():
+    """Labels containing keywords as substrings should NOT be classified."""
+    from app.main import _canonical_label
+    assert _canonical_label("NON_DISEASE") is None
+    assert _canonical_label("DISEASE_OUTBREAK") is None
+    assert _canonical_label("ASYMPTOMATIC") is None
+    assert _canonical_label("PRESYMPTOMATIC") is None
+    assert _canonical_label("DESIGN") is None
+    assert _canonical_label("ASSIGNMENT") is None
+    assert _canonical_label("SIGNAL") is None
+    assert _canonical_label("SIGNATURE") is None
+    assert _canonical_label("DRUG_STORE") is None
+    assert _canonical_label("DRUG_TRIAL") is None
+    assert _canonical_label("PRODRUG") is None

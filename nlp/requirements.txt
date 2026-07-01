@@ -2,21 +2,21 @@
 # Pin major versions for reproducibility; patch versions are allowed to float.
 
 # --- Web framework ---
-fastapi==0.111.*
-uvicorn[standard]==0.30.*
+fastapi>=0.111.0,<0.112.0
+uvicorn[standard]>=0.30.0,<0.31.0
 
 # --- ML ---
-torch==2.2.*               # CPU build by default; swap for torch+cu121 on GPU hosts
+torch>=2.2.0,<2.3.0        # CPU build by default; swap for torch+cu121 on GPU hosts
 transformers==4.38.2
-accelerate==0.27.*         # needed by some HF model configs
+accelerate>=0.27.0,<0.28.0 # needed by some HF model configs
 
 # --- Validation ---
-pydantic==2.7.*
+pydantic>=2.7.0,<2.8.0
 
 # --- Testing ---
-pytest==8.2.*
-pytest-asyncio==0.23.*
-httpx==0.27.*              # ASGI test client for FastAPI
+pytest>=8.2.0,<8.3.0
+pytest-asyncio>=0.23.0,<0.24.0
+httpx>=0.27.0,<0.28.0     # ASGI test client for FastAPI
 
 # --- Dev/tooling ---
-python-dotenv==1.0.*
+python-dotenv>=1.0.0,<1.1.0
