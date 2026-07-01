@@ -120,14 +120,92 @@ export default function Dashboard() {
   return (
     <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header */}
+        {/* Enhanced Header with Role Context */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
             Welcome back, {user.userType === 'doctor' ? 'Dr.' : ''} {user.firstName} {user.lastName}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Here's what's happening with your account today.
+            {user.userType === 'doctor'
+              ? 'Manage your cases, mentor interns, and track your clinical impact.'
+              : user.userType === 'intern'
+              ? 'Continue your learning journey, explore cases, and connect with mentors.'
+              : 'Stay connected with your care team and track your health updates.'}
           </Typography>
+        </Box>
+
+        {/* Activity Summary KPI Banner */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Total Points', value: user.points || 0, color: '#1565c0', bg: '#e3f2fd' },
+            { label: 'Cases Analyzed', value: user.casesAnalyzed || 0, color: '#2e7d32', bg: '#e8f5e9' },
+            { label: 'Daily Streak', value: `${user.streak || 0} days`, color: '#e65100', bg: '#fff3e0' },
+            { label: 'Certificates', value: user.certificatesEarned || 0, color: '#6a1b9a', bg: '#f3e5f5' },
+          ].map((kpi) => (
+            <Card key={kpi.label} sx={{
+              flex: '1 1 200px',
+              borderRadius: 3,
+              border: `1px solid ${kpi.bg}`,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+              bgcolor: kpi.bg
+            }}>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" fontWeight={900} sx={{ color: kpi.color }}>
+                  {kpi.value}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  {kpi.label}
+                </Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
+
+        {/* Quick Access Navigation Grid */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+            Quick Access
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Learning Progress', href: '/dashboard/learning-progress', icon: '📚', color: '#e3f2fd' },
+              { label: 'AI Recommendations', href: '/cases/ai-suggestions', icon: '🤖', color: '#fff3e0' },
+              { label: 'Career Dashboard', href: '/jobs', icon: '💼', color: '#e8f5e9' },
+              { label: 'Mentorship Hub', href: '/doctors', icon: '🩺', color: '#fce4ec' },
+              { label: 'Peer Reviews', href: '/peer-reviews', icon: '📝', color: '#f3e5f5' },
+              { label: 'Webinars', href: '/webinars', icon: '🎥', color: '#e0f7fa' },
+              { label: 'Certificates', href: '/certificates', icon: '🏆', color: '#fff8e1' },
+              { label: 'Leaderboard', href: '/leaderboard', icon: '🏅', color: '#e8eaf6' },
+            ].map((item) => (
+              <Card
+                key={item.label}
+                component={Link}
+                href={item.href}
+                sx={{
+                  flex: '1 1 140px',
+                  maxWidth: 200,
+                  borderRadius: 3,
+                  bgcolor: item.color,
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  border: '1px solid transparent',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                    borderColor: '#90caf9'
+                  }
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+                  <Typography sx={{ fontSize: 28, mb: 0.5 }}>{item.icon}</Typography>
+                  <Typography variant="caption" fontWeight={700} color="text.primary">
+                    {item.label}
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
