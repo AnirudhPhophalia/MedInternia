@@ -299,6 +299,27 @@ export const getPeerReviewAnalytics = async (req: Request, res: Response) => {
       .slice(0, 5)
       .reduce((obj, [tag, count]) => ({ ...obj, [tag]: count }), {});
 
+    // Calculate monthly trend (received vs given)
+    const monthlyTrend: { [key: string]: { received: number; given: number } } = {};
+    const getYearMonth = (date: Date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    receivedReviews.forEach(r => {
+      const ym = getYearMonth(r.createdAt);
+      if (!monthlyTrend[ym]) monthlyTrend[ym] = { received: 0, given: 0 };
+      monthlyTrend[ym].received += 1;
+    });
+
+    givenReviews.forEach(r => {
+      const ym = getYearMonth(r.createdAt);
+      if (!monthlyTrend[ym]) monthlyTrend[ym] = { received: 0, given: 0 };
+      monthlyTrend[ym].given += 1;
+    });
+
+    analytics.monthlyTrend = monthlyTrend;
+
     res.json({
       success: true,
       data: { analytics }
