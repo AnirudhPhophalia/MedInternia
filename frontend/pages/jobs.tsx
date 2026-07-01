@@ -38,7 +38,12 @@ export default function Jobs() {
   useEffect(() => {
     if (!authChecked) return;
 
-    const storedUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "null") : null;
+    let storedUser = null;
+    try {
+      storedUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "null") : null;
+    } catch {
+      storedUser = null;
+    }
     const currentUserType = storedUser?.userType || getCurrentUserRole() || "";
     setUserType(String(currentUserType).toLowerCase());
 

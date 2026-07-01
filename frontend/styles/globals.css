@@ -1,5 +1,6 @@
-/* Disable text selection globally */
-* {
+/* Disable text selection only on interactive UI elements, not on content */
+button, nav, .MuiButton-root, .MuiIconButton-root, .MuiMenuItem-root,
+.MuiTab-root, .MuiChip-root, .MuiBreadcrumbs-root {
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;

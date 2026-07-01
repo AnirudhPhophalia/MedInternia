@@ -40,11 +40,19 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
   const handleStarClick = () => {
     setStarred(prev => !prev);
     if (!starred && window && window.localStorage) {
-      const starredCases = JSON.parse(localStorage.getItem('starredCases') || '[]');
-      localStorage.setItem('starredCases', JSON.stringify([...starredCases, caseData._id]));
+      try {
+        const starredCases = JSON.parse(localStorage.getItem('starredCases') || '[]');
+        localStorage.setItem('starredCases', JSON.stringify([...starredCases, caseData._id]));
+      } catch {
+        localStorage.setItem('starredCases', JSON.stringify([caseData._id]));
+      }
     } else if (starred && window && window.localStorage) {
-      const starredCases = JSON.parse(localStorage.getItem('starredCases') || '[]');
-      localStorage.setItem('starredCases', JSON.stringify(starredCases.filter((id: string) => id !== caseData._id)));
+      try {
+        const starredCases = JSON.parse(localStorage.getItem('starredCases') || '[]');
+        localStorage.setItem('starredCases', JSON.stringify(starredCases.filter((id: string) => id !== caseData._id)));
+      } catch {
+        localStorage.setItem('starredCases', JSON.stringify([]));
+      }
     }
   };
 

@@ -1,4 +1,5 @@
 import { jwtDecode } from 'jwt-decode';
+import { getAuthToken } from './api';
 
 export type AppRole = 'admin' | 'doctor' | 'intern' | 'patient' | 'hospital_staff' | 'moderator';
 
@@ -103,7 +104,7 @@ export const normalizeRole = (role?: string): AppRole | undefined => {
 
 export const getCurrentUserRole = (): AppRole | undefined => {
   if (typeof window === 'undefined') return undefined;
-  const token = localStorage.getItem('token');
+  const token = getAuthToken();
   if (!token) return undefined;
   try {
     const decoded: any = jwtDecode(token);

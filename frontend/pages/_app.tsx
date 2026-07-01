@@ -1,6 +1,8 @@
 import type { AppProps } from "next/app";
 import { CssBaseline, Snackbar, Alert, Typography } from "@mui/material";
 import { useNotifications } from "../hooks/useNotifications";
+import { AuthProvider } from "../context/AuthContext";
+import ErrorBoundary from "../components/ErrorBoundary";
 import Navbar from "../components/Navbar";
 // GSSoC: Import Footer component
 import Footer from "../components/Footer";
@@ -23,31 +25,32 @@ function MyApp({ Component, pageProps }: AppProps) {
   ];
   const showFooter = !hideFooterRoutes.includes(router.pathname);
   return (
-    <>
-      <Head>
-        <title>MedInternia</title>
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-        <link rel="shortcut icon" href="/favicon.ico" />
-      </Head>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Head>
+          <title>MedInternia</title>
+          <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+          <link rel="shortcut icon" href="/favicon.ico" />
+        </Head>
 
-      <div
-        style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
-      >
-        <CssBaseline />
-        {showNavbar && <Navbar route={router.pathname} />}
         <div
-          style={{
-            marginTop: showNavbar ? 64 : 0,
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-          }}
+          style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
         >
-          <Component {...pageProps} />
-        </div>
-        {/* GSSoC: Render footer on non-auth pages */}
-        {showFooter && <Footer />}
-        <Chatbot />
+          <CssBaseline />
+          {showNavbar && <Navbar route={router.pathname} />}
+          <div
+            style={{
+              marginTop: showNavbar ? 64 : 0,
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Component {...pageProps} />
+          </div>
+          {/* GSSoC: Render footer on non-auth pages */}
+          {showFooter && <Footer />}
+          <Chatbot />
 
         {/* Real-time notification toast */}
         <Snackbar
@@ -112,7 +115,8 @@ function MyApp({ Component, pageProps }: AppProps) {
           }
         `}</style>
       </div>
-    </>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

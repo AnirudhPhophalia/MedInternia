@@ -40,7 +40,12 @@ export default function ResearchPaperUpload() {
 
   // Fetch research papers on mount
   useEffect(() => {
-    const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+    let storedUser = null;
+    try {
+      storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
+    } catch {
+      storedUser = null;
+    }
     const currentUserType = storedUser?.userType || getCurrentUserRole() || '';
     setUserType(String(currentUserType).toLowerCase());
     fetchPapers();

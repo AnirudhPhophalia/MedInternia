@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getAuthToken } from '../utils/api';
 
 export interface Notification {
   _id: string;
@@ -29,7 +30,7 @@ export function useNotifications() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) return; // Not logged in — do nothing
 
     // 1. Fetch existing notifications from REST API
@@ -64,7 +65,7 @@ export function useNotifications() {
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) return;
 
     setNotifications((prev) =>
@@ -79,7 +80,7 @@ export function useNotifications() {
 
   // ── Mark all notifications as read ──────────────────────────
   const markAllAsRead = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) return;
 
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
