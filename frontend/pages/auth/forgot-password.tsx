@@ -6,18 +6,17 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [sent, setSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-
   const handleSend = async (e: any) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     try {
       await api.post('/auth/forgot-password', { email });
-      setSuccess('OTP sent to your email!');
-      setSent(true);
+     setSuccess("OTP sent successfully!");
+
+setTimeout(() => {
+  router.push(`/reset-password?email=${encodeURIComponent(email)}`);
+}, 1500);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP');
     }
