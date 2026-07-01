@@ -15,6 +15,7 @@ import { useRouter } from "next/router";
 import api from "../utils/api";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
 import { getCurrentUserRole } from "../utils/permissions";
+import RecentlyViewedInternships from "../components/RecentlyViewedInternships";
 
 export default function Jobs() {
   const router = useRouter();
@@ -72,6 +73,7 @@ export default function Jobs() {
       sx={{
         minHeight: "80vh",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -80,7 +82,11 @@ export default function Jobs() {
         <Alert severity="info" sx={{ mb: 3, textAlign: "center" }}>
           Job opportunities are currently available for doctors and interns.
         </Alert>
-      ) : null}
+      ) : (
+        <Box sx={{ width: "100%", mb: 2 }}>
+          <RecentlyViewedInternships />
+        </Box>
+      )}
       <Card
         sx={{
           p: 4,
