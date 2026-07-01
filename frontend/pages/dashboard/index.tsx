@@ -121,14 +121,25 @@ export default function Dashboard() {
     <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
         {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
-            Welcome back, {user.userType === 'doctor' ? 'Dr.' : ''} {user.firstName} {user.lastName}
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Here's what's happening with your account today.
-          </Typography>
-        </Box>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ mb: 4 }} spacing={2}>
+          <Box>
+            <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
+              Welcome back, {user.userType === 'doctor' ? 'Dr.' : ''} {user.firstName} {user.lastName}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Here's what's happening with your account today.
+            </Typography>
+          </Box>
+          <Button 
+            variant="contained" 
+            color="success" 
+            component={Link} 
+            href="/dashboard/learning-progress"
+            sx={{ borderRadius: 3, fontWeight: 700, px: 3, py: 1 }}
+          >
+            My Learning Progress
+          </Button>
+        </Stack>
 
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
           {/* User Profile Summary */}
