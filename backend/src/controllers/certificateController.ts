@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Certificate from '../models/Certificate';
@@ -54,35 +55,58 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
       .update(certificateId + internId + doctorId + Date.now())
       .digest('hex');
 
-    const certificate = new Certificate({
-      intern: internId,
-      doctor: doctorId,
-      title,
-      description,
-      casesReviewed,
-      pointsEarned,
-      duration,
-      skills,
-      certificateId,
-      verificationHash
-    });
+    const session = await mongoose.startSession();
+    let committed = false;
+    let certificate: any;
+    try {
+      session.startTransaction();
 
-    await certificate.save();
+      [certificate] = await Certificate.create([{
+        intern: internId,
+        doctor: doctorId,
+        title,
+        description,
+        casesReviewed,
+        pointsEarned,
+        duration,
+        skills,
+        certificateId,
+        verificationHash
+      }], { session });
 
-    // Deduct mentoring credits from doctor
-    await User.findByIdAndUpdate(doctorId, {
-      $inc: { mentoringCredits: -casesReviewed }
-    });
+      // Deduct mentoring credits from doctor
+      if (doctor.userType !== 'admin') {
+        const updated = await User.findOneAndUpdate(
+          { _id: doctorId, mentoringCredits: { $gte: casesReviewed } },
+          { $inc: { mentoringCredits: -casesReviewed } },
+          { new: true, session }
+        );
+        if (!updated) {
+          await session.abortTransaction();
+          committed = true;
+          return res.status(400).json({
+            success: false,
+            message: 'Insufficient mentoring credits'
+          });
+        }
+      }
 
-    // Update intern's certificates count
-    await User.findByIdAndUpdate(internId, {
-      $inc: { certificatesEarned: 1 }
-    });
+      // Update intern's certificates count
+      await User.findByIdAndUpdate(internId, {
+        $inc: { certificatesEarned: 1 }
+      }, { session });
 
-    await certificate.populate([
-      { path: 'intern', select: 'firstName lastName email' },
-      { path: 'doctor', select: 'firstName lastName specialization' }
-    ]);
+      await session.commitTransaction();
+      committed = true;
+
+      await certificate.populate([
+        { path: 'intern', select: 'firstName lastName email' },
+        { path: 'doctor', select: 'firstName lastName specialization' }
+      ]);
+    } finally {
+      if (!committed) await session.abortTransaction();
+      session.endSession();
+    }
 
     res.status(201).json({
       success: true,

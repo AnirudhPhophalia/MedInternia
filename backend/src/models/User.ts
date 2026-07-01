@@ -32,6 +32,7 @@ export interface IUser extends Document {
   credits?: number;
   streak: number; // Current active streak (days)
   longestStreak: number;
+  lastActivityDate?: Date;
   casesAnalyzed: number;
   upvotesReceived: number;
   peerReviewsGiven: number;
@@ -185,6 +186,10 @@ const UserSchema = new Schema<IUser>({
     type: Number,
     default: 0,
     min: [0, 'Longest streak cannot be negative']
+  },
+  lastActivityDate: {
+    type: Date,
+    default: null
   },
   casesAnalyzed: {
     type: Number,
