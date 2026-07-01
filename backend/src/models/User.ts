@@ -9,6 +9,8 @@ export interface IUser extends Document {
   lastName: string;
   email: string;
   password: string;
+  passwordResetToken?: string;
+passwordResetExpires?: Date;
   loginAttempts?: number;
   lockoutUntil?: Date | null;
   userType: AppRole;
@@ -121,6 +123,15 @@ const UserSchema = new Schema<IUser>({
     },
     select: false
   },
+  passwordResetToken: {
+  type: String,
+  select: false
+},
+
+passwordResetExpires: {
+  type: Date,
+  select: false
+},
   loginAttempts: {
     type: Number,
     default: 0
