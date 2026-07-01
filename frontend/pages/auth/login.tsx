@@ -217,6 +217,25 @@ export default function Login() {
               ),
             }}
           />
+          <Box
+  sx={{
+    display: "flex",
+    justifyContent: "flex-end",
+    mt: 1,
+    mb: 2,
+  }}
+>
+  <Link
+    href="/auth/forgot-password"
+    style={{
+      textDecoration: "none",
+      color: "#1565c0",
+      fontWeight: 600,
+    }}
+  >
+    Forgot Password?
+  </Link>
+</Box>
           {/* GSSoC: Disabled + spinner when loading */}
           <Button
             type="submit"
