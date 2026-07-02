@@ -13,6 +13,18 @@ export interface IComment extends Document {
   updatedAt: Date;
 }
 
+export interface ICaseRevision {
+  version: number;
+  title: string;
+  description: string;
+  symptoms: string[];
+  diagnosis?: string;
+  treatment?: string;
+  changeSummary: string;
+  updatedBy: mongoose.Types.ObjectId;
+  updatedAt: Date;
+}
+
 export interface ICase extends Document {
   title: string;
   description: string;
@@ -58,6 +70,7 @@ export interface ICase extends Document {
     relevanceScore: number;
     lastUpdated: Date;
   };
+  revisions: ICaseRevision[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,6 +114,18 @@ const CommentSchema = new Schema<IComment>({
   }
 }, {
   timestamps: true
+});
+
+const CaseRevisionSchema = new Schema<ICaseRevision>({
+  version: { type: Number, required: true },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  symptoms: [{ type: String }],
+  diagnosis: { type: String },
+  treatment: { type: String },
+  changeSummary: { type: String, default: 'Updated case details' },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedAt: { type: Date, default: Date.now }
 });
 
 const CaseSchema = new Schema<ICase>({
@@ -272,7 +297,8 @@ const CaseSchema = new Schema<ICase>({
       type: Date,
       default: Date.now
     }
-  }
+  },
+  revisions: [CaseRevisionSchema]
 }, {
   timestamps: true
 });

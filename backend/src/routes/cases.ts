@@ -25,7 +25,8 @@ import {
   repostCase,
   replyToComment,
   likeComment,
-  rateComment
+  rateComment,
+  restoreCaseVersion
 } from '../controllers/caseController';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
@@ -45,6 +46,7 @@ router.patch('/ai-posts/:scheduleId/review', authenticate, requirePermission('co
 router.post('/ai-posts/publish-due', authenticate, requirePermission('comment:moderate'), publishDueAICasePosts);
 router.get('/:id', authenticate, getCaseById);
 router.put('/:id', authenticate, requirePermission('case:update'), updateCase);
+router.post('/:id/revisions/:version/restore', authenticate, requirePermission('case:update'), restoreCaseVersion);
 router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
 router.patch('/:id/moderation', authenticate, requirePermission('comment:moderate'), moderateCase);
 

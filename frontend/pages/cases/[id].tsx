@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab, Card, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Chip } from '@mui/material';
 import { MessageCircleReply, Pin } from 'lucide-react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -21,6 +21,64 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedComment, setSelectedComment] = useState<any>(null);
   const [openReplies, setOpenReplies] = useState<{[key: string]: boolean}>({});
+
+  // Editing and Revision States
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSymptoms, setEditSymptoms] = useState('');
+  const [editDiagnosis, setEditDiagnosis] = useState('');
+  const [editTreatment, setEditTreatment] = useState('');
+  const [changeSummary, setChangeSummary] = useState('');
+  const [selectedRevision, setSelectedRevision] = useState<any>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+
+  const startEdit = () => {
+    setEditTitle(caseData.title || '');
+    setEditDescription(caseData.description || '');
+    setEditSymptoms(caseData.symptoms?.join(', ') || '');
+    setEditDiagnosis(caseData.diagnosis || '');
+    setEditTreatment(caseData.treatment || '');
+    setChangeSummary('');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.put(`/cases/${id}`, {
+        title: editTitle,
+        description: editDescription,
+        symptoms: editSymptoms.split(',').map(s => s.trim()).filter(Boolean),
+        diagnosis: editDiagnosis,
+        treatment: editTreatment,
+        changeSummary: changeSummary || 'Updated case details'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCaseData(res.data.data.case);
+      setIsEditing(false);
+    } catch {
+      setError('Failed to update case details');
+    }
+  };
+
+  const handleRestoreVersion = async (version: number) => {
+    if (!window.confirm(`Are you sure you want to restore the case to version ${version}?`)) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.post(`/cases/${id}/revisions/${version}/restore`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCaseData(res.data.data.case);
+      alert(`Case successfully restored to version ${version}`);
+    } catch {
+      setError('Failed to restore case version');
+    }
+  };
+
   // Like and rate logic
   const handleLike = async (commentId: string) => {
     try {
@@ -161,7 +219,8 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   if (!caseData) return null;
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-  const isAuthor = userId && caseData?.author?.id === userId;
+  const doctorId = caseData?.doctor?._id || caseData?.doctor || caseData?.author?.id || caseData?.author;
+  const isAuthor = userId && doctorId === userId;
 
   // Merge pinned and regular discussions for PDF export
   const allDiscussions = [...pinned, ...discussions];
@@ -169,13 +228,87 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   return (
     <Container maxWidth="sm">
       <Box sx={{ my: 4 }}>
-        {!hideDescription && <>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="h4" gutterBottom sx={{ flex: 1 }}>{caseData.title}</Typography>
-            <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+        {!hideDescription && !isEditing && (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="h4" gutterBottom sx={{ flex: 1 }}>{caseData.title}</Typography>
+              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                {isAuthor && (
+                  <Button variant="outlined" size="small" onClick={startEdit} sx={{ fontWeight: 600 }}>
+                    Edit Case
+                  </Button>
+                )}
+                <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+              </Stack>
+            </Box>
+            <Typography variant="body1" sx={{ mb: 2 }}>{caseData.description}</Typography>
+          </>
+        )}
+
+        {isEditing && (
+          <Box sx={{ p: 3, bgcolor: '#fff', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', mb: 3, border: '1px solid #e2e8f0' }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Edit Case Details
+            </Typography>
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              <TextField
+                label="Case Title"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Description"
+                value={editDescription}
+                onChange={e => setEditDescription(e.target.value)}
+                multiline
+                rows={4}
+                fullWidth
+              />
+              <TextField
+                label="Symptoms (comma-separated)"
+                value={editSymptoms}
+                onChange={e => setEditSymptoms(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Diagnosis"
+                value={editDiagnosis}
+                onChange={e => setEditDiagnosis(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Treatment"
+                value={editTreatment}
+                onChange={e => setEditTreatment(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Change Summary"
+                placeholder="What changes did you make? (Required)"
+                value={changeSummary}
+                onChange={e => setChangeSummary(e.target.value)}
+                required
+                fullWidth
+                error={!changeSummary.trim()}
+                helperText={!changeSummary.trim() ? 'Change Summary is required for version tracking.' : ''}
+              />
+              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handleSaveEdit}
+                  disabled={!changeSummary.trim() || !editTitle.trim() || !editDescription.trim()}
+                >
+                  Save Changes
+                </Button>
+                <Button variant="outlined" color="secondary" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+              </Stack>
+            </Stack>
           </Box>
-          <Typography variant="body1">{caseData.description}</Typography>
-        </>}
+        )}
 
         <Tabs 
           value={activeTab} 
@@ -185,6 +318,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         >
           <Tab label="Clinical Timeline" sx={{ fontWeight: 600 }} />
           <Tab label={`Discussions (${allDiscussions.length})`} sx={{ fontWeight: 600 }} />
+          <Tab label={`History (${caseData.revisions?.length || 0})`} sx={{ fontWeight: 600 }} />
         </Tabs>
 
         {activeTab === 0 && (
@@ -439,7 +573,147 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
           )}
           </>
         )}
+
+        {activeTab === 2 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Case Revision History
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Track all modifications, updates, and restorative actions performed on this clinical case study.
+            </Typography>
+            {(!caseData.revisions || caseData.revisions.length === 0) ? (
+              <Alert severity="info" sx={{ borderRadius: 3 }}>
+                This is the original version of the case. No revision history has been recorded yet.
+              </Alert>
+            ) : (
+              <Stack spacing={2}>
+                {caseData.revisions.map((rev: any, idx: number) => {
+                  const updaterName = rev.updatedBy 
+                    ? `Dr. ${rev.updatedBy.firstName} ${rev.updatedBy.lastName}`
+                    : 'System/Author';
+                  return (
+                    <Card key={idx} sx={{ p: 2, borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Chip label={`Version ${rev.version}`} size="small" color="primary" sx={{ fontWeight: 700 }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(rev.updatedAt).toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                        {rev.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 2, bgcolor: '#f8fafc', p: 1.5, borderRadius: 2, borderLeft: '3px solid #1976d2' }}>
+                        <strong>Change Summary:</strong> {rev.changeSummary}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                        Edited by: {updaterName}
+                      </Typography>
+                      <Stack direction="row" spacing={1}>
+                        <Button 
+                          size="small" 
+                          variant="outlined" 
+                          onClick={() => {
+                            setSelectedRevision(rev);
+                            setCompareOpen(true);
+                          }}
+                        >
+                          Compare Version
+                        </Button>
+                        {isAuthor && (
+                          <Button 
+                            size="small" 
+                            variant="contained" 
+                            color="warning" 
+                            onClick={() => handleRestoreVersion(rev.version)}
+                          >
+                            Restore Version
+                          </Button>
+                        )}
+                      </Stack>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        )}
       </Box>
+
+      {/* Compare Version Dialog */}
+      <Dialog 
+        open={compareOpen} 
+        onClose={() => setCompareOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Compare Version {selectedRevision?.version} with Current Version
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedRevision && (
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="h6" color="primary" fontWeight={700} gutterBottom>
+                  Version {selectedRevision.version} (Historical)
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Title</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f8fafc', p: 1.5, borderRadius: 2 }}>
+                  {selectedRevision.title}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Description</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f8fafc', p: 1.5, borderRadius: 2, whiteSpace: 'pre-wrap' }}>
+                  {selectedRevision.description}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Symptoms</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f8fafc', p: 1.5, borderRadius: 2 }}>
+                  {selectedRevision.symptoms?.join(', ') || 'None'}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Diagnosis</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f8fafc', p: 1.5, borderRadius: 2 }}>
+                  {selectedRevision.diagnosis || 'Not specified'}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Treatment</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f8fafc', p: 1.5, borderRadius: 2 }}>
+                  {selectedRevision.treatment || 'Not specified'}
+                </Typography>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="h6" color="success.main" fontWeight={700} gutterBottom>
+                  Current Active Version
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Title</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f0fdf4', p: 1.5, borderRadius: 2 }}>
+                  {caseData.title}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Description</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f0fdf4', p: 1.5, borderRadius: 2, whiteSpace: 'pre-wrap' }}>
+                  {caseData.description}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Symptoms</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f0fdf4', p: 1.5, borderRadius: 2 }}>
+                  {caseData.symptoms?.join(', ') || 'None'}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Diagnosis</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f0fdf4', p: 1.5, borderRadius: 2 }}>
+                  {caseData.diagnosis || 'Not specified'}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 1 }}>Treatment</Typography>
+                <Typography variant="body2" paragraph sx={{ bgcolor: '#f0fdf4', p: 1.5, borderRadius: 2 }}>
+                  {caseData.treatment || 'Not specified'}
+                </Typography>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setCompareOpen(false)} variant="contained" sx={{ borderRadius: 2 }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

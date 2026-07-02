@@ -1,5 +1,6 @@
 import { createAndEmitNotification } from "./notificationController";
 import { Response } from "express";
+import mongoose from "mongoose";
 import Case, { ICase } from "../models/Case";
 import User from "../models/User";
 import AICasePostSchedule from "../models/AICasePostSchedule";
@@ -564,7 +565,8 @@ export const getCaseById = asyncHandler(
     const caseData = await Case.findById(id)
       .populate("doctor", "firstName lastName specialization")
       .populate("comments.author", "firstName lastName userType")
-      .populate("likes", "firstName lastName");
+      .populate("likes", "firstName lastName")
+      .populate("revisions.updatedBy", "firstName lastName");
 
     if (!caseData) {
       throw new AppError("Case not found", 404);
@@ -612,7 +614,9 @@ export const updateCase = asyncHandler(
       throw new AppError("You can only update your own cases", 403);
     }
 
-    const updates = req.body;
+    const updates = { ...req.body };
+    const changeSummary = updates.changeSummary || "Updated case details";
+    delete updates.changeSummary;
     delete updates.doctor; // Prevent changing the doctor
     delete updates.comments; // Comments are handled separately
     delete updates.likes; // Likes are handled separately
@@ -622,14 +626,93 @@ export const updateCase = asyncHandler(
     delete updates.reviewedAt;
     delete updates.moderationAuditTrail;
 
-    const updatedCase = await Case.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true,
-    }).populate("doctor", "firstName lastName specialization");
+    // Save prior state to revisions before applying updates
+    if (!caseData.revisions) {
+      caseData.revisions = [];
+    }
+    const nextVersion = caseData.revisions.length + 1;
+    caseData.revisions.push({
+      version: nextVersion,
+      title: caseData.title,
+      description: caseData.description,
+      symptoms: caseData.symptoms || [],
+      diagnosis: caseData.diagnosis || "",
+      treatment: caseData.treatment || "",
+      changeSummary: changeSummary,
+      updatedBy: new mongoose.Types.ObjectId(user._id),
+      updatedAt: caseData.updatedAt || new Date()
+    });
+
+    // Apply updates
+    Object.assign(caseData, updates);
+
+    const updatedCase = await caseData.save();
+    await updatedCase.populate("doctor", "firstName lastName specialization");
 
     res.json({
       success: true,
       message: "Case updated successfully",
+      data: {
+        case: updatedCase,
+      },
+    });
+  },
+);
+
+// Restore case to a previous version
+export const restoreCaseVersion = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { _id: string; userType: string };
+    const { id, version } = req.params;
+
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    const caseData = await Case.findById(id);
+
+    if (!caseData) {
+      throw new AppError("Case not found", 404);
+    }
+
+    if (caseData.doctor.toString() !== user._id?.toString()) {
+      throw new AppError("You can only restore your own cases", 403);
+    }
+
+    const targetVersion = parseInt(version);
+    const revision = caseData.revisions.find(r => r.version === targetVersion);
+
+    if (!revision) {
+      throw new AppError("Case revision version not found", 404);
+    }
+
+    // Save the current state before restoring
+    const nextVersion = caseData.revisions.length + 1;
+    caseData.revisions.push({
+      version: nextVersion,
+      title: caseData.title,
+      description: caseData.description,
+      symptoms: caseData.symptoms || [],
+      diagnosis: caseData.diagnosis || "",
+      treatment: caseData.treatment || "",
+      changeSummary: `Restored to version ${version}`,
+      updatedBy: new mongoose.Types.ObjectId(user._id),
+      updatedAt: caseData.updatedAt || new Date()
+    });
+
+    // Restore fields
+    caseData.title = revision.title;
+    caseData.description = revision.description;
+    caseData.symptoms = revision.symptoms;
+    caseData.diagnosis = revision.diagnosis;
+    caseData.treatment = revision.treatment;
+
+    const updatedCase = await caseData.save();
+    await updatedCase.populate("doctor", "firstName lastName specialization");
+
+    res.json({
+      success: true,
+      message: `Case restored to version ${version} successfully`,
       data: {
         case: updatedCase,
       },
