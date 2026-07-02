@@ -1,17 +1,14 @@
-﻿import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload, verifyRefreshToken, generateToken } from '../utils/jwt';
 import User, { IUser } from '../models/User';
 import { getUserRole } from './permissions';
 import type { AppRole } from './permissions';
 
-const tokenBlacklist: Set<string> = new Set();
+import BlacklistedToken from '../models/BlacklistedToken';
 
-export const blacklistToken = (token: string) => {
-  tokenBlacklist.add(token);
-};
-
-export const isTokenBlacklisted = (token: string): boolean => {
-  return tokenBlacklist.has(token);
+export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
+  const blacklisted = await BlacklistedToken.findOne({ token });
+  return !!blacklisted;
 };
 
 export interface AuthRequest extends Request {
@@ -31,7 +28,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    if (isTokenBlacklisted(token)) {
+    if (await isTokenBlacklisted(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token has been revoked'

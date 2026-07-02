@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
+import BlacklistedToken from '../models/BlacklistedToken';
 import { generateToken, generateRefreshToken } from '../utils/jwt';
 import { AuthRequest } from '../middleware/auth';
 import { uploadProfileImage } from '../utils/cloudinary';
@@ -508,4 +509,15 @@ export const resetPassword = asyncHandler(
     await user.save();
     return res.json({ success: true, message: 'Password reset successfully' });
   },
+);
+
+export const logout = asyncHandler(
+  async (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      await BlacklistedToken.create({ token });
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  }
 );

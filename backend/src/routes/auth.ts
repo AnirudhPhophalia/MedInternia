@@ -5,7 +5,8 @@ import {
   login,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  logout
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { otpRequestLimiter, otpVerifyLimiter, loginLimiter, registerLimiter } from '../middleware/otpRateLimiter';
@@ -39,6 +40,7 @@ router.post('/register', registerLimiter, register);
 router.post('/login', loginLimiter, login);
 
 // Protected routes (require authentication)
+router.post('/logout', authenticate, logout);
 router.get('/profile', authenticate, getProfile);
 // Profile image upload
 router.post(
