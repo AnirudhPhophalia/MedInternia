@@ -260,6 +260,9 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   if (!result.valid) {
     throw new AppError(result.message || 'Invalid OTP', 400);
   }
+  
+  await User.findOneAndUpdate({ email }, { isVerified: true });
+  
   res.json({ success: true });
 });
 
@@ -282,6 +285,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   // Check if account is active
   if (!user.isActive) {
     throw new AppError("Account is deactivated. Please contact support.", 401);
+  }
+
+  // Check if account is verified
+  if (!user.isVerified) {
+    throw new AppError("Account is not verified. Please verify your OTP.", 401);
   }
 
   // Check account lockout
