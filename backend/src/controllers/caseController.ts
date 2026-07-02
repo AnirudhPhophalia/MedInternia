@@ -1,5 +1,6 @@
 import { createAndEmitNotification } from "./notificationController";
 import { Response } from "express";
+import mongoose from "mongoose";
 import Case, { ICase } from "../models/Case";
 import User from "../models/User";
 import AICasePostSchedule from "../models/AICasePostSchedule";
@@ -564,7 +565,9 @@ export const getCaseById = asyncHandler(
     const caseData = await Case.findById(id)
       .populate("doctor", "firstName lastName specialization")
       .populate("comments.author", "firstName lastName userType")
-      .populate("likes", "firstName lastName");
+      .populate("likes", "firstName lastName")
+      .populate("differentials.suggestedBy", "firstName lastName userType")
+      .populate("differentials.discussions.author", "firstName lastName userType");
 
     if (!caseData) {
       throw new AppError("Case not found", 404);
@@ -1237,4 +1240,158 @@ export const getCaseAISuggestions = asyncHandler(
       },
     });
   },
+);
+
+// Suggest a new differential diagnosis
+export const addDifferential = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { _id: string; userType: string };
+    const { id } = req.params;
+    const { title, confidence, supportingEvidence, excludingEvidence, notes } = req.body;
+
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    const caseData = await Case.findById(id);
+    if (!caseData) {
+      throw new AppError("Case not found", 404);
+    }
+
+    if (!caseData.differentials) {
+      caseData.differentials = [];
+    }
+
+    const newDiff = {
+      title,
+      confidence: confidence !== undefined ? Number(confidence) : 50,
+      supportingEvidence: Array.isArray(supportingEvidence) ? supportingEvidence : [],
+      excludingEvidence: Array.isArray(excludingEvidence) ? excludingEvidence : [],
+      status: 'active' as const,
+      notes: notes || '',
+      discussions: [],
+      suggestedBy: new mongoose.Types.ObjectId(user._id),
+      createdAt: new Date()
+    };
+
+    caseData.differentials.push(newDiff as any);
+    await caseData.save();
+
+    // Populate suggestedBy and discussions authors
+    const updatedCase = await Case.findById(id)
+      .populate("differentials.suggestedBy", "firstName lastName userType")
+      .populate("differentials.discussions.author", "firstName lastName userType");
+
+    res.json({
+      success: true,
+      message: "Differential diagnosis suggested successfully",
+      data: {
+        differentials: updatedCase?.differentials || []
+      }
+    });
+  }
+);
+
+// Update a differential diagnosis details (status, confidence, notes, etc.)
+export const updateDifferential = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { _id: string; userType: string };
+    const { id, diffId } = req.params;
+    const { status, confidence, notes, supportingEvidence, excludingEvidence } = req.body;
+
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    const caseData = await Case.findById(id);
+    if (!caseData) {
+      throw new AppError("Case not found", 404);
+    }
+
+    const diff = caseData.differentials.find(d => d._id?.toString() === diffId);
+    if (!diff) {
+      throw new AppError("Differential diagnosis not found", 404);
+    }
+
+    // Permission checks: Owner doctor can confirm/rule out, suggestor can modify their suggestion
+    const isOwner = caseData.doctor.toString() === user._id.toString();
+    const isSuggestor = diff.suggestedBy.toString() === user._id.toString();
+
+    if (!isOwner && !isSuggestor) {
+      throw new AppError("You do not have permission to edit this differential diagnosis", 403);
+    }
+
+    if (status !== undefined) {
+      // Only case owner can set to confirmed or ruled_out
+      if (status !== 'active' && !isOwner) {
+        throw new AppError("Only the case author can confirm or rule out a differential diagnosis", 403);
+      }
+      diff.status = status;
+    }
+    if (confidence !== undefined) diff.confidence = Number(confidence);
+    if (notes !== undefined) diff.notes = notes;
+    if (supportingEvidence !== undefined) diff.supportingEvidence = supportingEvidence;
+    if (excludingEvidence !== undefined) diff.excludingEvidence = excludingEvidence;
+
+    await caseData.save();
+
+    const updatedCase = await Case.findById(id)
+      .populate("differentials.suggestedBy", "firstName lastName userType")
+      .populate("differentials.discussions.author", "firstName lastName userType");
+
+    res.json({
+      success: true,
+      message: "Differential diagnosis updated successfully",
+      data: {
+        differentials: updatedCase?.differentials || []
+      }
+    });
+  }
+);
+
+// Add a comment to a specific differential diagnosis
+export const addDifferentialComment = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { _id: string; userType: string };
+    const { id, diffId } = req.params;
+    const { content } = req.body;
+
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    if (!content || !content.trim()) {
+      throw new AppError("Comment content is required", 400);
+    }
+
+    const caseData = await Case.findById(id);
+    if (!caseData) {
+      throw new AppError("Case not found", 404);
+    }
+
+    const diff = caseData.differentials.find(d => d._id?.toString() === diffId);
+    if (!diff) {
+      throw new AppError("Differential diagnosis not found", 404);
+    }
+
+    diff.discussions.push({
+      author: new mongoose.Types.ObjectId(user._id),
+      content: content.trim(),
+      createdAt: new Date()
+    });
+
+    await caseData.save();
+
+    const updatedCase = await Case.findById(id)
+      .populate("differentials.suggestedBy", "firstName lastName userType")
+      .populate("differentials.discussions.author", "firstName lastName userType");
+
+    res.json({
+      success: true,
+      message: "Comment added to differential diagnosis successfully",
+      data: {
+        differentials: updatedCase?.differentials || []
+      }
+    });
+  }
 );

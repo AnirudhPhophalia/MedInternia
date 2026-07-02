@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab, Card, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Chip, Slider, LinearProgress } from '@mui/material';
 import { MessageCircleReply, Pin } from 'lucide-react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -21,6 +21,67 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedComment, setSelectedComment] = useState<any>(null);
   const [openReplies, setOpenReplies] = useState<{[key: string]: boolean}>({});
+
+  // Differential Diagnosis States
+  const [diffTitle, setDiffTitle] = useState('');
+  const [diffConfidence, setDiffConfidence] = useState(50);
+  const [diffSupporting, setDiffSupporting] = useState('');
+  const [diffExcluding, setDiffExcluding] = useState('');
+  const [diffNotes, setDiffNotes] = useState('');
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [diffComments, setDiffComments] = useState<{[diffId: string]: string}>({});
+
+  const handleSuggestDiff = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.post(`/cases/${id}/differentials`, {
+        title: diffTitle,
+        confidence: diffConfidence,
+        supportingEvidence: diffSupporting.split(',').map(s => s.trim()).filter(Boolean),
+        excludingEvidence: diffExcluding.split(',').map(s => s.trim()).filter(Boolean),
+        notes: diffNotes
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCaseData({ ...caseData, differentials: res.data.data.differentials });
+      setDiffTitle('');
+      setDiffConfidence(50);
+      setDiffSupporting('');
+      setDiffExcluding('');
+      setDiffNotes('');
+      setSuggestOpen(false);
+    } catch {
+      setError('Failed to suggest differential diagnosis');
+    }
+  };
+
+  const handleUpdateDiffStatus = async (diffId: string, status: 'active' | 'ruled_out' | 'confirmed') => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.patch(`/cases/${id}/differentials/${diffId}`, { status }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCaseData({ ...caseData, differentials: res.data.data.differentials });
+    } catch {
+      setError('Failed to update differential status');
+    }
+  };
+
+  const handleAddDiffComment = async (diffId: string) => {
+    const text = diffComments[diffId];
+    if (!text || !text.trim()) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.post(`/cases/${id}/differentials/${diffId}/comments`, { content: text }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCaseData({ ...caseData, differentials: res.data.data.differentials });
+      setDiffComments(prev => ({ ...prev, [diffId]: '' }));
+    } catch {
+      setError('Failed to add comment to differential');
+    }
+  };
+
   // Like and rate logic
   const handleLike = async (commentId: string) => {
     try {
@@ -161,7 +222,8 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   if (!caseData) return null;
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-  const isAuthor = userId && caseData?.author?.id === userId;
+  const doctorId = caseData?.doctor?._id || caseData?.doctor || caseData?.author?.id || caseData?.author;
+  const isAuthor = userId && doctorId === userId;
 
   // Merge pinned and regular discussions for PDF export
   const allDiscussions = [...pinned, ...discussions];
@@ -172,7 +234,17 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         {!hideDescription && <>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h4" gutterBottom sx={{ flex: 1 }}>{caseData.title}</Typography>
-            <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={() => setSuggestOpen(true)}
+                sx={{ fontWeight: 600 }}
+              >
+                Suggest Diagnosis
+              </Button>
+              <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+            </Stack>
           </Box>
           <Typography variant="body1">{caseData.description}</Typography>
         </>}
@@ -185,6 +257,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         >
           <Tab label="Clinical Timeline" sx={{ fontWeight: 600 }} />
           <Tab label={`Discussions (${allDiscussions.length})`} sx={{ fontWeight: 600 }} />
+          <Tab label={`Differentials (${caseData.differentials?.length || 0})`} sx={{ fontWeight: 600 }} />
         </Tabs>
 
         {activeTab === 0 && (
@@ -439,7 +512,259 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
           )}
           </>
         )}
+
+        {activeTab === 2 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Structured Differential Diagnosis Workspace
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Explore, discuss, and evaluate competing diagnostic hypotheses for this case study.
+            </Typography>
+
+            {(!caseData.differentials || caseData.differentials.length === 0) ? (
+              <Alert severity="info" sx={{ borderRadius: 3 }}>
+                No differential diagnoses suggested yet. Suggest a diagnosis above to start the workspace.
+              </Alert>
+            ) : (
+              <Stack spacing={3}>
+                {caseData.differentials.map((diff: any, idx: number) => {
+                  const isRuledOut = diff.status === 'ruled_out';
+                  const isConfirmed = diff.status === 'confirmed';
+                  const suggestorName = diff.suggestedBy 
+                    ? `${diff.suggestedBy.firstName} ${diff.suggestedBy.lastName}`
+                    : 'System';
+                  return (
+                    <Card 
+                      key={diff._id || idx} 
+                      sx={{ 
+                        p: 3, 
+                        borderRadius: 4, 
+                        border: '1px solid #e2e8f0', 
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                        bgcolor: isConfirmed ? '#f0fdf4' : isRuledOut ? '#f8fafc' : '#fff',
+                        opacity: isRuledOut ? 0.75 : 1
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                        <Typography 
+                          variant="h6" 
+                          fontWeight={700} 
+                          sx={{ 
+                            textDecoration: isRuledOut ? 'line-through' : 'none',
+                            color: isConfirmed ? 'success.main' : isRuledOut ? 'text.secondary' : 'text.primary'
+                          }}
+                        >
+                          {diff.title}
+                        </Typography>
+                        <Chip 
+                          label={diff.status.toUpperCase()} 
+                          color={isConfirmed ? 'success' : isRuledOut ? 'default' : 'primary'} 
+                          size="small"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </Box>
+
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Confidence Level: <strong>{diff.confidence}%</strong>
+                        </Typography>
+                        <LinearProgress 
+                          variant="determinate" 
+                          value={diff.confidence} 
+                          color={isConfirmed ? 'success' : isRuledOut ? 'inherit' : 'primary'}
+                          sx={{ height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+
+                      <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <Typography variant="subtitle2" fontWeight={600} color="success.main" gutterBottom>
+                            Supporting Evidence
+                          </Typography>
+                          {diff.supportingEvidence?.length > 0 ? (
+                            <Box component="ul" sx={{ pl: 2, m: 0 }}>
+                              {diff.supportingEvidence.map((ev: string, eidx: number) => (
+                                <li key={eidx}><Typography variant="body2">{ev}</Typography></li>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">No supporting evidence provided.</Typography>
+                          )}
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <Typography variant="subtitle2" fontWeight={600} color="error.main" gutterBottom>
+                            Excluding / Contradicting Evidence
+                          </Typography>
+                          {diff.excludingEvidence?.length > 0 ? (
+                            <Box component="ul" sx={{ pl: 2, m: 0 }}>
+                              {diff.excludingEvidence.map((ev: string, eidx: number) => (
+                                <li key={eidx}><Typography variant="body2">{ev}</Typography></li>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">No excluding evidence provided.</Typography>
+                          )}
+                        </Grid>
+                      </Grid>
+
+                      {diff.notes && (
+                        <Box sx={{ mb: 2, bgcolor: '#f8fafc', p: 1.5, borderRadius: 2, borderLeft: '3px solid #64748b' }}>
+                          <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{diff.notes}</Typography>
+                        </Box>
+                      )}
+
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                        Suggested by: <strong>{suggestorName}</strong> on {new Date(diff.createdAt).toLocaleDateString()}
+                      </Typography>
+
+                      {/* Author Management Actions */}
+                      {isAuthor && (
+                        <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
+                          {!isConfirmed && (
+                            <Button 
+                              variant="contained" 
+                              color="success" 
+                              size="small" 
+                              onClick={() => handleUpdateDiffStatus(diff._id, 'confirmed')}
+                            >
+                              Confirm Diagnosis
+                            </Button>
+                          )}
+                          {!isRuledOut && (
+                            <Button 
+                              variant="outlined" 
+                              color="error" 
+                              size="small" 
+                              onClick={() => handleUpdateDiffStatus(diff._id, 'ruled_out')}
+                            >
+                              Rule Out
+                            </Button>
+                          )}
+                          {(isConfirmed || isRuledOut) && (
+                            <Button 
+                              variant="text" 
+                              color="primary" 
+                              size="small" 
+                              onClick={() => handleUpdateDiffStatus(diff._id, 'active')}
+                            >
+                              Re-activate
+                            </Button>
+                          )}
+                        </Stack>
+                      )}
+
+                      {/* Hypothesis specific comments */}
+                      <Box sx={{ mt: 2, borderTop: '1px solid #e2e8f0', pt: 2 }}>
+                        <Typography variant="subtitle2" fontWeight={700} color="text.secondary" gutterBottom>
+                          Hypothesis Discussion ({diff.discussions?.length || 0})
+                        </Typography>
+                        <Stack spacing={1} sx={{ mb: 2, maxHeight: 150, overflowY: 'auto' }}>
+                          {diff.discussions?.map((comm: any, cidx: number) => (
+                            <Box key={cidx} sx={{ p: 1, bgcolor: '#f8fafc', borderRadius: 2 }}>
+                              <Typography variant="caption" fontWeight={700}>
+                                {comm.author ? `${comm.author.firstName} ${comm.author.lastName}` : 'User'}
+                              </Typography>
+                              <Typography variant="body2">{comm.content}</Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                        <Stack direction="row" spacing={1}>
+                          <TextField
+                            size="small"
+                            placeholder="Add commentary..."
+                            value={diffComments[diff._id] || ''}
+                            onChange={e => setDiffComments(prev => ({ ...prev, [diff._id]: e.target.value }))}
+                            fullWidth
+                            onKeyDown={e => { if (e.key === 'Enter') handleAddDiffComment(diff._id); }}
+                          />
+                          <Button 
+                            variant="contained" 
+                            size="small" 
+                            onClick={() => handleAddDiffComment(diff._id)}
+                          >
+                            Post
+                          </Button>
+                        </Stack>
+                      </Box>
+                    </Card>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        )}
       </Box>
+
+      {/* Suggest Diagnosis Dialog */}
+      <Dialog 
+        open={suggestOpen} 
+        onClose={() => setSuggestOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Suggest Differential Diagnosis</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Diagnosis Title"
+              placeholder="e.g. Acute Myocardial Infarction"
+              value={diffTitle}
+              onChange={e => setDiffTitle(e.target.value)}
+              fullWidth
+              required
+            />
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Confidence Level ({diffConfidence}%)
+              </Typography>
+              <Slider
+                value={diffConfidence}
+                onChange={(e, val) => setDiffConfidence(val as number)}
+                min={0}
+                max={100}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+            <TextField
+              label="Supporting Evidence (comma-separated)"
+              placeholder="e.g. Chest pain, ST elevation on ECG"
+              value={diffSupporting}
+              onChange={e => setDiffSupporting(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Excluding / Contradicting Evidence (comma-separated)"
+              placeholder="e.g. Normal cardiac enzymes"
+              value={diffExcluding}
+              onChange={e => setDiffExcluding(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Clinical Notes"
+              placeholder="Provide clinical rationale..."
+              value={diffNotes}
+              onChange={e => setDiffNotes(e.target.value)}
+              multiline
+              rows={3}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setSuggestOpen(false)} variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSuggestDiff} 
+            variant="contained" 
+            disabled={!diffTitle.trim()}
+          >
+            Submit Suggestion
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

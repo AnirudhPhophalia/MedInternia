@@ -13,6 +13,23 @@ export interface IComment extends Document {
   updatedAt: Date;
 }
 
+export interface IDifferentialDiagnosis {
+  _id?: any;
+  title: string;
+  confidence: number;
+  supportingEvidence: string[];
+  excludingEvidence: string[];
+  status: 'active' | 'ruled_out' | 'confirmed';
+  notes?: string;
+  discussions: {
+    author: mongoose.Types.ObjectId;
+    content: string;
+    createdAt: Date;
+  }[];
+  suggestedBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+}
+
 export interface ICase extends Document {
   title: string;
   description: string;
@@ -58,6 +75,7 @@ export interface ICase extends Document {
     relevanceScore: number;
     lastUpdated: Date;
   };
+  differentials: IDifferentialDiagnosis[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,6 +119,22 @@ const CommentSchema = new Schema<IComment>({
   }
 }, {
   timestamps: true
+});
+
+const DifferentialDiagnosisSchema = new Schema<IDifferentialDiagnosis>({
+  title: { type: String, required: true, trim: true },
+  confidence: { type: Number, required: true, min: 0, max: 100 },
+  supportingEvidence: [{ type: String, trim: true }],
+  excludingEvidence: [{ type: String, trim: true }],
+  status: { type: String, enum: ['active', 'ruled_out', 'confirmed'], default: 'active' },
+  notes: { type: String, trim: true },
+  discussions: [{
+    author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true, trim: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  suggestedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now }
 });
 
 const CaseSchema = new Schema<ICase>({
@@ -272,7 +306,8 @@ const CaseSchema = new Schema<ICase>({
       type: Date,
       default: Date.now
     }
-  }
+  },
+  differentials: [DifferentialDiagnosisSchema]
 }, {
   timestamps: true
 });

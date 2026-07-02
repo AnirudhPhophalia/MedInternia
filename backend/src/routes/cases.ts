@@ -25,7 +25,10 @@ import {
   repostCase,
   replyToComment,
   likeComment,
-  rateComment
+  rateComment,
+  addDifferential,
+  updateDifferential,
+  addDifferentialComment
 } from '../controllers/caseController';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
@@ -72,4 +75,10 @@ router.get('/:caseId/pinned-comments', getPinnedComments);
 router.patch('/:id/repost-permission', authenticate, requirePermission('case:update'), toggleRepostPermission);
 // Repost a case (if allowed)
 router.post('/:id/repost', authenticate, requirePermission('case:repost'), repostCase);
+
+// Differential diagnosis routes
+router.post('/:id/differentials', authenticate, requirePermission('comment:create'), addDifferential);
+router.patch('/:id/differentials/:diffId', authenticate, requirePermission('comment:create'), updateDifferential);
+router.post('/:id/differentials/:diffId/comments', authenticate, requirePermission('comment:create'), addDifferentialComment);
+
 export default router;
