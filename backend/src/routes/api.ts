@@ -18,6 +18,7 @@ import notificationRoutes from './notifications';
 import diseaseInsightRoutes from './diseaseInsights';
 import symptomRoutes from './symptoms';
 import diaryRoutes from "./diary";
+import consultationRoutes from './consultations';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -80,5 +81,6 @@ router.use('/symptoms', symptomRoutes);
 router.use('/', enhancedRoutes);
 router.use('/research-papers', researchPaperRoutes);
 router.use("/diaries", diaryRoutes);
+router.use('/consultations', consultationRoutes);
 
 export default router;

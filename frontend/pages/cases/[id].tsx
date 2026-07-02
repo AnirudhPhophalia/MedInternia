@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel, Card, Divider, Chip } from '@mui/material';
 import { MessageCircleReply, Pin } from 'lucide-react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -8,6 +8,7 @@ import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
+import Link from 'next/link';
 import PdfExportButton from '../../components/PdfExportButton';
 import ClinicalTimeline from '../../components/ClinicalTimeline';
 
@@ -21,6 +22,90 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedComment, setSelectedComment] = useState<any>(null);
   const [openReplies, setOpenReplies] = useState<{[key: string]: boolean}>({});
+
+  // P2P Consultation States
+  const [activeConsult, setActiveConsult] = useState<any>(null);
+  const [consultOpen, setConsultOpen] = useState(false);
+  const [consultSpecialty, setConsultSpecialty] = useState('General');
+  const [consultPoints, setConsultPoints] = useState(10);
+  const [chatMessage, setChatMessage] = useState('');
+
+  const fetchConsultations = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.get('/consultations', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const list = res.data?.data?.requests || [];
+      const match = list.find((r: any) => r.case?._id === id && r.status !== 'resolved');
+      setActiveConsult(match || null);
+    } catch (err) {
+      console.error('Failed to fetch consultations', err);
+    }
+  };
+
+  const handleRequestConsult = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/consultations', {
+        caseId: id,
+        specialty: consultSpecialty,
+        rewardPoints: consultPoints
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setConsultOpen(false);
+      fetchConsultations();
+      alert('Consultation request submitted successfully!');
+    } catch (err) {
+      console.error('Failed to submit consultation request', err);
+      alert('Failed to submit consultation request. Check your points balance.');
+    }
+  };
+
+  const handleAcceptConsult = async () => {
+    if (!activeConsult) return;
+    try {
+      const token = localStorage.getItem('token');
+      await api.patch(`/consultations/${activeConsult._id}/accept`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchConsultations();
+      alert('You have accepted this consultation request!');
+    } catch (err) {
+      console.error('Failed to accept consultation', err);
+    }
+  };
+
+  const handleResolveConsult = async () => {
+    if (!activeConsult) return;
+    try {
+      const token = localStorage.getItem('token');
+      await api.patch(`/consultations/${activeConsult._id}/resolve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchConsultations();
+      alert('Consultation resolved successfully!');
+    } catch (err) {
+      console.error('Failed to resolve consultation', err);
+    }
+  };
+
+  const handleSendChatMessage = async () => {
+    if (!chatMessage.trim() || !activeConsult) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.post(`/consultations/${activeConsult._id}/messages`, {
+        content: chatMessage
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setActiveConsult(res.data?.data?.request);
+      setChatMessage('');
+    } catch (err) {
+      console.error('Failed to send consultation message', err);
+    }
+  };
   // Like and rate logic
   const handleLike = async (commentId: string) => {
     try {
@@ -80,6 +165,8 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         setError('Failed to fetch case');
         setLoading(false);
       });
+    
+    fetchConsultations();
   }, [id]);
 
   const handleDiscussion = async () => {
@@ -172,7 +259,27 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         {!hideDescription && <>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h4" gutterBottom sx={{ flex: 1 }}>{caseData.title}</Typography>
-            <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              {!activeConsult ? (
+                <Button 
+                  variant="outlined" 
+                  color="secondary" 
+                  size="small" 
+                  onClick={() => setConsultOpen(true)}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Request P2P Consultation
+                </Button>
+              ) : (
+                <Chip 
+                  label={`Consulting: ${activeConsult.status.toUpperCase()}`}
+                  color={activeConsult.status === 'in_progress' ? 'success' : 'warning'}
+                  size="small"
+                  sx={{ fontWeight: 700 }}
+                />
+              )}
+              <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+            </Stack>
           </Box>
           <Typography variant="body1">{caseData.description}</Typography>
         </>}
@@ -439,7 +546,154 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
           )}
           </>
         )}
+
+        {/* P2P Consultation chat workspace */}
+        {activeConsult && (
+          <Card sx={{ mt: 4, p: 3, borderRadius: 4, border: '1.5px solid #6b21a8', bgcolor: '#faf5ff', boxShadow: '0 4px 20px rgba(107,33,168,0.05)' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="h6" fontWeight={800} color="secondary.main">
+                🤝 Private P2P Consultation Workspace
+              </Typography>
+              <Chip 
+                label={`Status: ${activeConsult.status.toUpperCase()}`}
+                color={activeConsult.status === 'in_progress' ? 'success' : 'warning'}
+                size="small"
+                sx={{ fontWeight: 700 }}
+              />
+            </Box>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Requested Specialty Focus: <strong>{activeConsult.specialty}</strong> | Pledged Points: <strong>{activeConsult.rewardPoints}</strong>
+            </Typography>
+
+            {activeConsult.assignedConsultant ? (
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 700 }}>
+                Assigned Specialist: Dr. {activeConsult.assignedConsultant.firstName} {activeConsult.assignedConsultant.lastName}
+              </Typography>
+            ) : (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 1.5 }}>
+                  Waiting for a specialist to accept this request...
+                </Typography>
+                {(typeof window !== 'undefined' && localStorage.getItem('userType') === 'doctor') && (
+                  <Button variant="contained" color="secondary" size="small" onClick={handleAcceptConsult} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                    Accept Consultation
+                  </Button>
+                )}
+              </Box>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+
+            {/* Chat Room Messages */}
+            <Stack spacing={1.5} sx={{ maxHeight: 250, overflowY: 'auto', mb: 2, pr: 1 }}>
+              {activeConsult.messages?.length === 0 ? (
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center', display: 'block', my: 2 }}>
+                  Secure workspace opened. Start typing your consultation notes/questions below.
+                </Typography>
+              ) : (
+                activeConsult.messages.map((msg: any, midx: number) => {
+                  const isMe = msg.sender?._id?.toString() === userId || msg.sender?.toString() === userId;
+                  return (
+                    <Box key={midx} sx={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
+                      <Box 
+                        sx={{ 
+                          p: 1.5, 
+                          borderRadius: 3, 
+                          bgcolor: isMe ? '#9333ea' : '#fff', 
+                          color: isMe ? '#fff' : '#222',
+                          boxShadow: 1,
+                          maxWidth: '75%',
+                          border: isMe ? 'none' : '1px solid #e2e8f0'
+                        }}
+                      >
+                        <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.85, display: 'block', mb: 0.5 }}>
+                          {msg.sender?.firstName || 'User'} ({msg.sender?.userType?.toUpperCase()})
+                        </Typography>
+                        <Typography variant="body2">{msg.content}</Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              )}
+            </Stack>
+
+            {/* Send chat message input */}
+            {(activeConsult.status === 'in_progress' || activeConsult.assignedConsultant) && (
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <TextField
+                  size="small"
+                  placeholder="Type a clinical question or guidance..."
+                  value={chatMessage}
+                  onChange={e => setChatMessage(e.target.value)}
+                  fullWidth
+                  onKeyDown={e => { if (e.key === 'Enter') handleSendChatMessage(); }}
+                />
+                <Button variant="contained" color="secondary" onClick={handleSendChatMessage} disabled={!chatMessage.trim()}>
+                  Send
+                </Button>
+              </Stack>
+            )}
+
+            {/* Resolve consulting request */}
+            {activeConsult.status === 'in_progress' && (
+              <Button variant="outlined" color="success" size="small" fullWidth onClick={handleResolveConsult} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                Mark Consultation Resolved (Releases Points)
+              </Button>
+            )}
+          </Card>
+        )}
       </Box>
+
+      {/* Request P2P Consultation Dialog */}
+      <Dialog 
+        open={consultOpen} 
+        onClose={() => setConsultOpen(false)} 
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Request Peer Consultation</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2.5} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>Required Specialty</InputLabel>
+              <Select
+                value={consultSpecialty}
+                label="Required Specialty"
+                onChange={e => setConsultSpecialty(e.target.value)}
+              >
+                <MenuItem value="General">General Practice</MenuItem>
+                <MenuItem value="Cardiology">Cardiology</MenuItem>
+                <MenuItem value="Pediatrics">Pediatrics</MenuItem>
+                <MenuItem value="Neurology">Neurology</MenuItem>
+                <MenuItem value="Internal Medicine">Internal Medicine</MenuItem>
+                <MenuItem value="Oncology">Oncology</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Pledged Reward Points"
+              type="number"
+              value={consultPoints}
+              onChange={e => setConsultPoints(Math.max(0, Number(e.target.value)))}
+              fullWidth
+              helperText="These points will be locked and transferred to the consultant doctor upon resolution."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setConsultOpen(false)} variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleRequestConsult} 
+            variant="contained" 
+            color="secondary"
+          >
+            Submit Request
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

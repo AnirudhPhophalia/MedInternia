@@ -38,6 +38,38 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [data, setData] = useState<DashboardData | null>(null);
 
+  // P2P Consulting States
+  const [consultRequests, setConsultRequests] = useState<any[]>([]);
+
+  const fetchConsults = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.get('/consultations?status=requested', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setConsultRequests(res.data?.data?.requests || []);
+    } catch (err) {
+      console.error('Failed to fetch consult requests', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchConsults();
+  }, []);
+
+  const handleAcceptDashboardRequest = async (requestId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await api.patch(`/consultations/${requestId}/accept`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchConsults();
+      alert('Consultation request accepted! Go to the case details page to chat.');
+    } catch (err) {
+      console.error('Failed to accept request', err);
+    }
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -300,6 +332,60 @@ export default function Dashboard() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* P2P Consultation Requests Tracker */}
+              {user.userType === 'doctor' && (
+                <Card sx={{ boxShadow: 3, borderRadius: 3 }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Assignment sx={{ mr: 1, color: 'secondary.main' }} />
+                      <Typography variant="h6" fontWeight={600}>
+                        Peer Consultation Requests
+                      </Typography>
+                    </Box>
+                    {consultRequests.length === 0 ? (
+                      <Alert severity="info">No active consultation requests matching your profile.</Alert>
+                    ) : (
+                      <Stack spacing={2}>
+                        {consultRequests.map((req: any) => (
+                          <Box
+                            key={req._id}
+                            sx={{
+                              p: 2,
+                              bgcolor: '#faf5ff',
+                              borderRadius: 2,
+                              border: '1px solid #e9d5ff',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: 2
+                            }}
+                          >
+                            <Box>
+                              <Typography variant="subtitle1" fontWeight={700} color="secondary.main">
+                                {req.case?.title || 'Challenging Case Study'}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Requested Specialty: <strong>{req.specialty}</strong> | Pledged: <strong>{req.rewardPoints} points</strong>
+                              </Typography>
+                            </Box>
+                            <Button 
+                              variant="contained" 
+                              color="secondary" 
+                              size="small" 
+                              onClick={() => handleAcceptDashboardRequest(req._id)}
+                              sx={{ textTransform: 'none', fontWeight: 600 }}
+                            >
+                              Accept Consultation
+                            </Button>
+                          </Box>
+                        ))}
+                      </Stack>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Upcoming Webinars and Notifications Row */}
               <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
