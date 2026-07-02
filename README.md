@@ -19,6 +19,29 @@ MedInternia is a comprehensive medical education and collaboration platform desi
 
 </div>
 
+---
+
+# Table of Contents
+
+- [🚨 Problem Statement](#-problem-statement)
+- [🎯 Project Vision](#-project-vision)
+- [💡 Solution Overview](#-solution-overview)
+- [👥 User-Centric Narrative](#-user-centric-narrative)
+- [🌟 Features](#-features)
+- [🛠️ Tech Stack](#%EF%B8%8F-tech-stack)
+- [📁 Folder Structure](#-folder-structure)
+- [⚡ Getting Started](#-getting-started)
+- [🌐 Local Development URLs](#-local-development-urls)
+- [📝 Usage](#-usage)
+- [🤝 Contributing](#-contributing)
+- [🌟 Contributors](#-contributors)
+- [👨‍💻 Project Admins / Maintainers](#%E2%80%8D-project-admins--maintainers)
+- [🏷️ GSSoC 2026](#%EF%B8%8F-gssoc-2026)
+- [📄 License](#%EF%B8%8F-gssoc-2026)
+- [📬 Contact](#-contact)
+
+---
+
 # 🚨 Problem Statement
 
 The medical education and collaboration ecosystem faces critical real-world challenges:
