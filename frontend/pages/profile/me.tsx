@@ -194,6 +194,9 @@ export default function MeProfilePage() {
               <Button fullWidth variant="outlined" component={Link} href="/profile/cases" sx={{ borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }} startIcon={<LibraryBooksIcon />}>
                 My Cases
               </Button>
+              <Button fullWidth variant="outlined" component={Link} href="/challenges" sx={{ borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }} startIcon={<SchoolIcon />}>
+                Clinical Assessments
+              </Button>
             </Stack>
           </Card>
         </Grid>
