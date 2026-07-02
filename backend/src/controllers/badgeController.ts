@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { createAndEmitNotification } from './notificationController';
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
@@ -81,24 +82,35 @@ export const awardBadge = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const userBadge = new UserBadge({
-      user: userId,
-      badge: badgeId,
-      caseId,
-      commentId,
-      verifiedBy,
-      metadata
-    });
+    const session = await mongoose.startSession();
+    let committed = false;
+    let userBadge: any;
+    try {
+      session.startTransaction();
 
-    await userBadge.save();
+      [userBadge] = await UserBadge.create([{
+        user: userId,
+        badge: badgeId,
+        caseId,
+        commentId,
+        verifiedBy,
+        metadata
+      }], { session });
 
-    // Update user's certificate count
-    await User.findByIdAndUpdate(userId, {
-      $inc: { certificatesEarned: 1 }
-    });
+      // Update user's certificate count
+      await User.findByIdAndUpdate(userId, {
+        $inc: { certificatesEarned: 1 }
+      }, { session });
 
-    // Populate badge info
-    await userBadge.populate('badge');
+      await session.commitTransaction();
+      committed = true;
+
+      // Populate badge info
+      await userBadge.populate('badge');
+    } finally {
+      if (!committed) await session.abortTransaction();
+      session.endSession();
+    }
      // Notify user they earned a badge
     const badgeData = userBadge.badge as any;
     await createAndEmitNotification({

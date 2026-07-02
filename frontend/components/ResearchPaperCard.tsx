@@ -13,20 +13,34 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
 
   useEffect(() => {
     // Load starred/pinned state from localStorage
-    const starredPapers = JSON.parse(localStorage.getItem('starredPapers') || '[]');
+    let starredPapers: string[] = [];
+    let pinnedPapers: string[] = [];
+    try {
+      starredPapers = JSON.parse(localStorage.getItem('starredPapers') || '[]');
+    } catch {
+      starredPapers = [];
+    }
+    try {
+      pinnedPapers = JSON.parse(localStorage.getItem('pinnedPapers') || '[]');
+    } catch {
+      pinnedPapers = [];
+    }
     setStarred(starredPapers.includes(paper._id));
-    const pinnedPapers = JSON.parse(localStorage.getItem('pinnedPapers') || '[]');
     setPinned(pinnedPapers.includes(paper._id));
   }, [paper._id]);
 
   const handleStarClick = () => {
     setStarred(prev => {
       const newVal = !prev;
-      const starredPapers = JSON.parse(localStorage.getItem('starredPapers') || '[]');
-      if (newVal) {
-        localStorage.setItem('starredPapers', JSON.stringify([...starredPapers, paper._id]));
-      } else {
-        localStorage.setItem('starredPapers', JSON.stringify(starredPapers.filter((id: string) => id !== paper._id)));
+      try {
+        const starredPapers = JSON.parse(localStorage.getItem('starredPapers') || '[]');
+        if (newVal) {
+          localStorage.setItem('starredPapers', JSON.stringify([...starredPapers, paper._id]));
+        } else {
+          localStorage.setItem('starredPapers', JSON.stringify(starredPapers.filter((id: string) => id !== paper._id)));
+        }
+      } catch {
+        localStorage.setItem('starredPapers', JSON.stringify(newVal ? [paper._id] : []));
       }
       return newVal;
     });
@@ -34,11 +48,15 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
   const handlePinClick = () => {
     setPinned(prev => {
       const newVal = !prev;
-      const pinnedPapers = JSON.parse(localStorage.getItem('pinnedPapers') || '[]');
-      if (newVal) {
-        localStorage.setItem('pinnedPapers', JSON.stringify([...pinnedPapers, paper._id]));
-      } else {
-        localStorage.setItem('pinnedPapers', JSON.stringify(pinnedPapers.filter((id: string) => id !== paper._id)));
+      try {
+        const pinnedPapers = JSON.parse(localStorage.getItem('pinnedPapers') || '[]');
+        if (newVal) {
+          localStorage.setItem('pinnedPapers', JSON.stringify([...pinnedPapers, paper._id]));
+        } else {
+          localStorage.setItem('pinnedPapers', JSON.stringify(pinnedPapers.filter((id: string) => id !== paper._id)));
+        }
+      } catch {
+        localStorage.setItem('pinnedPapers', JSON.stringify(newVal ? [paper._id] : []));
       }
       return newVal;
     });

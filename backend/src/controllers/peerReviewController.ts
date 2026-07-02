@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { createAndEmitNotification } from './notificationController';
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
@@ -57,38 +58,49 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const peerReview = new PeerReview({
-      reviewer: reviewerId,
-      reviewee: revieweeId,
-      caseId,
-      commentId,
-      rating,
-      feedback,
-      comments,
-      tags
-    });
+    const session = await mongoose.startSession();
+    let committed = false;
+    let peerReview: any;
+    try {
+      session.startTransaction();
 
-    await peerReview.save();
+      [peerReview] = await PeerReview.create([{
+        reviewer: reviewerId,
+        reviewee: revieweeId,
+        caseId,
+        commentId,
+        rating,
+        feedback,
+        comments,
+        tags
+      }], { session });
 
-    // Update reviewer's peer review count
-    await User.findByIdAndUpdate(reviewerId, {
-      $inc: { peerReviewsGiven: 1 }
-    });
+      // Update reviewer's peer review count
+      await User.findByIdAndUpdate(reviewerId, {
+        $inc: { peerReviewsGiven: 1 }
+      }, { session });
 
-    // Update reviewee's peer review count and calculate new average
-    const revieweeReviews = await PeerReview.find({ reviewee: revieweeId });
-    const totalRating = revieweeReviews.reduce((sum, review) => sum + review.rating, 0);
-    const averageRating = totalRating / revieweeReviews.length;
+      // Update reviewee's peer review count and calculate new average
+      const revieweeReviews = await PeerReview.find({ reviewee: revieweeId }).session(session);
+      const totalRating = revieweeReviews.reduce((sum, review) => sum + review.rating, 0);
+      const averageRating = totalRating / revieweeReviews.length;
 
-    await User.findByIdAndUpdate(revieweeId, {
-      $inc: { peerReviewsReceived: 1 },
-      $set: { averageRating: Math.round(averageRating * 10) / 10 }
-    });
+      await User.findByIdAndUpdate(revieweeId, {
+        $inc: { peerReviewsReceived: 1 },
+        $set: { averageRating: Math.round(averageRating * 10) / 10 }
+      }, { session });
 
-    await peerReview.populate([
-      { path: 'reviewer', select: 'firstName lastName userType' },
-      { path: 'reviewee', select: 'firstName lastName userType' }
-    ]);
+      await session.commitTransaction();
+      committed = true;
+
+      await peerReview.populate([
+        { path: 'reviewer', select: 'firstName lastName userType' },
+        { path: 'reviewee', select: 'firstName lastName userType' }
+      ]);
+    } finally {
+      if (!committed) await session.abortTransaction();
+      session.endSession();
+    }
      // Notify reviewee about peer review
     await createAndEmitNotification({
       recipientId: revieweeId,
@@ -298,6 +310,27 @@ export const getPeerReviewAnalytics = async (req: Request, res: Response) => {
       .sort(([,a], [,b]) => b - a)
       .slice(0, 5)
       .reduce((obj, [tag, count]) => ({ ...obj, [tag]: count }), {});
+
+    // Calculate monthly trend (received vs given)
+    const monthlyTrend: { [key: string]: { received: number; given: number } } = {};
+    const getYearMonth = (date: Date) => {
+      const d = new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    receivedReviews.forEach(r => {
+      const ym = getYearMonth(r.createdAt);
+      if (!monthlyTrend[ym]) monthlyTrend[ym] = { received: 0, given: 0 };
+      monthlyTrend[ym].received += 1;
+    });
+
+    givenReviews.forEach(r => {
+      const ym = getYearMonth(r.createdAt);
+      if (!monthlyTrend[ym]) monthlyTrend[ym] = { received: 0, given: 0 };
+      monthlyTrend[ym].given += 1;
+    });
+
+    analytics.monthlyTrend = monthlyTrend;
 
     res.json({
       success: true,

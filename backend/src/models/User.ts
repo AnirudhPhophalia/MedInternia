@@ -9,6 +9,8 @@ export interface IUser extends Document {
   lastName: string;
   email: string;
   password: string;
+  passwordResetToken?: string;
+passwordResetExpires?: Date;
   loginAttempts?: number;
   lockoutUntil?: Date | null;
   userType: AppRole;
@@ -32,6 +34,7 @@ export interface IUser extends Document {
   credits?: number;
   streak: number; // Current active streak (days)
   longestStreak: number;
+  lastActivityDate?: Date;
   casesAnalyzed: number;
   upvotesReceived: number;
   peerReviewsGiven: number;
@@ -121,6 +124,15 @@ const UserSchema = new Schema<IUser>({
     },
     select: false
   },
+  passwordResetToken: {
+  type: String,
+  select: false
+},
+
+passwordResetExpires: {
+  type: Date,
+  select: false
+},
   loginAttempts: {
     type: Number,
     default: 0
@@ -185,6 +197,10 @@ const UserSchema = new Schema<IUser>({
     type: Number,
     default: 0,
     min: [0, 'Longest streak cannot be negative']
+  },
+  lastActivityDate: {
+    type: Date,
+    default: null
   },
   casesAnalyzed: {
     type: Number,

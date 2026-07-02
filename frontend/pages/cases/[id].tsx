@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab } from '@mui/material';
 import { MessageCircleReply, Pin } from 'lucide-react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -9,6 +9,7 @@ import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import PdfExportButton from '../../components/PdfExportButton';
+import ClinicalTimeline from '../../components/ClinicalTimeline';
 
 export default function CaseDiscussion({ id: propId, modalMode, hideDescription }: { id?: string, modalMode?: boolean, hideDescription?: boolean }) {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [caseData, setCaseData] = useState<any>(null);
   const [discussions, setDiscussions] = useState<any[]>([]);
   const [pinned, setPinned] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedComment, setSelectedComment] = useState<any>(null);
   const [openReplies, setOpenReplies] = useState<{[key: string]: boolean}>({});
@@ -174,6 +176,23 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
           </Box>
           <Typography variant="body1">{caseData.description}</Typography>
         </>}
+
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, val) => setActiveTab(val)} 
+          centered 
+          sx={{ my: 3, borderBottom: '1px solid #e2e8f0' }}
+        >
+          <Tab label="Clinical Timeline" sx={{ fontWeight: 600 }} />
+          <Tab label={`Discussions (${allDiscussions.length})`} sx={{ fontWeight: 600 }} />
+        </Tabs>
+
+        {activeTab === 0 && (
+          <ClinicalTimeline caseData={caseData} discussions={allDiscussions} />
+        )}
+
+        {activeTab === 1 && (
+          <>
           {pinned.length > 0 && (
             <Box sx={{ mb: 3, p: 2, bgcolor: '#fffbe6', borderRadius: 3, boxShadow: '0 2px 12px #ffd70022', border: '1.5px solid #ffe066' }}>
               <Typography variant="h6" sx={{ mb: 2, color: '#FFD700', fontWeight: 700 }}>Keypoints</Typography>
@@ -418,7 +437,9 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
               </motion.div>
             </Box>
           )}
-        </Box>
+          </>
+        )}
+      </Box>
     </Container>
   );
 }

@@ -450,9 +450,14 @@ export const forgotPassword = asyncHandler(
       throw new AppError("Email required", 400);
     }
     const user = await User.findOne({ email });
-    if (!user) {
-      throw new AppError("User not found", 404);
-    }
+
+if (!user) {
+    return res.json({
+        success: true,
+        message:
+            "If an account exists with this email, an OTP has been sent."
+    });
+}
     // Generate OTP
     const otp = await issueOtp(email, 'reset');
 

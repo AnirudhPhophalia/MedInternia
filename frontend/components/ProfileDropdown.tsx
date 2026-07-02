@@ -43,10 +43,13 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
 
   // Logout logic
   const logout = () => {
-  // Clear tokens/session (example: localStorage)
-  localStorage.removeItem("authToken");
   localStorage.removeItem("token");
-  // Add any other session clearing logic here
+  localStorage.removeItem("userId");
+  localStorage.removeItem("user");
+  localStorage.removeItem("starredCases");
+  localStorage.removeItem("starredPapers");
+  localStorage.removeItem("pinnedPapers");
+  localStorage.removeItem("refreshToken");
   handleClose();
   onNavigate("/");
   };
