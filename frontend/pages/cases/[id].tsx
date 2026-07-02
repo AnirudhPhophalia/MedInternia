@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { MessageCircleReply, Pin } from 'lucide-react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
@@ -8,6 +8,7 @@ import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
+import Link from 'next/link';
 import PdfExportButton from '../../components/PdfExportButton';
 import ClinicalTimeline from '../../components/ClinicalTimeline';
 
@@ -63,6 +64,44 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Bookmark states
+  const [collections, setCollections] = useState<any[]>([]);
+  const [bookmarkOpen, setBookmarkOpen] = useState(false);
+  const [selectedCollId, setSelectedCollId] = useState('');
+  const [bookmarkNote, setBookmarkNote] = useState('');
+
+  const fetchCollections = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.get('/bookmarks', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCollections(res.data?.data?.collections || []);
+    } catch (err) {
+      console.error('Failed to fetch collections', err);
+    }
+  };
+
+  const handleAddBookmark = async () => {
+    if (!selectedCollId) return;
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/bookmarks/${selectedCollId}/cases`, {
+        caseId: id,
+        note: bookmarkNote
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBookmarkOpen(false);
+      setBookmarkNote('');
+      setSelectedCollId('');
+      alert('Case bookmarked successfully!');
+    } catch (err) {
+      console.error('Failed to bookmark case', err);
+      alert('Failed to bookmark case or already bookmarked.');
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
     const token = localStorage.getItem('token');
@@ -80,6 +119,8 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         setError('Failed to fetch case');
         setLoading(false);
       });
+    
+    fetchCollections();
   }, [id]);
 
   const handleDiscussion = async () => {
@@ -172,7 +213,17 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         {!hideDescription && <>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h4" gutterBottom sx={{ flex: 1 }}>{caseData.title}</Typography>
-            <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={() => setBookmarkOpen(true)}
+                sx={{ fontWeight: 600, textTransform: 'none' }}
+              >
+                Bookmark Collection
+              </Button>
+              <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+            </Stack>
           </Box>
           <Typography variant="body1">{caseData.description}</Typography>
         </>}
@@ -440,6 +491,67 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
           </>
         )}
       </Box>
+
+      {/* Bookmark Collection Dialog */}
+      <Dialog 
+        open={bookmarkOpen} 
+        onClose={() => setBookmarkOpen(false)} 
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Save Case to Collection</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2.5} sx={{ mt: 1 }}>
+            {collections.length === 0 ? (
+              <Box>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  You don't have any bookmark collections yet. Go to your Profile page to create a folder!
+                </Alert>
+                <Button variant="contained" component={Link} href="/profile/me" fullWidth sx={{ textTransform: 'none' }}>
+                  Go to Profile Dashboard
+                </Button>
+              </Box>
+            ) : (
+              <>
+                <FormControl fullWidth>
+                  <InputLabel>Select Collection Folder</InputLabel>
+                  <Select
+                    value={selectedCollId}
+                    label="Select Collection Folder"
+                    onChange={e => setSelectedCollId(e.target.value)}
+                  >
+                    {collections.map(c => (
+                      <MenuItem key={c._id} value={c._id}>{c.title}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Private Annotations / Study Notes"
+                  placeholder="Write study summaries or takeaways for this case..."
+                  value={bookmarkNote}
+                  onChange={e => setBookmarkNote(e.target.value)}
+                  multiline
+                  rows={3}
+                  fullWidth
+                />
+              </>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setBookmarkOpen(false)} variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleAddBookmark} 
+            variant="contained" 
+            disabled={!selectedCollId || collections.length === 0}
+          >
+            Save Bookmark
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
