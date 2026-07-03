@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
@@ -196,32 +197,43 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     userData.allergies = allergies;
   }
 
-  // Create new user
-  const user = new User(userData);
-  await user.save();
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    // Create new user
+    const user = new User(userData);
+    await user.save({ session });
 
-  // Generate JWT tokens
-  const tokenPayload = {
-    userId: (user._id as any).toString(),
-    email: user.email,
-    userType: user.userType,
-  };
-  const token = generateToken(tokenPayload);
-  const refreshToken = generateRefreshToken(tokenPayload);
+    await session.commitTransaction();
+    session.endSession();
 
-  // Remove password from response
-  const userResponse = user.toObject() as any;
-  delete userResponse.password;
+    // Generate JWT tokens
+    const tokenPayload = {
+      userId: (user._id as any).toString(),
+      email: user.email,
+      userType: user.userType,
+    };
+    const token = generateToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
 
-  res.status(201).json({
-    success: true,
-    message: "User registered successfully",
-    data: {
-      user: userResponse,
-      token,
-      refreshToken,
-    },
-  });
+    // Remove password from response
+    const userResponse = user.toObject() as any;
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: {
+        user: userResponse,
+        token,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 });
 
 export const sendOtp = async (req: Request, res: Response) => {
