@@ -187,6 +187,7 @@ export default function Navbar({ route }: { route?: string }) {
   return (
     <>
       <AppBar
+        position="fixed"
         sx={{
           background: "linear-gradient(90deg, #1d8299 0%, #5ac0d8 100%)",
           zIndex: theme.zIndex.drawer + 1,
