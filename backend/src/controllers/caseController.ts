@@ -835,10 +835,16 @@ export const repostCase = asyncHandler(
       throw new AppError("Repost not allowed", 403);
     }
     // Duplicate case logic (simplified)
+    const oldCaseData = caseDoc.toObject();
     const newCase = new Case({
-      ...caseDoc.toObject(),
+      ...oldCaseData,
       _id: undefined,
       doctor: user?._id,
+      likes: [],
+      comments: [],
+      moderationStatus: 'pending',
+      moderationAuditTrail: [],
+      pointsAwarded: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
