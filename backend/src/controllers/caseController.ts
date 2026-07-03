@@ -243,47 +243,51 @@ export const replyToComment = asyncHandler(
 // Like a comment
 export const likeComment = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user as { _id: string | { toString(): string } };
+    const user = req.user;
     const { caseId, commentId } = req.params;
     if (!user) {
       throw new AppError("User not authenticated", 401);
     }
-    const caseDoc = await Case.findById(caseId);
-    if (!caseDoc) {
-      throw new AppError("Case not found", 404);
-    }
-    const comment = caseDoc.comments.find(
-      (c: any) => c._id?.toString() === commentId,
-    );
-    if (!comment) {
-      throw new AppError("Comment not found", 404);
-    }
-    // Toggle like
     const mongoose = require("mongoose");
     const userIdObj =
       typeof user._id === "string"
         ? new mongoose.Types.ObjectId(user._id)
         : user._id;
-    const likeIndex = comment.likes.findIndex(
-      (uid: any) => uid.toString() === userIdObj.toString(),
+
+    const caseDoc = await Case.findOne(
+      { _id: caseId, "comments._id": commentId },
+      { "comments.$": 1 }
     );
-    let liked = false;
-    if (likeIndex > -1) {
-      // Unlike
-      comment.likes.splice(likeIndex, 1);
-      liked = false;
-    } else {
-      // Like
-      comment.likes.push(userIdObj);
-      liked = true;
+    if (!caseDoc || caseDoc.comments.length === 0) {
+      throw new AppError("Case or Comment not found", 404);
     }
-    await caseDoc.save();
+
+    const comment = caseDoc.comments[0];
+    const isLiked = comment.likes.some((uid: any) => uid.toString() === userIdObj.toString());
+
+    let updatedCase;
+    if (isLiked) {
+      updatedCase = await Case.findOneAndUpdate(
+        { _id: caseId, "comments._id": commentId },
+        { $pull: { "comments.$.likes": userIdObj } },
+        { new: true }
+      );
+    } else {
+      updatedCase = await Case.findOneAndUpdate(
+        { _id: caseId, "comments._id": commentId },
+        { $addToSet: { "comments.$.likes": userIdObj } },
+        { new: true }
+      );
+    }
+
+    const updatedComment = updatedCase?.comments.find((c: any) => c._id.toString() === commentId);
+
     res.json({
       success: true,
-      message: liked ? "Comment liked" : "Comment unliked",
-      data: { likes: comment.likes.length, liked },
+      message: !isLiked ? "Comment liked" : "Comment unliked",
+      data: { likes: updatedComment?.likes.length || 0, liked: !isLiked },
     });
-  },
+  }
 );
 
 // Rate a comment
@@ -298,53 +302,71 @@ export const rateComment = asyncHandler(
     if (!rating || rating < 1 || rating > 5) {
       throw new AppError("Rating must be between 1 and 5", 400);
     }
-    const caseDoc = await Case.findById(caseId);
-    if (!caseDoc) {
-      throw new AppError("Case not found", 404);
-    }
-    const comment = caseDoc.comments.find(
-      (c: any) => c._id?.toString() === commentId,
-    );
-    if (!comment) {
-      throw new AppError("Comment not found", 404);
-    }
-    // Toggle rating
+
     const mongoose = require("mongoose");
-    const userIdObj =
-      typeof user._id === "string"
-        ? new mongoose.Types.ObjectId(user._id)
-        : user._id;
-    const rateIndex = comment.ratedBy.findIndex(
-      (uid: any) => uid.toString() === userIdObj.toString(),
-    );
+    const session = await mongoose.startSession();
+    session.startTransaction();
     let rated = false;
-    if (rateIndex > -1) {
-      // Unrate
-      comment.ratedBy.splice(rateIndex, 1);
-      // Recalculate average rating
-      if (comment.ratedBy.length === 0) comment.rating = undefined;
-      else
-        comment.rating = Math.round(
-          ((comment.rating ?? 0) * comment.ratedBy.length) /
-            (comment.ratedBy.length + 1),
-        );
-      rated = false;
-    } else {
-      // Rate
-      comment.ratedBy.push(userIdObj);
-      if (!comment.rating) comment.rating = rating;
-      else
-        comment.rating = Math.round(
-          (comment.rating * (comment.ratedBy.length - 1) + rating) /
-            comment.ratedBy.length,
-        );
-      rated = true;
+    let commentRating;
+    let commentRatedByLength;
+
+    try {
+      const caseDoc = await Case.findById(caseId).session(session);
+      if (!caseDoc) {
+        throw new AppError("Case not found", 404);
+      }
+      const comment = caseDoc.comments.find(
+        (c: any) => c._id?.toString() === commentId,
+      );
+      if (!comment) {
+        throw new AppError("Comment not found", 404);
+      }
+
+      const userIdObj =
+        typeof user._id === "string"
+          ? new mongoose.Types.ObjectId(user._id)
+          : user._id;
+      const rateIndex = comment.ratedBy.findIndex(
+        (uid: any) => uid.toString() === userIdObj.toString(),
+      );
+
+      if (rateIndex > -1) {
+        // Unrate
+        comment.ratedBy.splice(rateIndex, 1);
+        if (comment.ratedBy.length === 0) comment.rating = undefined;
+        else
+          comment.rating = Math.round(
+            ((comment.rating ?? 0) * (comment.ratedBy.length + 1) - rating) /
+              (comment.ratedBy.length || 1),
+          );
+        rated = false;
+      } else {
+        // Rate
+        comment.ratedBy.push(userIdObj);
+        if (!comment.rating) comment.rating = rating;
+        else
+          comment.rating = Math.round(
+            ((comment.rating * (comment.ratedBy.length - 1)) + rating) /
+              comment.ratedBy.length,
+          );
+        rated = true;
+      }
+      
+      commentRating = comment.rating;
+      commentRatedByLength = comment.ratedBy.length;
+      await caseDoc.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
     }
-    await caseDoc.save();
+
     res.json({
       success: true,
       message: rated ? "Comment rated" : "Comment unrated",
-      data: { rating: comment.rating, ratedBy: comment.ratedBy.length, rated },
+      data: { rating: commentRating, ratedBy: commentRatedByLength, rated },
     });
   },
 );
@@ -857,43 +879,40 @@ export const toggleLike = asyncHandler(
       throw new AppError("User not authenticated", 401);
     }
 
-    const caseData = await Case.findById(id);
+    const caseDoc = await Case.findById(id, { isActive: 1, likes: 1 });
 
-    if (!caseData) {
+    if (!caseDoc) {
       throw new AppError("Case not found", 404);
     }
 
-    if (!caseData.isActive) {
+    if (!caseDoc.isActive) {
       throw new AppError("Case is no longer available", 404);
     }
 
     const userIdString = user._id?.toString();
-    const likeIndex = caseData.likes.findIndex(
-      (like) => like.toString() === userIdString,
-    );
+    const isLiked = caseDoc.likes.some((like) => like.toString() === userIdString);
 
-    let isLiked = false;
-
-    if (likeIndex > -1) {
-      // Unlike
-      caseData.likes.splice(likeIndex, 1);
-      isLiked = false;
+    let updatedCase;
+    if (isLiked) {
+      updatedCase = await Case.findByIdAndUpdate(
+        id,
+        { $pull: { likes: user._id as any } },
+        { new: true, select: "likes" }
+      );
     } else {
-      // Like
-      caseData.likes.push(user._id as any);
-      isLiked = true;
+      updatedCase = await Case.findByIdAndUpdate(
+        id,
+        { $addToSet: { likes: user._id as any } },
+        { new: true, select: "likes" }
+      );
     }
-
-    await caseData.save();
 
     res.json({
       success: true,
-      message: isLiked
-        ? "Case liked successfully"
-        : "Case unliked successfully",
+      message: !isLiked ? "Case liked successfully" : "Case unliked successfully",
       data: {
-        isLiked,
-        totalLikes: caseData.likes.length,
+        isLiked: !isLiked,
+        totalLikes: updatedCase?.likes.length || 0,
       },
     });
   },
