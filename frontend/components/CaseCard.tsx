@@ -156,6 +156,30 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
             </Tooltip> */}
           </Box>
         </Box>
+        
+        {/* Metadata section */}
+        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 1.5, mt: 1 }}>
+          {caseData?.specialization && (
+            <Box sx={{ px: 1.5, py: 0.5, bgcolor: '#e8f5e9', color: '#2e7d32', borderRadius: 2, fontSize: 13, fontWeight: 600 }}>
+              {caseData.specialization}
+            </Box>
+          )}
+          {caseData?.difficulty && (
+            <Box sx={{ px: 1.5, py: 0.5, bgcolor: '#fff3e0', color: '#e65100', borderRadius: 2, fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>
+              {caseData.difficulty}
+            </Box>
+          )}
+          {caseData?.pointsAwarded !== undefined && (
+            <Box sx={{ px: 1.5, py: 0.5, bgcolor: '#ede7f6', color: '#5e35b1', borderRadius: 2, fontSize: 13, fontWeight: 600 }}>
+              Points: {caseData.pointsAwarded}
+            </Box>
+          )}
+          {Array.isArray(caseData?.tags) && caseData.tags.map((tag: string, idx: number) => (
+            <Box key={idx} sx={{ px: 1.5, py: 0.5, bgcolor: '#eceff1', color: '#37474f', borderRadius: 2, fontSize: 13, fontWeight: 500 }}>
+              #{tag}
+            </Box>
+          ))}
+        </Stack>
 
         {/* Description preview */}
         <Typography color="#444" fontSize={16} sx={{ mb: images.length ? 1 : 2, mt: 0.5, fontWeight: 400 }}>
