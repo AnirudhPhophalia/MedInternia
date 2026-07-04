@@ -687,7 +687,7 @@ export const followUser = async (req: AuthRequest, res: Response) => {
     }
     const myId = req.user._id;
     const { userId } = req.body;
-    if (myId === userId) return res.status(400).json({ success: false, message: "Cannot follow yourself" });
+    if (myId.toString() === userId) return res.status(400).json({ success: false, message: "Cannot follow yourself" });
 
     const [me, other] = await Promise.all([
       User.findById(myId).select('following'),

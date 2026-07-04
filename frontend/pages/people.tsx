@@ -44,7 +44,7 @@ export default function PeoplePage() {
       setProfile(res.data?.data?.user || res.data?.user || res.data);
     });
     // Fetch posts/cases
-    api.get(`/cases?authorId=${id}`).then((res) => {
+    api.get(`/cases?doctor=${id}`).then((res) => {
       setPosts(res.data?.data?.cases || res.data?.cases || res.data || []);
     });
   }, [id]);

@@ -1,16 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload, verifyRefreshToken, generateToken } from '../utils/jwt';
 import User, { IUser } from '../models/User';
-import BlacklistedToken from '../models/BlacklistedToken';
+import BlacklistedToken, { hashToken } from '../models/BlacklistedToken';
 import { getUserRole } from './permissions';
 import type { AppRole } from './permissions';
 
 export const blacklistToken = async (token: string, expiresAt: Date) => {
-  await BlacklistedToken.create({ token, expiresAt });
+  await BlacklistedToken.create({ tokenHash: hashToken(token), expiresAt });
 };
 
 export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
-  const exists = await BlacklistedToken.findOne({ token });
+  const exists = await BlacklistedToken.findOne({ tokenHash: hashToken(token) });
   return !!exists;
 };
 

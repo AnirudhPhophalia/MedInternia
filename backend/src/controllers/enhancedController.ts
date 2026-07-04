@@ -3,6 +3,7 @@ import Case from '../models/Case';
 import User from '../models/User';
 import Rating from '../models/Rating';
 import { AuthRequest } from '../middleware/auth';
+import { escapeRegex } from '../utils/escapeRegex';
 
 // Rate and award points for a comment
 export const rateComment = async (req: AuthRequest, res: Response) => {
@@ -364,16 +365,17 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       const filter: any = { isActive: true };
 
       if (query) {
+        const escaped = escapeRegex(query as string);
         filter.$or = [
-          { title: { $regex: query, $options: 'i' } },
-          { description: { $regex: query, $options: 'i' } },
-          { diagnosis: { $regex: query, $options: 'i' } },
-          { tags: { $in: [new RegExp(query as string, 'i')] } }
+          { title: { $regex: escaped, $options: 'i' } },
+          { description: { $regex: escaped, $options: 'i' } },
+          { diagnosis: { $regex: escaped, $options: 'i' } },
+          { tags: { $in: [new RegExp(escaped, 'i')] } }
         ];
       }
 
       if (specialization) {
-        filter.specialization = { $regex: specialization, $options: 'i' };
+        filter.specialization = { $regex: escapeRegex(specialization as string), $options: 'i' };
       }
 
       if (difficulty) {
@@ -381,10 +383,11 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       }
 
       if (disease) {
+        const escaped = escapeRegex(disease as string);
         filter.$or = filter.$or || [];
         filter.$or.push(
-          { diagnosis: { $regex: disease, $options: 'i' } },
-          { symptoms: { $in: [new RegExp(disease as string, 'i')] } }
+          { diagnosis: { $regex: escaped, $options: 'i' } },
+          { symptoms: { $in: [new RegExp(escaped, 'i')] } }
         );
       }
 
@@ -406,7 +409,7 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       const filter: any = { userType: 'doctor' };
 
       if (query || doctorName) {
-        const searchTerm = query || doctorName;
+        const searchTerm = escapeRegex((query || doctorName) as string);
         filter.$or = [
           { firstName: { $regex: searchTerm, $options: 'i' } },
           { lastName: { $regex: searchTerm, $options: 'i' } },
@@ -415,7 +418,7 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       }
 
       if (specialization) {
-        filter.specialization = { $regex: specialization, $options: 'i' };
+        filter.specialization = { $regex: escapeRegex(specialization as string), $options: 'i' };
       }
 
       results = await User.find(filter)
@@ -431,11 +434,12 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       const filter: any = { userType: 'intern' };
 
       if (query) {
+        const escaped = escapeRegex(query as string);
         filter.$or = [
-          { firstName: { $regex: query, $options: 'i' } },
-          { lastName: { $regex: query, $options: 'i' } },
-          { medicalSchool: { $regex: query, $options: 'i' } },
-          { interests: { $in: [new RegExp(query as string, 'i')] } }
+          { firstName: { $regex: escaped, $options: 'i' } },
+          { lastName: { $regex: escaped, $options: 'i' } },
+          { medicalSchool: { $regex: escaped, $options: 'i' } },
+          { interests: { $in: [new RegExp(escaped, 'i')] } }
         ];
       }
 

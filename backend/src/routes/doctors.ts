@@ -3,6 +3,8 @@ import { authenticate, authorize, optionalAuthenticate } from '../middleware/aut
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const router = Router();
 
 // Get all doctors
@@ -12,7 +14,7 @@ router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {
     
     const filter: any = { userType: 'doctor', isActive: true };
     if (specialization) {
-      filter.specialization = { $regex: specialization, $options: 'i' };
+      filter.specialization = { $regex: escapeRegex(specialization as string), $options: 'i' };
     }
 
     const doctors = await User.find(filter)

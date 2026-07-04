@@ -1,13 +1,15 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+import crypto from 'crypto';
+
 export interface IBlacklistedToken extends Document {
-  token: string;
+  tokenHash: string;
   expiresAt: Date;
   createdAt: Date;
 }
 
 const BlacklistedTokenSchema = new Schema<IBlacklistedToken>({
-  token: {
+  tokenHash: {
     type: String,
     required: true,
   },
@@ -22,6 +24,9 @@ const BlacklistedTokenSchema = new Schema<IBlacklistedToken>({
   },
 });
 
-BlacklistedTokenSchema.index({ token: 1 });
+BlacklistedTokenSchema.index({ tokenHash: 1 });
+
+export const hashToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex');
 
 export default mongoose.model<IBlacklistedToken>('BlacklistedToken', BlacklistedTokenSchema);

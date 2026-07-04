@@ -8,6 +8,9 @@ import Notification from "../models/Notification";
 import AICasePostSchedule from "../models/AICasePostSchedule";
 import { AuthRequest } from "../middleware/auth";
 import {
+  escapeRegex,
+} from "../utils/escapeRegex";
+import {
   buildAICaseSchedule,
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
@@ -502,6 +505,7 @@ export const getCases = asyncHandler(
       difficulty,
       tags,
       doctor,
+      authorId,
       page = 1,
       limit = 10,
       search,
@@ -511,7 +515,7 @@ export const getCases = asyncHandler(
     const filter: any = { isActive: true, $and: [publicCaseFilter] };
 
     if (specialization) {
-      filter.specialization = { $regex: specialization, $options: "i" };
+      filter.specialization = { $regex: escapeRegex(specialization as string), $options: "i" };
     }
 
     if (difficulty) {
@@ -523,15 +527,17 @@ export const getCases = asyncHandler(
       filter.tags = { $in: tagArray };
     }
 
-    if (doctor) {
-      filter.doctor = doctor;
+    const filterDoctor = doctor || authorId;
+    if (filterDoctor) {
+      filter.doctor = filterDoctor;
     }
 
     if (search) {
+      const escaped = escapeRegex(search as string);
       filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { tags: { $in: [new RegExp(search as string, "i")] } },
+        { title: { $regex: escaped, $options: "i" } },
+        { description: { $regex: escaped, $options: "i" } },
+        { tags: { $in: [new RegExp(escaped, "i")] } },
       ];
     }
 

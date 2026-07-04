@@ -225,7 +225,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-export const sendOtp = async (req: Request, res: Response) => {
+export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, message: 'Email required' });
   const otp = await issueOtp(email, 'signup');
