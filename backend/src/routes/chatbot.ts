@@ -1,9 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { getChatbotResponse } from '../services/chatbotService';
 
 const router = Router();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   const { message } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim() === '') {

@@ -28,6 +28,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import api from '../utils/api';
 import WebinarJoin from "../components/WebinarJoin";
 import { canUser } from "../utils/permissions";
+import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/layout/EmptyState";
 import { Plus, Video } from "lucide-react";
@@ -83,6 +84,19 @@ export default function WebinarsPage() {
   const [filterType, setFilterType] = useState("");
   const [sortBy, setSortBy] = useState("scheduledAt");
 
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    if (!hasAuthToken()) {
+      redirectToLogin(router, "/webinars");
+      return;
+    }
+
+    setAuthChecked(true);
+  }, [router]);
+
   const fetchWebinars = () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -121,10 +135,12 @@ export default function WebinarsPage() {
   };
 
   useEffect(() => {
+    if (!authChecked) return;
     fetchWebinars();
-  }, [activeTab, filterSpecialty, filterType, sortBy]);
+  }, [activeTab, filterSpecialty, filterType, sortBy, authChecked]);
 
   useEffect(() => {
+    if (!authChecked) return;
     // Fetch user profile
     api.get('/auth/profile')
       .then(res => {

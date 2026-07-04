@@ -21,6 +21,7 @@ import api from "../../utils/api";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { canUser } from "../../utils/permissions";
+import { hasAuthToken, redirectToLogin } from "../../utils/authRedirect";
 import PageHeader from "../../components/layout/PageHeader";
 import EmptyState from "../../components/layout/EmptyState";
 import FilterBar from "../../components/layout/FilterBar";
@@ -69,10 +70,24 @@ export default function Cases() {
   const theme = useTheme();
   const router = useRouter();
 
-  // Check login state and permissions
+  // Redirect unauthenticated users to login
+  const [authChecked, setAuthChecked] = useState(false);
+
   useEffect(() => {
+    if (!router.isReady) return;
+
+    if (!hasAuthToken()) {
+      redirectToLogin(router, "/cases");
+      return;
+    }
+
+    setAuthChecked(true);
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+
     const token = localStorage.getItem("token");
-    if (token) {
       setIsLoggedIn(true);
       api
         .get("/auth/profile")
@@ -93,7 +108,7 @@ export default function Cases() {
           console.warn("Failed to fetch recommended cases", err);
         });
     }
-  }, []);
+  }, [authChecked]);
 
   // Fetch Cases with Filters
   const fetchCases = (pageNum = 1, append = false) => {
