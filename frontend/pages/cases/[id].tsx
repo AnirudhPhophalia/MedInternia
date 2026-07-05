@@ -15,6 +15,7 @@ import {
   Grid,
   Card,
   CardContent,
+  CardMedia,
   Chip,
   Avatar,
   Divider,
