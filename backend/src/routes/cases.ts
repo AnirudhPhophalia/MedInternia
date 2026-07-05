@@ -27,7 +27,10 @@ import {
   likeComment,
   rateComment,
   solveCase,
-  getRecommendedCases
+  getRecommendedCases,
+  startClinicalSandbox,
+  orderSandboxTest,
+  submitSandboxDiagnosis
 } from '../controllers/caseController';
 import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
@@ -41,6 +44,11 @@ router.get('/my/cases', authenticate, getMyCases);
 router.post('/:id/solve', authenticate, solveCase);
 router.get('/moderation/queue', authenticate, requirePermission('comment:moderate'), getCaseModerationQueue);
 router.get('/ai-posts/my', authenticate, getMyAICaseSchedules);
+
+// Clinical Sandbox routes
+router.post('/:id/sandbox/start', authenticate, startClinicalSandbox);
+router.post('/:id/sandbox/order-test', authenticate, orderSandboxTest);
+router.post('/:id/sandbox/submit', authenticate, submitSandboxDiagnosis);
 
 // Permission-guarded case management routes
 router.post('/', authenticate, requirePermission('case:create'), createCase);
