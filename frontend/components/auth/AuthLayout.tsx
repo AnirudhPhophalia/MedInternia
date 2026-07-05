@@ -71,7 +71,7 @@ export default function AuthLayout({ title, subtitle, children, wide = false }: 
               alt="MedInternia logo"
               width={48}
               height={48}
-              style={{ borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)' }}
+              style={{ borderRadius: '50%', border: '2px solid rgba(255,255,255,0.38)', background: 'rgba(255,255,255,0.16)', padding: 4 }}
             />
             <Typography variant="h5" fontWeight={800} color="#fff" letterSpacing={0.5}>
               MedInternia
@@ -142,7 +142,7 @@ export default function AuthLayout({ title, subtitle, children, wide = false }: 
               alt="MedInternia logo"
               width={36}
               height={36}
-              style={{ borderRadius: '50%' }}
+              style={{ borderRadius: '50%', background: '#ffffff', padding: 4, boxShadow: '0 8px 20px rgba(15, 23, 42, 0.12)' }}
             />
             <Typography variant="h6" fontWeight={800} color="primary.main">
               MedInternia

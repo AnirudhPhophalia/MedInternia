@@ -63,6 +63,8 @@ export default function Register() {
     },
   };
 
+  const requiredLabel = (label: string) => `${label} *`;
+
   const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
@@ -405,11 +407,11 @@ export default function Register() {
                         columnGap: 2,
                       }}
                     >
-                      <TextField label="First Name" name="firstName" fullWidth margin="normal" value={form.firstName} onChange={handleChange} required autoFocus sx={authFieldSx} />
-                      <TextField label="Last Name" name="lastName" fullWidth margin="normal" value={form.lastName} onChange={handleChange} required sx={authFieldSx} />
-                      <TextField label="Email" name="email" type="email" fullWidth margin="normal" value={form.email} onChange={handleChange} required sx={{ ...authFieldSx, gridColumn: '1 / -1' }} />
+                      <TextField label={requiredLabel("First Name")} name="firstName" fullWidth margin="normal" value={form.firstName} onChange={handleChange} required autoFocus sx={authFieldSx} />
+                      <TextField label={requiredLabel("Last Name")} name="lastName" fullWidth margin="normal" value={form.lastName} onChange={handleChange} required sx={authFieldSx} />
+                      <TextField label={requiredLabel("Email")} name="email" type="email" fullWidth margin="normal" value={form.email} onChange={handleChange} required sx={{ ...authFieldSx, gridColumn: '1 / -1' }} />
                       <TextField
-                        label="Password"
+                        label={requiredLabel("Password")}
                         name="password"
                         type={showPassword ? 'text' : 'password'}
                         fullWidth
@@ -510,7 +512,7 @@ export default function Register() {
                         }}
                       />
                       <TextField
-                        label="Confirm Password"
+                        label={requiredLabel("Confirm Password")}
                         type={showConfirmPassword ? 'text' : 'password'}
                         fullWidth
                         margin="normal"
@@ -549,7 +551,7 @@ export default function Register() {
                           ),
                         }}
                       />
-                      <TextField select label="User Type" name="userType" fullWidth margin="normal" value={form.userType} onChange={handleChange} required sx={{ ...authFieldSx, gridColumn: '1 / -1' }}>
+                      <TextField select label={requiredLabel("User Type")} name="userType" fullWidth margin="normal" value={form.userType} onChange={handleChange} required sx={{ ...authFieldSx, gridColumn: '1 / -1' }}>
                         <MenuItem value="patient">Patient</MenuItem>
                         <MenuItem value="doctor">Doctor</MenuItem>
                         <MenuItem value="intern">Intern</MenuItem>
@@ -605,8 +607,8 @@ export default function Register() {
                     {form.userType === 'doctor' && (
                       <Fade in timeout={600}>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
-                          <TextField label="Specialization" name="specialization" fullWidth margin="normal" value={form.specialization} onChange={handleChange} required sx={authFieldSx} />
-                          <TextField label="License Number" name="licenseNumber" fullWidth margin="normal" value={form.licenseNumber} onChange={handleChange} required sx={authFieldSx} />
+                          <TextField label={requiredLabel("Specialization")} name="specialization" fullWidth margin="normal" value={form.specialization} onChange={handleChange} required sx={authFieldSx} />
+                          <TextField label={requiredLabel("License Number")} name="licenseNumber" fullWidth margin="normal" value={form.licenseNumber} onChange={handleChange} required sx={authFieldSx} />
                           <TextField label="Experience (years)" name="experience" type="number" fullWidth margin="normal" value={form.experience} onChange={handleChange} sx={authFieldSx} />
                           <TextField label="Qualifications (comma separated)" name="qualifications" fullWidth margin="normal" value={form.qualifications} onChange={handleChange} sx={authFieldSx} />
                         </Box>
@@ -617,15 +619,16 @@ export default function Register() {
                     {form.userType === 'intern' && (
                       <Fade in timeout={600}>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
-                          <TextField label="Medical School" name="medicalSchool" fullWidth margin="normal" value={form.medicalSchool} onChange={handleChange} required sx={authFieldSx} />
+                          <TextField label={requiredLabel("Medical School")} name="medicalSchool" fullWidth margin="normal" value={form.medicalSchool} onChange={handleChange} required sx={authFieldSx} />
                           <TextField
                             select
-                            label="Year of Study"
+                            label={requiredLabel("Year of Study")}
                             name="yearOfStudy"
                             fullWidth
                             margin="normal"
                             value={form.yearOfStudy}
                             onChange={handleChange}
+                            required
                             sx={authFieldSx}
                           >
                             <MenuItem value="">Select year</MenuItem>
