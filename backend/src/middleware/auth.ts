@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { timingSafeEqual } from 'crypto';
 import { verifyToken, JwtPayload, verifyRefreshToken, generateToken } from '../utils/jwt';
 import User, { IUser } from '../models/User';
 import BlacklistedToken from '../models/BlacklistedToken';
@@ -146,7 +147,9 @@ export const logger = (req: Request, res: Response, next: NextFunction) => {
 };
 
 export const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
-  const apiKey = req.headers['x-api-key'];
+  const apiKeyHeader = req.headers['x-api-key'];
+  const apiKey = Array.isArray(apiKeyHeader) ? apiKeyHeader[0] : apiKeyHeader;
+  const expectedApiKey = process.env.INTERNAL_API_KEY;
   
   if (!apiKey) {
     return res.status(401).json({
@@ -154,7 +157,26 @@ export const validateApiKey = (req: Request, res: Response, next: NextFunction) 
       message: 'API key is required'
     });
   }
-  
-  // Add your API key validation logic here
+
+  if (!expectedApiKey) {
+    return res.status(503).json({
+      success: false,
+      message: 'API key validation is not configured'
+    });
+  }
+
+  const providedKey = Buffer.from(apiKey, 'utf8');
+  const configuredKey = Buffer.from(expectedApiKey, 'utf8');
+
+  if (
+    providedKey.length !== configuredKey.length ||
+    !timingSafeEqual(providedKey, configuredKey)
+  ) {
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid API key'
+    });
+  }
+
   next();
 };
