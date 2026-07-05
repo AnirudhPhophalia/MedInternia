@@ -1,10 +1,15 @@
 import jwt from 'jsonwebtoken';
 import type { AppRole } from '../middleware/permissions';
 
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'fallback_secret') {
-  console.error('CRITICAL: JWT_SECRET must be set to a secure random value in production');
-  process.exit(1);
-}
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret || secret === 'fallback_secret') {
+    throw new Error('JWT_SECRET must be set to a secure random value in production');
+  }
+
+  return secret;
+};
 
 export interface JwtPayload {
   userId: string;
@@ -13,18 +18,14 @@ export interface JwtPayload {
 }
 
 export const generateToken = (payload: JwtPayload, rememberMe: boolean = false): string => {
-  const secret = process.env.JWT_SECRET;
+  const secret = getJwtSecret();
   const expiresIn = rememberMe ? '7d' : '15m';
-
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-  }
 
   return jwt.sign(payload, secret, { expiresIn });
 };
 
 export const generateRefreshToken = (payload: JwtPayload): string => {
-  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  const secret = process.env.JWT_REFRESH_SECRET || getJwtSecret();
   if (!secret) {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
@@ -32,11 +33,7 @@ export const generateRefreshToken = (payload: JwtPayload): string => {
 };
 
 export const verifyToken = (token: string): JwtPayload | null => {
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-  }
+  const secret = getJwtSecret();
 
   try {
     const decoded = jwt.verify(token, secret) as JwtPayload;
@@ -47,7 +44,7 @@ export const verifyToken = (token: string): JwtPayload | null => {
 };
 
 export const verifyRefreshToken = (token: string): JwtPayload | null => {
-  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  const secret = process.env.JWT_REFRESH_SECRET || getJwtSecret();
   if (!secret) {
     throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
   }
