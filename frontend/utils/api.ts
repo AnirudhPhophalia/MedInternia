@@ -65,4 +65,16 @@ export const addDiaryEntry = async (diaryId: string, day: string, content: strin
   return res.data;
 };
 
+// Run an AI-powered smart search across job/internship listings and profiles
+export const smartSearch = async (
+  query: string,
+  opts: { scope?: 'all' | 'jobs' | 'profiles'; page?: number; limit?: number } = {}
+) => {
+  const { scope = 'all', page = 1, limit = 10 } = opts;
+  const res = await api.get('/search', {
+    params: { q: query, scope, page, limit },
+  });
+  return res.data;
+};
+
 export default api;
