@@ -624,6 +624,7 @@ export const getCaseById = asyncHandler(
   },
 );
 
+
 // Update case (Doctor who created it only)
 export const updateCase = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -644,15 +645,17 @@ export const updateCase = asyncHandler(
       throw new AppError("You can only update your own cases", 403);
     }
 
-    const updates = req.body;
-    delete updates.doctor; // Prevent changing the doctor
-    delete updates.comments; // Comments are handled separately
-    delete updates.likes; // Likes are handled separately
-    delete updates.moderationStatus; // Moderation is handled through dedicated endpoints
-    delete updates.moderationReason;
-    delete updates.reviewedBy;
-    delete updates.reviewedAt;
-    delete updates.moderationAuditTrail;
+    const CASE_UPDATABLE_FIELDS = [
+      'title', 'description', 'symptoms', 'patientInfo',
+      'tags', 'difficulty', 'specialization',
+    ] as const;
+
+    const updates: Record<string, any> = {};
+    for (const field of CASE_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
 
     const updatedCase = await Case.findByIdAndUpdate(id, updates, {
       new: true,
@@ -665,36 +668,6 @@ export const updateCase = asyncHandler(
       data: {
         case: updatedCase,
       },
-    });
-  },
-);
-
-// Delete case (Doctor who created it only)
-export const deleteCase = asyncHandler(
-  async (req: AuthRequest, res: Response) => {
-    const user = req.user;
-    const { id } = req.params;
-
-    if (!user) {
-      throw new AppError("User not authenticated", 401);
-    }
-
-    const caseData = await Case.findById(id);
-
-    if (!caseData) {
-      throw new AppError("Case not found", 404);
-    }
-
-    if (caseData.doctor.toString() !== user._id?.toString()) {
-      throw new AppError("You can only delete your own cases", 403);
-    }
-
-    // Soft delete
-    await Case.findByIdAndUpdate(id, { isActive: false });
-
-    res.json({
-      success: true,
-      message: "Case deleted successfully",
     });
   },
 );
