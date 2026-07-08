@@ -77,4 +77,15 @@ export const smartSearch = async (
   return res.data;
 };
 
+// Fetch the top-ranked users for the leaderboard
+export const getLeaderboard = async (
+  opts: { userType?: 'intern' | 'doctor'; metric?: string; limit?: number } = {}
+) => {
+  const { userType = 'intern', metric = 'points', limit = 10 } = opts;
+  const res = await api.get('/users/leaderboard', {
+    params: { userType, metric, limit },
+  });
+  return res.data;
+};
+
 export default api;

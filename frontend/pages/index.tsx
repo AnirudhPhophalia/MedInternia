@@ -22,6 +22,7 @@ import {
   Skeleton,
   Chip,
   TextField,
+  Avatar,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -36,8 +37,11 @@ import {
   Mail,
   UserPlus,
   Users,
+  Trophy,
+  Medal,
 } from 'lucide-react';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
+import { getLeaderboard } from '../utils/api';
 import HeroProductPreview from '../components/landing/HeroProductPreview';
 
 export default function HomePage() {
@@ -46,10 +50,33 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
+  const [topContributors, setTopContributors] = React.useState<any[]>([]);
+  const [topContributorsLoading, setTopContributorsLoading] = React.useState(true);
 
   React.useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     setIsLoggedIn(!!token);
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getLeaderboard({ userType: 'intern', limit: 3 });
+        if (!cancelled) {
+          setTopContributors(data?.data?.leaderboard ?? []);
+        }
+      } catch (err) {
+        console.error('Failed to load top contributors:', err);
+      } finally {
+        if (!cancelled) setTopContributorsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const getAuthAwareHref = (path: string) =>
@@ -502,7 +529,7 @@ export default function HomePage() {
         </motion.div>
       </Container>
 
-      {/* Top Contributors — skeleton / coming soon */}
+      {/* Top Contributors */}
       <Container maxWidth="xl" sx={{ mb: 12 }}>
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
@@ -511,7 +538,7 @@ export default function HomePage() {
                 Top Contributors
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Leaderboard rankings coming soon
+                Our highest-ranked interns this season
               </Typography>
             </Box>
             <Link href={getAuthAwareHref('/leaderboard')} style={{ textDecoration: 'none', color: '#0072ff', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
@@ -519,28 +546,71 @@ export default function HomePage() {
             </Link>
           </Box>
           <Grid container spacing={3}>
-            {[1, 2, 3].map((rank) => (
-              <Grid size={{ xs: 12, md: 4 }} key={rank}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 3,
-                    borderRadius: '20px',
-                    border: '1px dashed #cbd5e1',
-                    bgcolor: '#fafbfc',
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" spacing={2.5}>
-                    <Skeleton variant="circular" width={56} height={56} animation="wave" />
-                    <Box sx={{ flex: 1 }}>
-                      <Skeleton variant="text" width="70%" height={28} animation="wave" sx={{ mb: 0.5 }} />
-                      <Skeleton variant="text" width="40%" height={20} animation="wave" />
-                    </Box>
-                    <Chip label="Coming Soon" size="small" sx={{ fontWeight: 600, bgcolor: '#e8f4ff', color: '#0056cc' }} />
-                  </Stack>
-                </Paper>
+            {topContributorsLoading &&
+              [1, 2, 3].map((rank) => (
+                <Grid size={{ xs: 12, md: 4 }} key={rank}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: '20px',
+                      border: '1px dashed #cbd5e1',
+                      bgcolor: '#fafbfc',
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2.5}>
+                      <Skeleton variant="circular" width={56} height={56} animation="wave" />
+                      <Box sx={{ flex: 1 }}>
+                        <Skeleton variant="text" width="70%" height={28} animation="wave" sx={{ mb: 0.5 }} />
+                        <Skeleton variant="text" width="40%" height={20} animation="wave" />
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+
+            {!topContributorsLoading && topContributors.length === 0 && (
+              <Grid size={{ xs: 12 }}>
+                <Typography align="center" color="text.secondary">
+                  No ranked contributors yet — be the first to earn points!
+                </Typography>
               </Grid>
-            ))}
+            )}
+
+            {!topContributorsLoading &&
+              topContributors.map((user: any) => (
+                <Grid size={{ xs: 12, md: 4 }} key={user._id}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: '20px',
+                      border: '1px solid #e2e8f0',
+                      bgcolor: '#ffffff',
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2.5}>
+                      {user.rank === 1 ? (
+                        <Trophy size={40} color="#d97706" />
+                      ) : (
+                        <Medal size={36} color={user.rank === 2 ? '#64748b' : '#b45309'} />
+                      )}
+                      <Avatar src={user.profilePicture} sx={{ width: 56, height: 56 }}>
+                        {user.firstName?.[0]}
+                      </Avatar>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography fontWeight={700}>
+                          {user.firstName} {user.lastName}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Rank #{user.rank}
+                        </Typography>
+                      </Box>
+                      <Chip label={`${user.points} pts`} size="small" sx={{ fontWeight: 600, bgcolor: '#e8f4ff', color: '#0056cc' }} />
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
           </Grid>
         </motion.div>
       </Container>
