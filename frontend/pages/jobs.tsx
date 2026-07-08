@@ -21,13 +21,18 @@ import {
   TableRow,
   Paper,
   IconButton,
-  Divider
+  Divider,
+  TextField,
+  InputAdornment
 } from "@mui/material";
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import WorkIcon from '@mui/icons-material/Work';
 import BusinessIcon from '@mui/icons-material/Business';
 import RoomIcon from '@mui/icons-material/Room';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import { useRouter } from "next/router";
 import api from "../utils/api";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
@@ -50,6 +55,11 @@ interface JobApplication {
 export default function Jobs() {
   const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
+  const [originalJobs, setOriginalJobs] = useState<any[]>([]);
+  const [smartQuery, setSmartQuery] = useState("");
+  const [isSmartSearching, setIsSmartSearching] = useState(false);
+  const [smartSearchError, setSmartSearchError] = useState("");
+  const [smartSearchActive, setSmartSearchActive] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
@@ -59,6 +69,35 @@ export default function Jobs() {
   // Saved / Applied states using localStorage
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
+
+  const handleSmartSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smartQuery.trim()) return;
+
+    setIsSmartSearching(true);
+    setSmartSearchError("");
+
+    try {
+      const res = await api.get("/search/smart", {
+        params: { q: smartQuery, type: "jobs" }
+      });
+      const results = res.data?.data?.results || [];
+      setJobs(results);
+      setSmartSearchActive(true);
+    } catch (err: any) {
+      console.error(err);
+      setSmartSearchError(err.response?.data?.message || "AI smart search failed. Please try again.");
+    } finally {
+      setIsSmartSearching(false);
+    }
+  };
+
+  const handleClearSmartSearch = () => {
+    setJobs(originalJobs);
+    setSmartQuery("");
+    setSmartSearchActive(false);
+    setSmartSearchError("");
+  };
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -87,7 +126,9 @@ export default function Jobs() {
     api
       .get("/jobs")
       .then((res) => {
-        setJobs(res.data.data.jobs || []);
+        const fetchedJobs = res.data.data.jobs || [];
+        setJobs(fetchedJobs);
+        setOriginalJobs(fetchedJobs);
         setLoading(false);
       })
       .catch(() => {
@@ -200,6 +241,75 @@ export default function Jobs() {
             <Grid size={{ xs: 12, md: 8 }}>
               {activeTab === 0 && (
                 <Stack spacing={3}>
+                  <Card sx={{ p: 3, borderRadius: 4, background: 'linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)', border: '1px solid #cce3ff', boxShadow: '0 4px 15px rgba(0, 114, 255, 0.05)' }}>
+                    <form onSubmit={handleSmartSearch}>
+                      <Stack spacing={2}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <AutoAwesomeIcon color="primary" />
+                          <Typography variant="subtitle1" fontWeight={700} color="primary">
+                            AI-Powered Smart Search
+                          </Typography>
+                          <Chip label="Gemini AI" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }} />
+                        </Stack>
+                        
+                        <Typography variant="body2" color="text.secondary">
+                          Describe what you're looking for in plain English. We'll automatically filter by specialization, location, type, and more.
+                        </Typography>
+
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={smartQuery}
+                            onChange={(e) => setSmartQuery(e.target.value)}
+                            placeholder="e.g. show me cardiology internships in Gujarat or remote pediatrics fellowships"
+                            disabled={isSmartSearching}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <SearchIcon color="action" />
+                                </InputAdornment>
+                              ),
+                              endAdornment: smartQuery && (
+                                <InputAdornment position="end">
+                                  <IconButton size="small" onClick={handleClearSmartSearch} disabled={isSmartSearching}>
+                                    <CloseIcon fontSize="small" />
+                                  </IconButton>
+                                </InputAdornment>
+                              )
+                            }}
+                            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                          />
+                          <Button
+                            variant="contained"
+                            type="submit"
+                            disabled={isSmartSearching || !smartQuery.trim()}
+                            sx={{ minWidth: 120, textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                          >
+                            {isSmartSearching ? <CircularProgress size={20} color="inherit" /> : 'Search'}
+                          </Button>
+                        </Stack>
+
+                        {smartSearchError && (
+                          <Alert severity="error" sx={{ borderRadius: 2, py: 0.5 }}>
+                            {smartSearchError}
+                          </Alert>
+                        )}
+
+                        {smartSearchActive && (
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="caption" fontWeight={600} color="primary">
+                              Showing {jobs.length} smart search result{jobs.length !== 1 ? 's' : ''}
+                            </Typography>
+                            <Button size="small" onClick={handleClearSmartSearch} sx={{ textTransform: 'none', fontWeight: 600, p: 0 }}>
+                              Clear Search
+                            </Button>
+                          </Stack>
+                        )}
+                      </Stack>
+                    </form>
+                  </Card>
+
                   {jobs.length === 0 ? (
                     <Typography align="center" color="text.secondary">No job opportunities found.</Typography>
                   ) : (
