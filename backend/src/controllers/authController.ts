@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
+import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken } from '../utils/jwt';
 import { AuthRequest, blacklistToken } from '../middleware/auth';
 import { uploadProfileImage } from '../utils/cloudinary';
@@ -240,14 +240,6 @@ export const sendOtp = async (req: Request, res: Response) => {
   if (!email) return res.status(400).json({ success: false, message: 'Email required' });
   const otp = await issueOtp(email, 'signup');
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
-      port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
@@ -482,15 +474,7 @@ if (!user) {
     // Generate OTP
     const otp = await issueOtp(email, 'reset');
 
-    // Send OTP via email
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.ethereal.email",
-      port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    
 
     try {
       await transporter.sendMail({
