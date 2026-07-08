@@ -6,6 +6,7 @@ import {
   getLeaderboard,
   advancedSearch
 } from '../controllers/enhancedController';
+import { smartSearch } from '../controllers/smartSearchController';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 
@@ -21,5 +22,8 @@ router.get('/leaderboard', authenticate, requirePermission('analytics:read'), ge
 
 // Advanced search
 router.get('/search', authenticate, requirePermission('analytics:read'), advancedSearch);
+
+// Smart search (accessible to all authenticated users)
+router.get('/search/smart', authenticate, smartSearch);
 
 export default router;

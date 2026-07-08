@@ -22,7 +22,10 @@ import {
   TableRow,
   Paper,
   Divider,
-  Rating
+  Rating,
+  TextField,
+  InputAdornment,
+  IconButton
 } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import SchoolIcon from '@mui/icons-material/School';
@@ -30,6 +33,8 @@ import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import GroupIcon from '@mui/icons-material/Group';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/api';
 
 interface DoctorMentorshipCardProps {
@@ -147,6 +152,11 @@ function DoctorMentorshipCard({ doctor, currentUserId, currentMentorId, onApplyM
 export default function Doctors() {
   const router = useRouter();
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [originalDoctors, setOriginalDoctors] = useState<any[]>([]);
+  const [smartQuery, setSmartQuery] = useState("");
+  const [isSmartSearching, setIsSmartSearching] = useState(false);
+  const [smartSearchError, setSmartSearchError] = useState("");
+  const [smartSearchActive, setSmartSearchActive] = useState(false);
   const [mentees, setMentees] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentMentorId, setCurrentMentorId] = useState('');
@@ -154,6 +164,35 @@ export default function Doctors() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+
+  const handleSmartSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smartQuery.trim()) return;
+
+    setIsSmartSearching(true);
+    setSmartSearchError("");
+
+    try {
+      const res = await api.get("/search/smart", {
+        params: { q: smartQuery, type: "doctors" }
+      });
+      const results = res.data?.data?.results || [];
+      setDoctors(results);
+      setSmartSearchActive(true);
+    } catch (err: any) {
+      console.error(err);
+      setSmartSearchError(err.response?.data?.message || "AI smart search failed. Please try again.");
+    } finally {
+      setIsSmartSearching(false);
+    }
+  };
+
+  const handleClearSmartSearch = () => {
+    setDoctors(originalDoctors);
+    setSmartQuery("");
+    setSmartSearchActive(false);
+    setSmartSearchError("");
+  };
 
   const fetchInitData = async () => {
     try {
@@ -177,7 +216,9 @@ export default function Doctors() {
 
       // Fetch doctors list
       const docsRes = await api.get('/doctors');
-      setDoctors(docsRes.data.data.doctors || []);
+      const fetchedDocs = docsRes.data.data.doctors || [];
+      setDoctors(fetchedDocs);
+      setOriginalDoctors(fetchedDocs);
 
       // If doctor, fetch mentees list
       if (user.userType === 'doctor') {
@@ -258,25 +299,96 @@ export default function Doctors() {
 
         {/* Tab 0: Explore Mentors */}
         {(!isDoctor || activeTab === 0) && (
-          <Grid container spacing={3}>
-            {doctors.length === 0 ? (
-              <Grid size={{ xs: 12 }}>
-                <Typography align="center" color="text.secondary">No doctors found.</Typography>
-              </Grid>
-            ) : (
-              doctors.map(d => (
-                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={d._id}>
-                  <DoctorMentorshipCard
-                    doctor={d}
-                    currentUserId={currentUserId}
-                    currentMentorId={currentMentorId}
-                    onApplyMentorship={handleApplyMentorship}
-                    userRole={userRole}
-                  />
+          <Stack spacing={3}>
+            <Card sx={{ p: 3, borderRadius: 4, background: 'linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)', border: '1px solid #cce3ff', boxShadow: '0 4px 15px rgba(0, 114, 255, 0.05)' }}>
+              <form onSubmit={handleSmartSearch}>
+                <Stack spacing={2}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <AutoAwesomeIcon color="primary" />
+                    <Typography variant="subtitle1" fontWeight={700} color="primary">
+                      AI-Powered Smart Search
+                    </Typography>
+                    <Chip label="Gemini AI" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }} />
+                  </Stack>
+                  
+                  <Typography variant="body2" color="text.secondary">
+                    Describe what you're looking for in plain English. We'll automatically filter by specialization, location, experience, and name.
+                  </Typography>
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={smartQuery}
+                      onChange={(e) => setSmartQuery(e.target.value)}
+                      placeholder="e.g. show me cardiologists in Delhi or pediatricians with 5 years experience"
+                      disabled={isSmartSearching}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon color="action" />
+                          </InputAdornment>
+                        ),
+                        endAdornment: smartQuery && (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={handleClearSmartSearch} disabled={isSmartSearching}>
+                              <CloseIcon fontSize="small" />
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
+                      sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                    <Button
+                      variant="contained"
+                      type="submit"
+                      disabled={isSmartSearching || !smartQuery.trim()}
+                      sx={{ minWidth: 120, textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                    >
+                      {isSmartSearching ? <CircularProgress size={20} color="inherit" /> : 'Search'}
+                    </Button>
+                  </Stack>
+
+                  {smartSearchError && (
+                    <Alert severity="error" sx={{ borderRadius: 2, py: 0.5 }}>
+                      {smartSearchError}
+                    </Alert>
+                  )}
+
+                  {smartSearchActive && (
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="caption" fontWeight={600} color="primary">
+                        Showing {doctors.length} smart search result{doctors.length !== 1 ? 's' : ''}
+                      </Typography>
+                      <Button size="small" onClick={handleClearSmartSearch} sx={{ textTransform: 'none', fontWeight: 600, p: 0 }}>
+                        Clear Search
+                      </Button>
+                    </Stack>
+                  )}
+                </Stack>
+              </form>
+            </Card>
+
+            <Grid container spacing={3}>
+              {doctors.length === 0 ? (
+                <Grid size={{ xs: 12 }}>
+                  <Typography align="center" color="text.secondary">No doctors found.</Typography>
                 </Grid>
-              ))
-            )}
-          </Grid>
+              ) : (
+                doctors.map(d => (
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={d._id}>
+                    <DoctorMentorshipCard
+                      doctor={d}
+                      currentUserId={currentUserId}
+                      currentMentorId={currentMentorId}
+                      onApplyMentorship={handleApplyMentorship}
+                      userRole={userRole}
+                    />
+                  </Grid>
+                ))
+              )}
+            </Grid>
+          </Stack>
         )}
 
         {/* Tab 1: My Mentees (Doctors Only) */}

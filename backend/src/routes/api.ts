@@ -35,23 +35,24 @@ router.get('/', (req: Request, res: Response) => {
       'AI-powered suggestions',
       'Live video conferencing'
     ],
-    endpoints: {
-      auth: '/api/auth',
-      users: '/api/users',
-      patients: '/api/patients',
-      doctors: '/api/doctors',
-      cases: '/api/cases',
-      aiCasePosts: '/api/cases/ai-posts',
-      diseaseInsights: '/api/ai-disease-insights',
-      badges: '/api/badges',
-      peerReviews: '/api/peer-reviews',
-      jobs: '/api/jobs',
-      certificates: '/api/certificates',
-      webinars: '/api/webinars',
-      symptoms: '/api/symptoms/extract',
-      leaderboard: '/api/leaderboard',
-      search: '/api/search'
-    }
+      endpoints: {
+        auth: '/api/auth',
+        users: '/api/users',
+        patients: '/api/patients',
+        doctors: '/api/doctors',
+        cases: '/api/cases',
+        aiCasePosts: '/api/cases/ai-posts',
+        diseaseInsights: '/api/ai-disease-insights',
+        badges: '/api/badges',
+        peerReviews: '/api/peer-reviews',
+        jobs: '/api/jobs',
+        certificates: '/api/certificates',
+        webinars: '/api/webinars',
+        symptoms: '/api/symptoms/extract',
+        leaderboard: '/api/leaderboard',
+        search: '/api/search',
+        smartSearch: '/api/search/smart'
+      }
   });
 });
 
