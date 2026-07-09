@@ -15,6 +15,56 @@ import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FIX for Issue #418: JWT_SECRET strength validation
+// Must run BEFORE starting the server — catches weak secrets at startup
+// so they never silently compromise production tokens.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function validateEnvironment(): void {
+  const errors: string[] = [];
+
+  // JWT_SECRET validation
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    errors.push(
+      'JWT_SECRET is not set.\n' +
+      '  Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"'
+    );
+  } else if (jwtSecret.length < 64) {
+    errors.push(
+      `JWT_SECRET is too short (${jwtSecret.length} chars). Minimum: 64 characters.\n` +
+      '  A short JWT_SECRET is vulnerable to brute-force attacks.\n' +
+      '  Generate a strong one: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"'
+    );
+  } else if (['secret', 'password', 'jwt_secret', 'your_jwt_secret', 'medinternia'].includes(jwtSecret.toLowerCase())) {
+    errors.push(
+      'JWT_SECRET appears to be a placeholder or common word. Use a cryptographically random string.\n' +
+      '  Generate one: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"'
+    );
+  }
+
+  // MONGODB_URI validation
+  if (!process.env.MONGODB_URI) {
+    errors.push('MONGODB_URI is not set.');
+  }
+
+  if (errors.length > 0) {
+    console.error('\n╔══════════════════════════════════════════════════════════════╗');
+    console.error('║     MedInternia — Environment Configuration Error            ║');
+    console.error('╚══════════════════════════════════════════════════════════════╝\n');
+    errors.forEach((err, i) => {
+      console.error(`${i + 1}. ${err}\n`);
+    });
+    console.error('Fix these errors in your backend/.env file, then restart.\n');
+    process.exit(1);   // Hard stop — don't run with bad config
+  }
+}
+
+// Run validation before anything else
+validateEnvironment();
+
+
 // Process-level handlers to prevent crash-induced state loss
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('Unhandled Rejection:', reason);

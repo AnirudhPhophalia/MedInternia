@@ -249,6 +249,24 @@ EMAIL_PORT=587
 
 ```
 
+### 🔐 JWT Secret Requirements
+
+`JWT_SECRET` **must be at least 64 characters long** and cryptographically random.
+
+MedInternia is a healthcare platform. A weak JWT secret allows attackers to
+forge authentication tokens offline, impersonating doctors, interns, or patients.
+
+**Generate a strong secret (run any one of these):**
+```bash
+# Node.js
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+
+# OpenSSL
+openssl rand -hex 64
+
+# Python
+python3 -c "import secrets; print(secrets.token_hex(64))"
+
 ---
 
 ## 4️⃣ Start Development Servers
