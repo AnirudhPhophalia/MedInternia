@@ -1,7 +1,22 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
-import { Typography, TextField, Button, Box, Alert, MenuItem, Fade, Grow, Stack, LinearProgress, IconButton, InputAdornment } from '@mui/material';
+import {
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Alert,
+  MenuItem,
+  Fade,
+  Grow,
+  Stack,
+  LinearProgress,
+  CircularProgress,
+  IconButton,
+  InputAdornment,
+  Autocomplete,
+} from '@mui/material';
+import { medicalColleges } from "../../utils/medicalColleges";
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
 import Visibility from '@mui/icons-material/Visibility';
@@ -288,9 +303,13 @@ export default function Register() {
         return;
       }
     }
-    if (form.userType === 'intern') {
-      if (!/^[A-Za-z\s.,'-]{3,100}$/.test(form.medicalSchool)) {
-        setError('Enter a valid Medical School name');
+    if (form.userType === "intern") {
+      const isValidCollege = medicalColleges.some(
+        (college) => college.name === form.medicalSchool
+      );
+
+      if (!isValidCollege) {
+        setError("Please select a valid medical school from the list.");
         return;
       }
     }
@@ -618,7 +637,38 @@ export default function Register() {
                     {form.userType === 'intern' && (
                       <Fade in timeout={600}>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
-                          <TextField label="Medical School" name="medicalSchool" fullWidth margin="normal" value={form.medicalSchool} onChange={handleChange} required sx={authFieldSx} />
+                          <Autocomplete
+                            sx={{ width: "100%" }}
+                            options={medicalColleges}
+                            clearOnBlur={false}
+                            selectOnFocus
+                            getOptionLabel={(option) =>
+                              `${option.name} (${option.state})`
+                            }
+                            isOptionEqualToValue={(option, value) =>
+                              option.id === value.id}
+                            value={
+                              medicalColleges.find(
+                                (college) => college.name === form.medicalSchool
+                              ) || null
+                            }
+                            onChange={(_, value) =>
+                              setForm({
+                                ...form,
+                                medicalSchool: value?.name || "",
+                              })
+                            }
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Medical School"
+                                required
+                                margin="normal"
+                                fullWidth
+                                sx={authFieldSx}
+                              />
+                            )}
+                          />
                           <TextField
                             select
                             label="Year of Study"
