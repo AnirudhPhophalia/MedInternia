@@ -1,9 +1,38 @@
 
 import { useState } from 'react';
+import Autocomplete from '@mui/material/Autocomplete';
 import { Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
 import { Container, Typography, TextField, Button, Box, Alert, MenuItem, Card, Avatar, Fade, Grow, Stack, LinearProgress } from '@mui/material';
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
+
+const MEDICAL_SCHOOL_OPTIONS = [
+  'All India Institute of Medical Sciences, New Delhi',
+  'All India Institute of Medical Sciences, Bhopal',
+  'All India Institute of Medical Sciences, Bhubaneswar',
+  'All India Institute of Medical Sciences, Jodhpur',
+  'All India Institute of Medical Sciences, Patna',
+  'All India Institute of Medical Sciences, Raipur',
+  'Armed Forces Medical College, Pune',
+  'Atal Bihari Vajpayee Institute of Medical Sciences, New Delhi',
+  'B. J. Medical College, Ahmedabad',
+  'Bangalore Medical College and Research Institute, Bengaluru',
+  'Christian Medical College, Vellore',
+  'Government Medical College, Thiruvananthapuram',
+  'Grant Medical College, Mumbai',
+  'Institute of Medical Sciences, Banaras Hindu University',
+  'Jawaharlal Institute of Postgraduate Medical Education and Research, Puducherry',
+  'Kasturba Medical College, Manipal',
+  'King George\'s Medical University, Lucknow',
+  'Lady Hardinge Medical College, New Delhi',
+  'Madras Medical College, Chennai',
+  'Maulana Azad Medical College, New Delhi',
+  'Postgraduate Institute of Medical Education and Research, Chandigarh',
+  'Seth G. S. Medical College, Mumbai',
+  'St. John\'s Medical College, Bengaluru',
+  'Topiwala National Medical College, Mumbai',
+  'University College of Medical Sciences, New Delhi',
+];
 
 
 export default function Register() {
@@ -43,6 +72,9 @@ export default function Register() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const selectedMedicalSchool = MEDICAL_SCHOOL_OPTIONS.find(
+    (school) => school === form.medicalSchool
+  ) || null;
 
   // For progress bar
   const requiredFieldsStep1: (keyof typeof form)[] = ['firstName', 'lastName', 'email', 'password', 'userType'];
@@ -146,6 +178,10 @@ export default function Register() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setError('');
+    if (form.userType === 'intern' && !MEDICAL_SCHOOL_OPTIONS.includes(form.medicalSchool)) {
+      setError('Please select a valid medical school from the list.');
+      return;
+    }
     // Check all required fields in step 2 are filled
     const fields = getStep2Fields();
     const missing = fields.filter(f => !form[f]);
@@ -242,7 +278,25 @@ export default function Register() {
                       {form.userType === 'intern' && (
                         <Fade in timeout={600}>
                           <Box>
-                            <TextField label="Medical School" name="medicalSchool" fullWidth margin="normal" value={form.medicalSchool} onChange={handleChange} required />
+                            <Autocomplete
+                              options={MEDICAL_SCHOOL_OPTIONS}
+                              value={selectedMedicalSchool}
+                              onChange={(_, value) => {
+                                setForm({ ...form, medicalSchool: value || '' });
+                              }}
+                              isOptionEqualToValue={(option, value) => option === value}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Medical School"
+                                  name="medicalSchool"
+                                  fullWidth
+                                  margin="normal"
+                                  required
+                                  helperText="Search and select a medical school from the list"
+                                />
+                              )}
+                            />
                             <TextField label="Year of Study" name="yearOfStudy" type="number" fullWidth margin="normal" value={form.yearOfStudy} onChange={handleChange} required />
                             <TextField label="Interests (comma separated)" name="interests" fullWidth margin="normal" value={form.interests} onChange={handleChange} />
                             <TextField label="Mentor Doctor ID (optional)" name="mentorDoctor" fullWidth margin="normal" value={form.mentorDoctor} onChange={handleChange} />
