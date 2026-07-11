@@ -198,6 +198,7 @@ export default function Navbar({ route }: { route?: string }) {
     { href: '/upload-raw', icon: <DatasetIcon />, label: 'Upload Raw' },
     { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
     { href: '/webinars', icon: <VideocamIcon />, label: 'Webinars' },
+    { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
     { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
     { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
   ];
@@ -208,6 +209,7 @@ export default function Navbar({ route }: { route?: string }) {
       : []),
     { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
     { href: '/webinars', icon: <VideocamIcon />, label: 'Webinars' },
+    { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
     { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
     { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
     { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
