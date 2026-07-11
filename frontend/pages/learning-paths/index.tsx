@@ -67,7 +67,7 @@ export default function LearningPathsDashboard() {
               const isCompleted = path.progress?.isCompleted;
 
               return (
-                <Grid item xs={12} md={6} key={path._id}>
+                <Grid size={{ xs: 12, md: 6 }} key={path._id}>
                   <Card 
                     sx={{ 
                       height: '100%', 
@@ -159,7 +159,7 @@ export default function LearningPathsDashboard() {
             })}
             
             {paths.length === 0 && !loading && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Alert severity="info">No learning paths available at the moment. Check back soon!</Alert>
               </Grid>
             )}

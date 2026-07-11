@@ -178,7 +178,7 @@ export const completeStep = asyncHandler(async (req: AuthRequest, res: Response)
         if (badgeObj) {
           await createAndEmitNotification({
             recipientId: String(req.user._id),
-            type: 'system',
+            type: 'badge',
             message: `Congratulations! You've completed "${path.title}" and earned the ${badgeObj.name} badge!`,
             link: `/profile`
           });
