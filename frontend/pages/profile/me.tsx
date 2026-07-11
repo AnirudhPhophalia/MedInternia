@@ -21,12 +21,14 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import Link from 'next/link';
 import api from '../../utils/api';
+import ResumeExportButton from '../../components/ResumeExportButton';
 
 export default function MeProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [badges, setBadges] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -42,7 +44,9 @@ export default function MeProfilePage() {
         const res = await api.get(`/users/${userId}/profile`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setUser(res.data?.data?.user || res.data?.user || res.data);
+        const profileData = res.data?.data || res.data;
+        setUser(profileData?.user || profileData);
+        setBadges(profileData?.badges || []);
       } catch (err: any) {
         console.error('Profile fetch error:', err);
         setError('Failed to load profile.');
@@ -126,15 +130,18 @@ export default function MeProfilePage() {
             </Stack>
           </Grid>
           <Grid size={{ xs: 12, sm: 'auto' }} sx={{ textAlign: 'center' }}>
-            <Button 
-              variant="outlined" 
-              component={Link}
-              href="/profile/edit"
-              startIcon={<EditIcon />}
-              sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
-            >
-              Edit Profile
-            </Button>
+            <Stack spacing={2} direction={{ xs: 'row', sm: 'column' }} justifyContent="center">
+              <ResumeExportButton user={user} badges={badges} />
+              <Button 
+                variant="outlined" 
+                component={Link}
+                href="/profile/edit"
+                startIcon={<EditIcon />}
+                sx={{ borderRadius: 3, textTransform: 'none', fontWeight: 600 }}
+              >
+                Edit Profile
+              </Button>
+            </Stack>
           </Grid>
         </Grid>
 
