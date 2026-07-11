@@ -29,22 +29,14 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize application
 const initializeApp = async () => {
-  try {
-    // Connect to database
-    await connectDB();
-    
-    // Create default badges if they don't exist
-    await createDefaultBadges();
-    
-    console.log('Application initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize application:', error);
-    process.exit(1);
-  }
-};
+  // Connect to database
+  await connectDB();
 
-// Initialize the app
-initializeApp();
+  // Create default badges if they don't exist
+  await createDefaultBadges();
+
+  console.log('Application initialized successfully');
+};
 
 // Middleware
 app.use(helmet());
@@ -202,18 +194,38 @@ io.on('connection', (socket) => {
   socket.join(`user:${userId}`);
   console.log(`Socket connected: user ${userId} joined room user:${userId}`);
 
+  socket.on('join_webinar', (webinarId: string) => {
+    socket.join(`webinar:${webinarId}`);
+    console.log(`User ${userId} joined webinar room: webinar:${webinarId}`);
+  });
+
+  socket.on('leave_webinar', (webinarId: string) => {
+    socket.leave(`webinar:${webinarId}`);
+    console.log(`User ${userId} left webinar room: webinar:${webinarId}`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Socket disconnected: user ${userId}`);
   });
 });
 
-// Start server (httpServer instead of app.listen)
-httpServer.listen(PORT, () => {
-  console.log(`Doctor-Intern Collaboration Platform running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`API docs: http://localhost:${PORT}/api`);
-  console.log(`Socket.io ready`);
-});
+const startServer = async () => {
+  try {
+    await initializeApp();
+
+    httpServer.listen(PORT, () => {
+      console.log(`Doctor-Intern Collaboration Platform running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`API docs: http://localhost:${PORT}/api`);
+      console.log(`Socket.io ready`);
+    });
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    process.exit(1);
+  }
+};
+
+void startServer();
 
 export { io };
 export default app;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Grid from '@mui/material/Grid';
 import {
   Box,
   Container,
@@ -11,15 +12,24 @@ import {
   CircularProgress,
   Alert,
   LinearProgress,
-  Divider,
   Button,
-  Stack
+  Stack,
 } from '@mui/material';
 import {
   EmojiEvents,
   Notifications as NotificationsIcon,
   CalendarToday,
-  Assignment
+  Assignment,
+  School,
+  Psychology,
+  Dashboard as DashboardIcon,
+  People,
+  RateReview,
+  CardMembership,
+  Leaderboard,
+  ArrowForward,
+  History as HistoryIcon,
+  ReportProblem as AllergyIcon
 } from '@mui/icons-material';
 import api from '../../utils/api';
 import Link from 'next/link';
@@ -38,69 +48,95 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [data, setData] = useState<DashboardData | null>(null);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Check authentication
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+useEffect(() => {
+  const fetchDashboardData = async () => {
+    try {
+      // Check authentication
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('token')
+          : null;
 
-        if (!token || !userId) {
-          router.replace('/auth/login');
-          return;
-        }
+      const userId =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('userId')
+          : null;
 
-        const userRes = await api.get(`/users/${userId}/profile`);
-        const user = userRes.data?.data?.user || userRes.data?.user || userRes.data;
-
-        const optionalRequest = async <T,>(request: Promise<{ data: T }>, fallback: T) => {
-          try {
-            const response = await request;
-            return response.data;
-          } catch (err: any) {
-            if (err.response?.status === 401) throw err;
-            return fallback;
-          }
-        };
-
-        // Fetch optional dashboard widgets independently so one role-restricted
-        // endpoint cannot prevent the rest of the dashboard from loading.
-        const [casesRes, webinarsRes, notificationsRes, badgesRes] = await Promise.all([
-          user.userType === 'doctor'
-            ? optionalRequest(api.get('/cases/my/cases?limit=5'), { data: { cases: [] } })
-            : Promise.resolve({ data: { cases: [] } }),
-          optionalRequest(api.get('/webinars/my?type=registered'), { data: { webinars: [] } }),
-          optionalRequest(api.get('/notifications'), { notifications: [] }),
-          optionalRequest(api.get(`/badges/user/${userId}`), { data: { badges: [] } })
-        ]);
-        const getList = (payload: any, key: string) => payload?.data?.[key] || payload?.[key] || [];
-
-        setData({
-          user,
-          cases: getList(casesRes, 'cases'),
-          webinars: getList(webinarsRes, 'webinars'),
-          notifications: getList(notificationsRes, 'notifications').slice(0, 5),
-          badges: getList(badgesRes, 'badges')
-        });
-      } catch (err: any) {
-        console.error('Dashboard fetch error:', err);
-        if (err.response?.status === 401) {
-          router.replace('/auth/login');
-        } else {
-          setError(err.response?.data?.message || 'Failed to load dashboard data');
-        }
-      } finally {
-        setLoading(false);
+      if (!token || !userId) {
+        router.replace('/auth/login');
+        return;
       }
-    };
 
-    fetchDashboardData();
-  }, [router]);
+      const userRes = await api.get(`/users/${userId}/profile`);
+      const user =
+        userRes.data?.data?.user ||
+        userRes.data?.user ||
+        userRes.data;
+
+      const optionalRequest = async <T,>(
+        request: Promise<{ data: T }>,
+        fallback: T
+      ) => {
+        try {
+          const response = await request;
+          return response.data;
+        } catch (err: any) {
+          if (err.response?.status === 401) throw err;
+          return fallback;
+        }
+      };
+
+      const [casesRes, webinarsRes, notificationsRes, badgesRes] =
+        await Promise.all([
+          user.userType === 'doctor'
+            ? optionalRequest(api.get('/cases/my/cases?limit=5'), {
+                data: { cases: [] }
+              })
+            : Promise.resolve({ data: { cases: [] } }),
+          optionalRequest(api.get('/webinars/my?type=registered'), {
+            data: { webinars: [] }
+          }),
+          optionalRequest(api.get('/notifications'), {
+            notifications: []
+          }),
+          optionalRequest(api.get(`/badges/user/${userId}`), {
+            data: { badges: [] }
+          })
+        ]);
+
+      const getList = (payload: any, key: string) =>
+        payload?.data?.[key] || payload?.[key] || [];
+
+      setData({
+        user,
+        cases: getList(casesRes, 'cases'),
+        webinars: getList(webinarsRes, 'webinars'),
+        notifications: getList(notificationsRes, 'notifications').slice(0, 5),
+        badges: getList(badgesRes, 'badges')
+      });
+    } catch (err: any) {
+      console.error('Dashboard fetch error:', err);
+
+      if (err.response?.status === 401) {
+        router.replace('/auth/login');
+      } else {
+        setError(
+          err.response?.data?.message ||
+            'Failed to load dashboard data'
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchDashboardData();
+}, [router]);
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <CircularProgress size={60} />
+        <CircularProgress size={60} thickness={4.5} />
       </Box>
     );
   }
@@ -115,282 +151,309 @@ export default function Dashboard() {
 
   if (!data) return null;
 
-  const { user, cases, webinars, notifications, badges } = data;
+  const { user, cases, webinars, notifications } = data;
+
+  const workspaceCards = [
+    { label: 'Learning Progress', href: '/dashboard/learning-progress', icon: <School color="primary" /> },
+    { label: 'AI Recommendations', href: '/dashboard/ai-recommendations', icon: <Psychology color="secondary" /> },
+    { label: 'Career Dashboard', href: '/dashboard/career', icon: <DashboardIcon sx={{ color: '#9c27b0' }} /> },
+    { label: 'Mentorship Hub', href: '/mentorship', icon: <People sx={{ color: '#00bcd4' }} /> },
+    { label: 'Peer Reviews', href: '/reviews', icon: <RateReview sx={{ color: '#ff9800' }} /> },
+    { label: 'Webinars', href: '/webinars', icon: <CalendarToday sx={{ color: '#4caf50' }} /> },
+    { label: 'Certificates', href: '/certificates', icon: <CardMembership sx={{ color: '#f44336' }} /> },
+    { label: 'Leaderboard', href: '/leaderboard', icon: <Leaderboard sx={{ color: '#ffeb3b' }} /> },
+  ];
+
+  const metricsStrip = [
+    { title: 'Total Points', value: user.points || 0, color: '#2563eb', icon: <EmojiEvents /> },
+    {
+      title: user.userType === 'doctor' ? 'Cases Analyzed' : 'Medical History',
+      value: user.userType === 'doctor' ? (user.casesAnalyzed || 0) : (user.medicalHistory?.length || 0),
+      color: '#16a34a',
+      icon: user.userType === 'doctor' ? <Assignment /> : <HistoryIcon />
+    },
+    { title: 'Daily Streak', value: user.streak || 0, color: '#ea580c', icon: <CalendarToday /> },
+    {
+      title: user.userType === 'doctor' ? 'Certificates' : 'Known Allergies',
+      value: user.userType === 'doctor' ? (user.certificatesEarned || 0) : (user.allergies?.length || 0),
+      color: '#dc2626',
+      icon: user.userType === 'doctor' ? <CardMembership /> : <AllergyIcon />
+    }
+  ];
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header */}
+
+        {/* Personalized Greeting Header Block */}
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ mb: 4 }} spacing={2}>
           <Box>
-            <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
-              Welcome back, {user.userType === 'doctor' ? 'Dr.' : ''} {user.firstName} {user.lastName}
+            <Typography variant="h4" fontWeight={800} color="text.primary" sx={{ letterSpacing: '-0.5px' }} gutterBottom>
+              Welcome back, {user.userType === 'doctor' ? 'Dr.' : user.userType === 'intern' ? 'Intern' : ''} {user.firstName} {user.lastName}
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Here's what's happening with your account today.
+            <Typography variant="body1" color="text.secondary" fontWeight={500}>
+              {user.userType === 'doctor' && "Clinical Hub Mode: Review active cases, patient metrics, and pending peer reviews."}
+              {user.userType === 'intern' && "Training Mode: Access your active clinical mentorship tracks and complete certificate modules."}
+              {user.userType === 'patient' && "Patient Portal: Check health records, updates, and upcoming educational webinars."}
             </Typography>
           </Box>
-          <Button 
-            variant="contained" 
-            color="success" 
-            component={Link} 
+          <Button
+            variant="contained"
+            color="primary"
+            endIcon={<ArrowForward />}
+            component={Link}
             href="/dashboard/learning-progress"
-            sx={{ borderRadius: 3, fontWeight: 700, px: 3, py: 1 }}
+            sx={{ borderRadius: 2.5, fontWeight: 700, px: 3, py: 1.2, textTransform: 'none', boxShadow: 2 }}
           >
             My Learning Progress
           </Button>
         </Stack>
 
-        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-          {/* User Profile Summary */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 33.333%' } }}>
-            <Card sx={{ height: '100%', boxShadow: 3, borderRadius: 3 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-                  <Avatar
-                    src={user.profilePicture}
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      mb: 2,
-                      bgcolor: 'primary.main',
-                      fontSize: 40,
-                      fontWeight: 700
-                    }}
-                  >
-                    {user.firstName?.[0]}{user.lastName?.[0]}
+        {/* Top-Level Dynamic Metric Summary KPI Strip */}
+        <Grid container spacing={2.5} sx={{ mb: 4 }}>
+          {metricsStrip.map((kpi, index) => (
+            <Grid key={index} size={{xs:12, sm: 6, md:3}} component="div">
+              <Card sx={{
+                borderRadius: 2.5,
+                boxShadow: '0 2px 8px -1px rgb(0 0 0 / 0.04)',
+                borderLeft: `5px solid ${kpi.color}`,
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 6px 16px -2px rgb(0 0 0 / 0.08)' }
+              }}>
+                <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 2, px: 2.5 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ letterSpacing: '0.5px', textTransform: 'uppercase', display: 'block' }}>
+                      {kpi.title}
+                    </Typography>
+                    <Typography variant="h5" fontWeight={850} sx={{ mt: 0.25, color: 'text.primary' }}>
+                      {kpi.value}
+                    </Typography>
+                  </Box>
+                  <Avatar sx={{ bgcolor: `${kpi.color}12`, color: kpi.color, width: 42, height: 42 }}>
+                    {kpi.icon}
                   </Avatar>
-                  <Typography variant="h6" fontWeight={600} textAlign="center">
-                    {user.userType === 'doctor' ? 'Dr.' : ''} {user.firstName} {user.lastName}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" textAlign="center">
-                    {user.specialization || user.medicalSchool || 'Medical Professional'}
-                  </Typography>
-                  <Chip
-                    label={user.userType?.toUpperCase()}
-                    color="primary"
-                    size="small"
-                    sx={{ mt: 1 }}
-                  />
-                </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
-                <Divider sx={{ my: 2 }} />
+        {/* Split Column Main Workspace */}
+        <Grid container spacing={4}>
 
-                {/* Stats */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-around', mb: 2 }}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h5" fontWeight={700} color="primary.main">
-                      {user.points || 0}
+          {/* Left Column: Profile Summary */}
+          <Grid size={{ xs:12, md:5, lg:4}} component="div">
+            <Stack spacing={4}>
+              <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                    <Avatar
+                      src={user.profilePicture}
+                      sx={{ width: 84, height: 84, mb: 2, bgcolor: 'primary.main', fontSize: 32, fontWeight: 700 }}
+                    >
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </Avatar>
+                    <Typography variant="h6" fontWeight={700}>
+                      {user.userType === 'doctor' ? 'Dr.' : ''} {user.firstName} {user.lastName}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Points
+                    <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ mt: 0.5 }}>
+                      {user.specialization || 'Clinical Representative'}
                     </Typography>
+                    <Chip label={user.userType?.toUpperCase()} color="primary" size="small" sx={{ mt: 1.5, fontWeight: 700, borderRadius: 1.5 }} />
                   </Box>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h5" fontWeight={700} color="success.main">
-                      {user.casesAnalyzed || 0}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Cases
-                    </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h5" fontWeight={700} color="warning.main">
-                      {user.streak || 0}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Streak
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Progress to next level */}
-                <Box sx={{ mt: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Profile Score
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {user.profileScore || 0}%
-                    </Typography>
-                  </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={user.profileScore || 0}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                </Box>
-
-                {/* Badges Preview */}
-                {badges.length > 0 && (
                   <Box sx={{ mt: 3 }}>
-                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                      Recent Badges
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {badges.slice(0, 4).map((badge: any, idx: number) => (
-                        <Chip
-                          key={idx}
-                          icon={<EmojiEvents />}
-                          label={badge.badge?.name || badge.name || 'Badge'}
-                          size="small"
-                          color="warning"
-                          variant="outlined"
-                        />
-                      ))}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary" fontWeight={600}>Profile Workspace Completion</Typography>
+                      <Typography variant="body2" fontWeight={700} color="primary.main">{user.profileScore || 0}%</Typography>
                     </Box>
-                    {badges.length > 4 && (
-                      <Button size="small" sx={{ mt: 1 }} component={Link} href="/profile/achievements">
-                        View All ({badges.length})
-                      </Button>
-                    )}
+                    <LinearProgress variant="determinate" value={user.profileScore || 0} sx={{ height: 8, borderRadius: 4, bgcolor: '#e2e8f0' }} />
                   </Box>
-                )}
-              </CardContent>
-            </Card>
-          </Box>
+                </CardContent>
+              </Card>
+            </Stack>
+          </Grid>
 
-          {/* Right Column */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 66.666%' } }}>
+          {/* Right Column: Dynamic Workspace Blocks */}
+          <Grid size={{xs:12, md:7, lg:8}} component="div">
             <Stack spacing={3}>
-              {/* Medical Case Tracker */}
-              <Card sx={{ boxShadow: 3, borderRadius: 3 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Assignment sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography variant="h6" fontWeight={600}>
-                      Recent Cases
-                    </Typography>
-                  </Box>
-                  {cases.length === 0 ? (
-                    <Alert severity="info">No cases yet. Create your first case to get started!</Alert>
-                  ) : (
-                    <Box>
-                      {cases.map((caseItem: any) => (
-                        <Box
-                          key={caseItem._id}
+
+              {/* Quick Access Workspace */}
+              <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="subtitle1" fontWeight={700} color="text.primary" sx={{ mb: 2 }}>
+                    Quick Access Workspace
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {workspaceCards.map((card, index) => (
+                      <Grid key={index} size={{xs:12, sm:6, md:3}} component="div">
+                        <Button
+                          component={Link}
+                          href={card.href}
+                          variant="outlined"
+                          fullWidth
                           sx={{
-                            p: 2,
-                            mb: 1,
-                            bgcolor: '#f8fafc',
-                            borderRadius: 2,
-                            border: '1px solid #e2e8f0',
-                            '&:hover': { bgcolor: '#f1f5f9' }
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignDirection: 'center',
+                            justifyContent: 'center',
+                            p: 1.5,
+                            height: 90,
+                            borderRadius: 3,
+                            borderColor: '#e2e8f0',
+                            textTransform: 'none',
+                            color: 'text.primary',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              bgcolor: '#f8fafc',
+                              borderColor: 'primary.main',
+                              boxShadow: '0 4px 12px rgb(0 0 0 / 0.05)',
+                              transform: 'translateY(-2px)'
+                            }
                           }}
                         >
-                          <Link href={`/cases/${caseItem._id}`} style={{ textDecoration: 'none' }}>
-                            <Typography variant="subtitle1" fontWeight={600} color="primary.main" gutterBottom>
-                              {caseItem.title}
-                            </Typography>
-                          </Link>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {caseItem.description?.substring(0, 100)}...
+                          <Box sx={{ mb: 0.5, display: 'flex', '& svg': { fontSize: 24 } }}>{card.icon}</Box>
+                          <Typography variant="caption" fontWeight={700} color="text.secondary" textAlign="center" sx={{ fontSize: '0.725rem' }}>
+                            {card.label}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Chip label={caseItem.difficulty || 'Beginner'} size="small" />
-                            <Chip label={`${caseItem.likes?.length || 0} likes`} size="small" variant="outlined" />
-                            <Chip label={`${caseItem.comments?.length || 0} comments`} size="small" variant="outlined" />
-                          </Box>
-                        </Box>
-                      ))}
-                      <Button fullWidth variant="outlined" sx={{ mt: 2 }} component={Link} href="/cases">
-                        View All Cases
-                      </Button>
-                    </Box>
-                  )}
+                        </Button>
+                      </Grid>
+                    ))}
+                  </Grid>
                 </CardContent>
               </Card>
 
-              {/* Upcoming Webinars and Notifications Row */}
-              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-                {/* Upcoming Webinars */}
-                <Box sx={{ flex: 1 }}>
-                  <Card sx={{ boxShadow: 3, borderRadius: 3, height: '100%' }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <CalendarToday sx={{ mr: 1, color: 'success.main' }} />
-                        <Typography variant="h6" fontWeight={600}>
-                          Upcoming Events
-                        </Typography>
-                      </Box>
-                      {webinars.length === 0 ? (
-                        <Alert severity="info">No upcoming webinars.</Alert>
-                      ) : (
-                        <Box>
-                          {webinars.slice(0, 3).map((webinar: any) => (
-                            <Box
-                              key={webinar._id}
-                              sx={{
-                                p: 2,
-                                mb: 1,
-                                bgcolor: '#f0fdf4',
-                                borderRadius: 2,
-                                border: '1px solid #bbf7d0'
-                              }}
-                            >
-                              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                                {webinar.title}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(webinar.date).toLocaleDateString()} at {webinar.time}
-                              </Typography>
-                            </Box>
-                          ))}
-                          <Button fullWidth variant="outlined" color="success" sx={{ mt: 2 }} component={Link} href="/webinars">
-                            View All Webinars
-                          </Button>
-                        </Box>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Box>
+              {/* Nested Multi-Column Grid Layout for Main Content */}
+              <Grid container spacing={3}>
 
-                {/* Recent Notifications */}
-                <Box sx={{ flex: 1 }}>
-                  <Card sx={{ boxShadow: 3, borderRadius: 3, height: '100%' }}>
-                    <CardContent>
+                {/* Left Side: Recent Activity (Decreased Width to md={7}) */}
+                <Grid size={{xs:12, md: 7}} component="div">
+                  <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)', height: '100%' }}>
+                    <CardContent sx={{ p: 2.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <NotificationsIcon sx={{ mr: 1, color: 'warning.main' }} />
-                        <Typography variant="h6" fontWeight={600}>
-                          Notifications
-                        </Typography>
+                        <Assignment sx={{ mr: 1, color: 'primary.main', fontSize: 20 }} />
+                        <Typography variant="subtitle1" fontWeight={700}>Recent Activity Timeline Feed</Typography>
                       </Box>
-                      {notifications.length === 0 ? (
-                        <Alert severity="info">No new notifications.</Alert>
-                      ) : (
-                        <Box>
-                          {notifications.map((notification: any) => (
+
+                      {cases.length === 0 ? (
+                        <Stack spacing={1.5}>
+                          {[
+                            { title: 'Acute Myocardial Infarction Case Diagnosis Study', status: 'Completed', date: 'Today', diff: 'Advanced' },
+                            { title: 'Pediatric Asthma Management Seminar Participation', status: 'Registered', date: 'Yesterday', diff: 'Intermediate' },
+                            { title: 'Neurological Diagnostic Peer Assessment Protocol', status: 'In Review', date: '2 days ago', diff: 'Expert' }
+                          ].map((item, idx) => (
                             <Box
-                              key={notification._id}
+                              key={idx}
                               sx={{
-                                p: 2,
-                                mb: 1,
-                                bgcolor: notification.read ? '#f8fafc' : '#fef3c7',
-                                borderRadius: 2,
-                                border: '1px solid',
-                                borderColor: notification.read ? '#e2e8f0' : '#fbbf24'
+                                p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1,
+                                '&:hover': { bgcolor: '#f1f5f9' }
                               }}
                             >
-                              <Typography variant="body2" gutterBottom>
-                                {notification.message}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(notification.createdAt).toLocaleDateString()}
-                              </Typography>
+                              <Box sx={{ flex: 1, minWidth: '180px' }}>
+                                <Typography variant="body2" fontWeight={700} color="primary.main">
+                                  {item.title}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                                  <Chip label={item.status} size="small" color={item.status === 'Completed' ? 'success' : 'primary'} sx={{ fontWeight: 600, height: 18, fontSize: '0.65rem' }} />
+                                  <Chip label={item.diff} size="small" variant="outlined" sx={{ fontWeight: 600, height: 18, fontSize: '0.65rem' }} />
+                                </Box>
+                              </Box>
+                              <Typography variant="caption" fontWeight={600} color="text.secondary">{item.date}</Typography>
                             </Box>
                           ))}
-                          <Button fullWidth variant="outlined" color="warning" sx={{ mt: 2 }} component={Link} href="/notifications">
-                            View All Notifications
+                        </Stack>
+                      ) : (
+                        <Stack spacing={1.5}>
+                          {cases.map((caseItem: any) => (
+                            <Box
+                              key={caseItem._id}
+                              sx={{
+                                p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0',
+                                '&:hover': { bgcolor: '#f1f5f9' }
+                              }}
+                            >
+                              <Link href={`/cases/${caseItem._id}`} style={{ textDecoration: 'none' }}>
+                                <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ mb: 0.5 }}>
+                                  {caseItem.title}
+                                </Typography>
+                              </Link>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Chip label={caseItem.difficulty || 'Beginner'} size="small" sx={{ fontWeight: 600, height: 18, fontSize: '0.65rem' }} />
+                                  <Chip label={`${caseItem.likes?.length || 0} Interactions`} size="small" variant="outlined" sx={{ fontWeight: 600, height: 18, fontSize: '0.65rem' }} />
+                                </Box>
+                              </Box>
+                            </Box>
+                          ))}
+                          <Button fullWidth variant="outlined" size="small" sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none', py: 0.5 }} component={Link} href="/cases">
+                            View All Cases
                           </Button>
-                        </Box>
+                        </Stack>
                       )}
                     </CardContent>
                   </Card>
-                </Box>
-              </Box>
+                </Grid>
+
+                {/* Right Side: Stacked Side Widgets (Upcoming Webinars & Notifications) */}
+                <Grid size={{xs:12, md:5 }} component="div">
+                  <Stack spacing={3} sx={{ height: '100%' }}>
+
+                    {/* Upcoming Webinars Widget */}
+                    <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)', flex: 1 }}>
+                      <CardContent sx={{ p: 2.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                          <CalendarToday sx={{ mr: 1, color: '#16a34a', fontSize: 20 }} />
+                          <Typography variant="subtitle2" fontWeight={700}>Upcoming Webinars</Typography>
+                        </Box>
+                        {webinars.length === 0 ? (
+                          <Box sx={{ p: 1.5, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
+                            <Typography variant="body2" fontWeight={700} color="#16a34a">Interactive Cardiac Imaging Seminar</Typography>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>July 14 at 4:00 PM EST</Typography>
+                          </Box>
+                        ) : (
+                          <Stack spacing={1}>
+                            {webinars.slice(0, 2).map((w: any) => (
+                              <Box key={w._id} sx={{ p: 1.2, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0' }}>
+                                <Typography variant="body2" fontWeight={700}>{w.title}</Typography>
+                              </Box>
+                            ))}
+                          </Stack>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Notifications Widget */}
+                    <Card sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)', flex: 1 }}>
+                      <CardContent sx={{ p: 2.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                          <NotificationsIcon sx={{ mr: 1, color: '#ea580c', fontSize: 20 }} />
+                          <Typography variant="subtitle2" fontWeight={700}>Notifications</Typography>
+                        </Box>
+                        {notifications.length === 0 ? (
+                          <Box sx={{ p: 1.5, bgcolor: '#fff7ed', borderRadius: 2, border: '1px solid #ffedd5' }}>
+                            <Typography variant="caption" fontWeight={600} color="#ea580c" display="block">Your submitted diagnostic report was successfully approved by the peer advisory team.</Typography>
+                          </Box>
+                        ) : (
+                          <Stack spacing={1}>
+                            {notifications.slice(0, 2).map((n: any) => (
+                              <Box key={n._id} sx={{ p: 1.2, bgcolor: '#fff7ed', borderRadius: 2, border: '1px solid #ffedd5' }}>
+                                <Typography variant="caption" display="block" fontWeight={600}>{n.message}</Typography>
+                              </Box>
+                            ))}
+                          </Stack>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                  </Stack>
+                </Grid>
+
+              </Grid> {/* End of Nested Grid */}
+
             </Stack>
-          </Box>
-        </Box>
+          </Grid>
+
+        </Grid>
       </Container>
     </Box>
   );

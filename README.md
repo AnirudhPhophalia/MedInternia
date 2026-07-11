@@ -97,6 +97,7 @@ MedInternia is built for everyone in the medical ecosystem:
 * Attend and host webinars
 * Interactive live sessions
 
+
 ## 🤖 AI-Powered Suggestions
 
 * Smart recommendations for discussions
@@ -104,8 +105,10 @@ MedInternia is built for everyone in the medical ecosystem:
 
 ## 📹 Video Conferencing
 
-* Secure video calls
-* Webinar and discussion support
+- Secure video calls via [Daily.co](https://daily.co) (WebRTC)
+- Webinar and live AMA session support
+- Role-based controls (host can mute/remove participants)
+- **Status: Implementation in progress** — see [docs/video-conferencing.md](docs/video-conferencing.md)
 
 ## 👤 User Profiles
 
@@ -155,6 +158,40 @@ MedInternia/
 └── package.json
 ```
 
+## 📁 Folder Structure
+MedInternia/
+│
+├── backend/          # Node.js + Express API (port 3000)
+├── frontend/         # Next.js frontend (port 3001)
+├── docs/             # Architecture documentation
+│   └── ai-nlp-integration.md   # AI/NLP module plan
+├── requirements.txt  # Python dependencies (for future NLP module)
+├── README.md
+└── package.json
+
+> **Note on `requirements.txt`:** This file is a placeholder for the planned
+> Python NLP microservice. See `docs/ai-nlp-integration.md` for the implementation
+> plan and `backend/.env.example` for the `NLP_SERVICE_URL` configuration.
+Also update the "Getting Started" section to add:
+markdown## 4️⃣ Start Development Servers
+
+### Backend
+```bash
+cd backend
+npm run dev
+```
+
+### Frontend
+```bash
+cd frontend  
+npm run dev
+```
+
+### NLP Service (Optional — only needed for AI Suggestions feature)
+> ⚠️ The NLP module is **not yet implemented**. The AI-Powered Suggestions feature
+> is currently planned. See [docs/ai-nlp-integration.md](docs/ai-nlp-integration.md)
+> for the implementation roadmap.
+
 ---
 
 # ⚡ Getting Started
@@ -198,10 +235,18 @@ CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
-EMAIL_USER=your_email
-EMAIL_PASS=your_password
+EMAIL_USER=your_gmail@gmail.com
+EMAIL_PASS=your_gmail_app_password    # ⚠️ 16-char App Password — NOT your Gmail password
+                                       # Generate at: myaccount.google.com/apppasswords
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
+
+> **⚠️ Gmail SMTP Note:** Google permanently removed support for password-based SMTP
+> in August 2024. `EMAIL_PASS` must be a **Gmail App Password** (not your account password).
+> Enable 2-Step Verification first, then generate an App Password at
+> [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
+> For local development without sending real emails, use [Mailtrap](https://mailtrap.io) (free).
+
 ```
 
 ---

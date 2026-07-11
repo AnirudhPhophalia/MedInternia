@@ -4,6 +4,7 @@ import {
   Paper,
   Stack,
   Typography,
+  IconButton
 } from "@mui/material";
 import {
   ClipboardCheck,
@@ -11,8 +12,9 @@ import {
   UserCheck,
   Ban,
   Stethoscope,
-  RefreshCcw,
+  RefreshCcw,X
 } from "lucide-react";
+import { useRouter } from "next/router";
 
 const sections = [
   {
@@ -48,6 +50,7 @@ const sections = [
 ];
 
 export default function TermsPage() {
+   const router = useRouter(); 
   return (
     <Box
       sx={{
@@ -57,6 +60,7 @@ export default function TermsPage() {
         py: { xs: 6, md: 10 },
       }}
     >
+      
       <Container maxWidth="md">
         <Paper
           elevation={0}
@@ -65,8 +69,29 @@ export default function TermsPage() {
             borderRadius: 5,
             border: "1px solid rgba(33,147,176,0.12)",
             boxShadow: "0 12px 36px rgba(33,147,176,0.14)",
+            position:'relative'
           }}
         >
+            <IconButton
+            onClick={() => router.back()}
+            aria-label="close"
+            sx={{
+              position: "absolute",
+              top: { xs: 16, md: 24 },
+              right: { xs: 16, md: 24 },
+              color: "text.secondary",
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                color: "#0072ff",
+                 backgroundColor: "rgba(0, 114, 255, 0.08)",
+                transform: "scale(1.05)",
+              
+              },
+            }}
+          >
+            <X size={22} />
+          </IconButton>
+          
           {/* Header */}
           <Stack
             direction="row"
@@ -74,6 +99,7 @@ export default function TermsPage() {
             alignItems="center"
             sx={{ mb: 2 }}
           >
+            
             <ClipboardCheck size={44} color="#0072ff" />
 
             <Typography

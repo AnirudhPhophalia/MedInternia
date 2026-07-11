@@ -10,6 +10,18 @@ import { getSafeRedirectPath } from '../../utils/authRedirect';
 import AuthLayout, { AuthCard } from '../../components/auth/AuthLayout';
 import { useAuth, setGlobalToken } from '../../context/AuthContext';
 
+const persistAuthSession = (token: string, userId: string, user: any) => {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem('token', token);
+  localStorage.setItem('userId', userId);
+  localStorage.setItem('user', JSON.stringify(user));
+
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `token=${encodeURIComponent(token)}; Path=/; SameSite=Lax${secure}`;
+  document.cookie = `auth_status=authenticated; Path=/; SameSite=Lax${secure}`;
+};
+
 export default function Login() {
   const { login: authLogin } = useAuth();
   const [email, setEmail] = useState('');
@@ -35,8 +47,8 @@ export default function Login() {
   const res = await api.post('/auth/login', { email, password });
   const token = res.data?.data?.token;
   const user = res.data?.data?.user;
-  const role = user?.role || '';
   const userId = user?._id || user?.id || '';
+  persistAuthSession(token, userId, user);
   setGlobalToken(token);
   authLogin(token, userId, user);
   router.push(getSafeRedirectPath(router.query.redirect));

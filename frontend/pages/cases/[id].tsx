@@ -22,16 +22,19 @@ import {
   Tabs,
   Tab
 } from '@mui/material';
-import { MessageCircleReply, Pin, CheckCircle2, Sparkles } from 'lucide-react';
+import { MessageCircleReply, Pin, CheckCircle2, Sparkles, BookmarkPlus, Lock } from 'lucide-react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
+import GlossaryText from '../../components/GlossaryText';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
 import PdfExportButton from '../../components/PdfExportButton';
+import OfflineSaveButton from '../../components/OfflineSaveButton';
 import ClinicalTimeline from '../../components/ClinicalTimeline';
+import AddToCollectionModal from '../../components/AddToCollectionModal';
 
 export default function CaseDiscussion({ id: propId, modalMode, hideDescription }: { id?: string, modalMode?: boolean, hideDescription?: boolean }) {
   const router = useRouter();
@@ -45,6 +48,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [activeTab, setActiveTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedComment, setSelectedComment] = useState<any>(null);
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
 
   const [replyTo, setReplyTo] = useState<any>(null);
   const [replyContent, setReplyContent] = useState('');
@@ -87,8 +91,12 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         setDiscussions(all.filter((c: any) => !c.pinned));
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch case');
+      .catch((err) => {
+        if (err.response && err.response.status === 403) {
+          setError(err.response.data.message || 'Access Denied');
+        } else {
+          setError('Failed to fetch case');
+        }
         setLoading(false);
       });
   }, [id]);
@@ -227,7 +235,34 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
       </Box>
     );
   }
-  if (error) return <Container maxWidth="md" sx={{ py: 4 }}><Alert severity="error">{error}</Alert></Container>;
+  
+  if (error) {
+    const isAccessDenied = error.startsWith('Access Denied');
+    return (
+      <Container maxWidth="md" sx={{ py: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Alert 
+          severity="error" 
+          icon={isAccessDenied ? <Lock size={24} /> : undefined}
+          sx={{ mb: 3, width: '100%', py: 2, borderRadius: 3, fontSize: '1.1rem' }}
+        >
+          <Typography variant="subtitle1" fontWeight={700} sx={{ display: 'inline-block', mr: 1 }}>
+            {isAccessDenied ? 'Protected Case' : 'Error'}
+          </Typography>
+          {error}
+        </Alert>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          component={Link}
+          href="/cases"
+          variant="contained"
+          sx={{ mt: 2, borderRadius: 2 }}
+        >
+          Return to Cases Feed
+        </Button>
+      </Container>
+    );
+  }
+
   if (!caseData) return null;
 
   const caseAuthorName = caseData.doctor
@@ -450,7 +485,19 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
               <Typography variant="h3" fontWeight={900} color="text.primary" sx={{ flex: 1, letterSpacing: -0.5, mb: 0 }}>
                 {caseData.title}
               </Typography>
-              <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  startIcon={<BookmarkPlus size={16} />}
+                  onClick={() => setCollectionModalOpen(true)}
+                  sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, borderColor: 'primary.main', color: 'primary.main' }}
+                >
+                  Save
+                </Button>
+                <OfflineSaveButton caseId={caseData._id || id as string} caseData={caseData} />
+                <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+              </Box>
             </Box>
 
             {/* AI Prominent Badges */}
@@ -492,6 +539,15 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
                   label="Solved"
                   color="success"
                   sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '13px', px: 0.5 }}
+                />
+              )}
+              {caseData.verifiedDoctorsOnly && (
+                <Chip
+                  icon={<Lock size={14} />}
+                  label="Verified Doctors Only"
+                  color="error"
+                  variant="filled"
+                  sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '13px', px: 0.5, bgcolor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}
                 />
               )}
               {caseData.tags && caseData.tags.map((tag: string) => (
@@ -597,7 +653,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
                   Clinical History & Details
                 </Typography>
                 <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', color: 'text.primary', fontSize: '1.05rem', lineHeight: 1.7 }}>
-                  {caseData.description}
+                  <GlossaryText text={caseData.description} />
                 </Typography>
               </Box>
 
@@ -618,6 +674,48 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
                             sx={{ height: 260, objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}
                             onClick={() => window.open(img, '_blank')}
                           />
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+
+              {caseData.attachments && caseData.attachments.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: 'primary.dark' }}>
+                    Supporting Media
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {caseData.attachments.map((att: any, idx: number) => (
+                      <Grid size={{ xs: 12, sm: att.type === 'audio' ? 12 : 6 }} key={`att-${idx}`}>
+                        <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.01)', overflow: 'hidden', p: att.type === 'audio' ? 2 : 0 }}>
+                          {att.type === 'image' && (
+                            <CardMedia
+                              component="img"
+                              image={att.url}
+                              alt={`Clinical supporting media ${idx + 1}`}
+                              sx={{ height: 260, objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}
+                              onClick={() => window.open(att.url, '_blank')}
+                            />
+                          )}
+                          {att.type === 'video' && (
+                            <video
+                              src={att.url}
+                              controls
+                              style={{ width: '100%', maxHeight: 260, objectFit: 'contain', backgroundColor: '#000' }}
+                            />
+                          )}
+                          {att.type === 'audio' && (
+                            <Box sx={{ width: '100%' }}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Audio Attachment</Typography>
+                              <audio
+                                src={att.url}
+                                controls
+                                style={{ width: '100%' }}
+                              />
+                            </Box>
+                          )}
                         </Card>
                       </Grid>
                     ))}
@@ -713,6 +811,15 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
           </Card>
         </Grid>
       </Grid>
+      
+      {/* Add To Collection Modal */}
+      {id && (
+        <AddToCollectionModal 
+          open={collectionModalOpen} 
+          onClose={() => setCollectionModalOpen(false)} 
+          caseId={id as string} 
+        />
+      )}
     </Container>
   );
 }

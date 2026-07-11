@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
+import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken } from '../utils/jwt';
 import { AuthRequest, blacklistToken } from '../middleware/auth';
 import { uploadProfileImage } from '../utils/cloudinary';
@@ -14,7 +15,7 @@ import { AppError } from "../utils/AppError";
 const OTP_TTL_MS = 10 * 60 * 1000; // OTP valid for 10 minutes
 const OTP_MAX_ATTEMPTS = 5; // after 5 wrong tries the OTP is invalidated
 
-const generateOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+const generateOtpCode = () => crypto.randomInt(100000, 1000000).toString();
 
 const issueOtp = async (email: string, purpose: 'signup' | 'reset') => {
   const otp = generateOtpCode();
@@ -240,14 +241,6 @@ export const sendOtp = async (req: Request, res: Response) => {
   if (!email) return res.status(400).json({ success: false, message: 'Email required' });
   const otp = await issueOtp(email, 'signup');
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
-      port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
@@ -374,11 +367,11 @@ export const getProfile = asyncHandler(
 
 const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
-  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile',
+  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile', 'orcidId',
   'specialization', 'experience', 'qualifications',
   'medicalSchool', 'yearOfStudy', 'interests', 'mentorDoctor',
   'academicAchievements', 'careerGoals',
-  'emergencyContact', 'medicalHistory', 'allergies'
+  'emergencyContact', 'medicalHistory', 'allergies', 'messagePrivacy'
 ];
 
 // Update user profile
@@ -454,6 +447,7 @@ export const changePassword = asyncHandler(
 
     // Update password
     userWithPassword.password = newPassword;
+    userWithPassword.passwordChangedAt = new Date();
     await userWithPassword.save();
 
     res.json({
@@ -482,15 +476,7 @@ if (!user) {
     // Generate OTP
     const otp = await issueOtp(email, 'reset');
 
-    // Send OTP via email
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.ethereal.email",
-      port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    
 
     try {
       await transporter.sendMail({
@@ -526,6 +512,7 @@ export const resetPassword = asyncHandler(
       throw new AppError("User not found", 404);
     }
     user.password = newPassword;
+    user.passwordChangedAt = new Date();
     await user.save();
     return res.json({ success: true, message: 'Password reset successfully' });
   },
@@ -557,4 +544,58 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   res.clearCookie('token');
   res.clearCookie('auth_status');
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+export const syncOrcidPublications = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+  if (!user) {
+    throw new AppError("User not authenticated", 401);
+  }
+
+  if (!user.orcidId) {
+    throw new AppError("No ORCID iD provided in your profile", 400);
+  }
+
+  try {
+    const response = await fetch(`https://pub.orcid.org/v3.0/${user.orcidId}/works`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch from ORCID API');
+    }
+
+    const data = await response.json();
+    const works = data?.group || [];
+
+    const publications = works.map((workGroup: any) => {
+      const workSummary = workGroup['work-summary']?.[0];
+      if (!workSummary) return null;
+
+      return {
+        title: workSummary.title?.title?.value || 'Untitled',
+        year: workSummary['publication-date']?.year?.value || 'Unknown',
+        journal: workSummary['journal-title']?.value || 'Unknown Journal',
+        url: workSummary.url?.value || ''
+      };
+    }).filter(Boolean);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { publications },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    res.json({
+      success: true,
+      message: "ORCID publications synced successfully",
+      data: {
+        user: updatedUser
+      }
+    });
+  } catch (error) {
+    throw new AppError("Failed to sync ORCID publications. Please check your ORCID iD.", 500);
+  }
 });

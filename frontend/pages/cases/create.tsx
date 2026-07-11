@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Stethoscope, Rocket, Sparkles, Image as ImageIcon, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Stethoscope, Rocket, Sparkles, Image as ImageIcon, Loader2, PenTool } from "lucide-react";
 import {
   Container,
   Typography,
@@ -15,12 +15,46 @@ import {
   Backdrop,
   CircularProgress,
   Stack,
-  Grid
+  Grid,
+  Chip,
+  Switch,
+  FormControlLabel
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 import api from "../../utils/api";
 import { useRouter } from "next/router";
 import PageHeader from "../../components/layout/PageHeader";
+import * as markerjs2 from "markerjs2";
+import { Menu } from "@mui/material";
+
+const SOAP_TEMPLATE = `**Subjective:**
+- Chief Complaint: 
+- History of Present Illness (HPI): 
+
+**Objective:**
+- Vitals: 
+- Physical Exam: 
+- Labs/Imaging: 
+
+**Assessment:**
+- Primary Diagnosis: 
+- Differential Diagnoses: 
+
+**Plan:**
+- Treatment/Medications: 
+- Follow-up: `;
+
+const SBAR_TEMPLATE = `**Situation:**
+- What is going on with the patient?
+
+**Background:**
+- Clinical background or context:
+
+**Assessment:**
+- What do I think the problem is?
+
+**Recommendation:**
+- What would I do to correct it?`;
 
 const SPECIALTIES = [
   "General Medicine",
@@ -50,15 +84,68 @@ export default function CreateCase() {
     title: "",
     description: "",
     specialization: "",
+    tags: [] as string[],
+    symptoms: [] as string[],
+    isRareDisease: false,
+    verifiedDoctorsOnly: false,
   });
 
   const [images, setImages] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<{ url: string, type: 'image' | 'video' | 'audio', publicId?: string }[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingStepIndex, setLoadingStepIndex] = useState(0);
+  const [annotatingIdx, setAnnotatingIdx] = useState<number | null>(null);
+  const annotationImgRef = useRef<HTMLImageElement>(null);
+  const [templateMenuAnchor, setTemplateMenuAnchor] = useState<null | HTMLElement>(null);
 
   const router = useRouter();
+
+  // Initialize markerjs2 when annotatingIdx is set
+  useEffect(() => {
+    if (annotatingIdx !== null && annotationImgRef.current) {
+      const markerArea = new markerjs2.MarkerArea(annotationImgRef.current);
+      
+      markerArea.addEventListener("render", async (event) => {
+        setLoading(true);
+        try {
+          const blob = await (await fetch(event.dataUrl)).blob();
+          const file = new File([blob], "annotated_image.png", { type: "image/png" });
+          const formData = new FormData();
+          formData.append("attachment", file);
+          const token = localStorage.getItem("token");
+          
+          const res = await api.post("/cases/attachments", formData, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          });
+          
+          const newAttachment = res.data.data;
+          setAttachments((prev) => {
+            const newAtts = [...prev];
+            newAtts[annotatingIdx] = newAttachment;
+            return newAtts;
+          });
+        } catch (err: any) {
+          setError(err?.response?.data?.message || "Failed to save annotated image.");
+        } finally {
+          setLoading(false);
+          setAnnotatingIdx(null);
+        }
+      });
+
+      markerArea.addEventListener("close", () => {
+        setAnnotatingIdx(null);
+      });
+
+      markerArea.show();
+    }
+  }, [annotatingIdx]);
+
+  const routerRef = useRef(router);
 
   // Cycle through loading steps to show the AI tagger progress
   useEffect(() => {
@@ -74,29 +161,66 @@ export default function CreateCase() {
   }, [loading]);
 
   const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setForm({ ...form, [e.target.name]: value });
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const promises = files.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
+      const token = localStorage.getItem("token");
+      
+      setLoading(true);
+      setError("");
+
+      try {
+        const uploadedAttachments = await Promise.all(
+          files.map(async (file) => {
+            const formData = new FormData();
+            formData.append("attachment", file);
+            
+            const res = await api.post("/cases/attachments", formData, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
+              },
+            });
+            return res.data.data;
           })
-      );
-      Promise.all(promises).then((base64Files) => {
-        setImages((prev) => [...prev, ...base64Files]);
-      });
+        );
+        
+        setAttachments((prev) => [...prev, ...uploadedAttachments]);
+      } catch (err: any) {
+        setError(err?.response?.data?.message || "Failed to upload attachment. Note: Files must be under 50MB and be valid image, video, or audio files.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSuggestTags = async () => {
+    if (!form.description) {
+      setError("Please write a description first to generate tags.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post("/symptoms/extract", { text: form.description });
+      if (res.data.success && res.data.data.symptoms) {
+        // Use the extracted symptoms as both symptoms and tags in the frontend UI
+        const extracted = res.data.data.symptoms;
+        setForm(prev => ({ ...prev, symptoms: extracted, tags: extracted }));
+        setSuccess("AI successfully extracted tags and symptoms!");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to extract tags.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: any) => {
@@ -111,6 +235,7 @@ export default function CreateCase() {
       const payload = {
         ...form,
         images,
+        attachments,
       };
 
       const res = await api.post("/cases", payload, {
@@ -207,9 +332,72 @@ export default function CreateCase() {
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: "text.primary" }}>
-                  Clinical Case Description
-                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.isRareDisease}
+                      onChange={handleChange}
+                      name="isRareDisease"
+                      color="primary"
+                    />
+                  }
+                  label={
+                    <Typography variant="body1" fontWeight={600} color="text.primary">
+                      Mark as Rare/Orphan Disease (helps specialists discover unique cases)
+                    </Typography>
+                  }
+                  sx={{ mb: 2 }}
+                />
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.verifiedDoctorsOnly}
+                      onChange={handleChange}
+                      name="verifiedDoctorsOnly"
+                      color="error"
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600} color="error.main">
+                        Restrict visibility strictly to Verified Doctors
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        For sensitive or highly graphic professional cases meant for peer review only.
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ color: "text.primary" }}>
+                    Clinical Case Description
+                  </Typography>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    onClick={(e) => setTemplateMenuAnchor(e.currentTarget)}
+                  >
+                    Insert Template
+                  </Button>
+                  <Menu
+                    anchorEl={templateMenuAnchor}
+                    open={Boolean(templateMenuAnchor)}
+                    onClose={() => setTemplateMenuAnchor(null)}
+                  >
+                    <MenuItem onClick={() => {
+                      setForm(prev => ({ ...prev, description: prev.description ? prev.description + "\n\n" + SOAP_TEMPLATE : SOAP_TEMPLATE }));
+                      setTemplateMenuAnchor(null);
+                    }}>SOAP Note</MenuItem>
+                    <MenuItem onClick={() => {
+                      setForm(prev => ({ ...prev, description: prev.description ? prev.description + "\n\n" + SBAR_TEMPLATE : SBAR_TEMPLATE }));
+                      setTemplateMenuAnchor(null);
+                    }}>SBAR Format</MenuItem>
+                  </Menu>
+                </Box>
                 <TextField
                   placeholder="Write a detailed description of the case. Include presentation, clinical observations, lab reports, diagnostics, or questions for peer review. Do not include identifiable patient details."
                   name="description"
@@ -225,8 +413,40 @@ export default function CreateCase() {
               </Grid>
 
               <Grid size={{ xs: 12 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ color: "text.primary" }}>
+                    AI Generated Tags & Symptoms
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    startIcon={<Sparkles size={16} />}
+                    onClick={handleSuggestTags}
+                    disabled={loading || !form.description}
+                  >
+                    Auto-Suggest Tags
+                  </Button>
+                </Box>
+                {form.tags.length > 0 ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', p: 2, bgcolor: '#fdfdff', borderRadius: '10px', border: '1px solid', borderColor: 'divider' }}>
+                    {form.tags.map(tag => (
+                      <Chip key={tag} label={tag} color="primary" variant="outlined" onDelete={() => {
+                        const newTags = form.tags.filter(t => t !== tag);
+                        setForm(prev => ({ ...prev, tags: newTags, symptoms: newTags }));
+                      }} />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    Click "Auto-Suggest Tags" to extract keywords from your description before submitting.
+                  </Typography>
+                )}
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
                 <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: "text.primary" }}>
-                  Supporting Materials (Images)
+                  Supporting Materials (Images, Video, Audio)
                 </Typography>
                 <Button
                   variant="outlined"
@@ -248,23 +468,23 @@ export default function CreateCase() {
                     transition: "all 0.2s",
                   }}
                 >
-                  Upload clinical images, ECGs, or reports
+                  Upload clinical images, ECGs, video, or audio (Max 50MB)
                   <input
                     type="file"
                     hidden
                     multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
+                    accept="image/*,video/mp4,audio/mpeg,audio/wav"
+                    onChange={handleAttachmentUpload}
                   />
                 </Button>
               </Grid>
 
-              {images.length > 0 && (
+              {(images.length > 0 || attachments.length > 0) && (
                 <Grid size={{ xs: 12 }}>
                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
                     {images.map((img, idx) => (
                       <Card
-                        key={idx}
+                        key={`img-${idx}`}
                         sx={{
                           width: 100,
                           height: 100,
@@ -281,6 +501,53 @@ export default function CreateCase() {
                           alt={`Uploaded thumbnail ${idx + 1}`}
                           sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
+                      </Card>
+                    ))}
+                    {attachments.map((att, idx) => (
+                      <Card
+                        key={`att-${idx}`}
+                        sx={{
+                          width: 100,
+                          height: 100,
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          position: "relative",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          bgcolor: "#fdfdff"
+                        }}
+                      >
+                        {att.type === 'image' ? (
+                          <CardMedia
+                            component="img"
+                            image={att.url}
+                            alt={`Attachment ${idx + 1}`}
+                            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <Typography variant="caption" align="center" sx={{ wordBreak: 'break-all', px: 1 }}>
+                            {att.type === 'video' ? 'Video File' : 'Audio File'}
+                          </Typography>
+                        )}
+                        {att.type === 'image' && (
+                          <IconButton
+                            size="small"
+                            sx={{
+                              position: "absolute",
+                              bottom: 4,
+                              right: 4,
+                              bgcolor: "rgba(0,0,0,0.5)",
+                              color: "white",
+                              "&:hover": { bgcolor: "rgba(0,0,0,0.7)" },
+                            }}
+                            onClick={() => setAnnotatingIdx(idx)}
+                          >
+                            <PenTool size={16} />
+                          </IconButton>
+                        )}
                         <IconButton
                           size="small"
                           sx={{
@@ -291,7 +558,7 @@ export default function CreateCase() {
                             color: "white",
                             "&:hover": { bgcolor: "rgba(0,0,0,0.7)" },
                           }}
-                          onClick={() => handleRemoveImage(idx)}
+                          onClick={() => handleRemoveAttachment(idx)}
                         >
                           <CloseIcon fontSize="small" />
                         </IconButton>
@@ -396,6 +663,32 @@ export default function CreateCase() {
           }
         `}</style>
       </Backdrop>
+      
+      {/* Invisible image element strictly for markerjs2 to attach to */}
+      {annotatingIdx !== null && attachments[annotatingIdx] && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(0,0,0,0.8)'
+          }}
+        >
+          <img 
+            ref={annotationImgRef} 
+            src={attachments[annotatingIdx].url} 
+            crossOrigin="anonymous" 
+            alt="Annotation Target"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+          />
+        </Box>
+      )}
     </Box>
   );
 }
