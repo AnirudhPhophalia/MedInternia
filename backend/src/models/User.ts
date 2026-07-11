@@ -75,6 +75,7 @@ passwordResetExpires?: Date;
   // Common fields
   isActive: boolean;
   isVerified: boolean;
+  messagePrivacy?: 'anyone' | 'verified_only' | 'none';
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -333,6 +334,11 @@ passwordResetExpires: {
   isVerified: {
     type: Boolean,
     default: false
+  },
+  messagePrivacy: {
+    type: String,
+    enum: ['anyone', 'verified_only', 'none'],
+    default: 'anyone'
   }
 }, {
   timestamps: true
