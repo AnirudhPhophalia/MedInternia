@@ -435,6 +435,7 @@ export const createCase = asyncHandler(
       attachments,
       specialization,
       isRareDisease,
+      verifiedDoctorsOnly,
     } = req.body;
 
     const spec = specialization || user.specialization || "General Medicine";
@@ -459,6 +460,7 @@ export const createCase = asyncHandler(
         doctor: user._id as any,
         isPatientCase: true,
         isRareDisease: isRareDisease === true,
+        verifiedDoctorsOnly: verifiedDoctorsOnly === true,
         moderationStatus: "pending",
         moderationAuditTrail: [
           {
@@ -504,6 +506,7 @@ export const createCase = asyncHandler(
       doctor: user._id as any,
       isPatientCase: false,
       isRareDisease: isRareDisease === true,
+      verifiedDoctorsOnly: verifiedDoctorsOnly === true,
       moderationStatus: "approved",
       moderationAuditTrail: [
         {
@@ -550,7 +553,15 @@ export const getCases = asyncHandler(
       sortBy = "newest",
     } = req.query;
 
+    const user = req.user as any;
+    const isVerifiedDoctor = user && (user.isVerifiedDoctor || user.userType === "admin");
+
     const filter: any = { isActive: true, $and: [publicCaseFilter] };
+
+    // Apply RBAC for verified doctors only cases
+    if (!isVerifiedDoctor) {
+      filter.verifiedDoctorsOnly = { $ne: true };
+    }
 
     if (specialization) {
       filter.specialization = { $regex: specialization, $options: "i" };
@@ -647,9 +658,20 @@ export const getCaseById = asyncHandler(
     if (!caseData.isActive) {
       throw new AppError("Case is no longer available", 404);
     }
-    const user = req.user as { _id?: string; userType?: string } | undefined;
+    const user = req.user as { _id?: string; userType?: string; isVerifiedDoctor?: boolean } | undefined;
+    
+    // RBAC check for restricted cases
+    if (caseData.verifiedDoctorsOnly) {
+      const isVerifiedDoctor = user && (user.isVerifiedDoctor || user.userType === "admin");
+      const isOwner = user?._id && caseData.doctor._id.toString() === user._id.toString();
+      
+      if (!isVerifiedDoctor && !isOwner) {
+        throw new AppError("Access Denied: This case is restricted to Verified Doctors only", 403);
+      }
+    }
+    
     const isOwner =
-      user?._id && caseData.doctor.toString() === user._id.toString();
+      user?._id && (caseData.doctor._id ? caseData.doctor._id.toString() : caseData.doctor.toString()) === user._id.toString();
     const isApproved =
       !caseData.moderationStatus || caseData.moderationStatus === "approved";
     if (!isApproved && !isOwner && !canModerateCases(user?.userType)) {

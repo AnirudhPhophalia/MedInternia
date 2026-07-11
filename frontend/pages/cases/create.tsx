@@ -56,6 +56,7 @@ export default function CreateCase() {
     tags: [] as string[],
     symptoms: [] as string[],
     isRareDisease: false,
+    verifiedDoctorsOnly: false,
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -267,6 +268,27 @@ export default function CreateCase() {
                     </Typography>
                   }
                   sx={{ mb: 2 }}
+                />
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.verifiedDoctorsOnly}
+                      onChange={handleChange}
+                      name="verifiedDoctorsOnly"
+                      color="error"
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography variant="body1" fontWeight={600} color="error.main">
+                        Restrict visibility strictly to Verified Doctors
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        For sensitive or highly graphic professional cases meant for peer review only.
+                      </Typography>
+                    </Box>
+                  }
                 />
               </Grid>
 
