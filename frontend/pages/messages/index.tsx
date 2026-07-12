@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Box, Typography, Paper, IconButton, TextField, Avatar,
-  List, ListItem, ListItemAvatar, ListItemText, Divider,
+  List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Divider,
   Tooltip, Badge, Chip
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
@@ -71,16 +71,16 @@ export default function Messages() {
         <List sx={{ flex: 1, overflowY: 'auto', p: 0 }}>
           {contacts.map((contact) => (
             <React.Fragment key={contact.id}>
-              <ListItem
-                button
-                selected={activeChat === contact.id}
-                onClick={() => setActiveChat(contact.id)}
-                sx={{
-                  bgcolor: activeChat === contact.id ? '#eff6ff' : 'transparent',
-                  '&.Mui-selected': { bgcolor: '#eff6ff', '&:hover': { bgcolor: '#dbeafe' } }
-                }}
-              >
-                <ListItemAvatar>
+              <ListItem disablePadding>
+                <ListItemButton
+                  selected={activeChat === contact.id}
+                  onClick={() => setActiveChat(contact.id)}
+                  sx={{
+                    bgcolor: activeChat === contact.id ? '#eff6ff' : 'transparent',
+                    '&.Mui-selected': { bgcolor: '#eff6ff', '&:hover': { bgcolor: '#dbeafe' } }
+                  }}
+                >
+                  <ListItemAvatar>
                   <Badge color="success" variant="dot" invisible={!contact.online} overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
                     <Avatar sx={{ bgcolor: activeChat === contact.id ? 'primary.main' : 'grey.400' }}>
                       {contact.name.charAt(4)}
@@ -107,6 +107,7 @@ export default function Messages() {
                     </Box>
                   }
                 />
+                </ListItemButton>
               </ListItem>
               <Divider component="li" />
             </React.Fragment>
