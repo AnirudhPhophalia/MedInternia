@@ -5,7 +5,7 @@ import fs from 'fs';
 
 export const getResearchPaperById = async (req: Request, res: Response) => {
   try {
-    const paper = await ResearchPaper.findById(req.params.id);
+    const paper = await ResearchPaper.findById(req.params.id).populate('author', 'firstName lastName');
     if (!paper) return res.status(404).json({ error: 'Research paper not found.' });
     res.json({ data: { paper } });
   } catch (err) {
@@ -17,12 +17,17 @@ export const getResearchPaperById = async (req: Request, res: Response) => {
 export const createResearchPaper = async (req: Request, res: Response) => {
   try {
     const { title, description, field, difficulty, fileUrl } = req.body;
+    const author = (req as any).user?._id || (req as any).user?.id; // Assuming auth middleware sets this
+    
+    if (!author) return res.status(401).json({ error: 'Unauthorized.' });
+
     const paper = new ResearchPaper({
       title,
       description,
       field,
       difficulty,
       fileUrl,
+      author,
     });
     await paper.save();
     res.status(201).json(paper);
@@ -33,10 +38,64 @@ export const createResearchPaper = async (req: Request, res: Response) => {
 
 export const getAllResearchPapers = async (req: Request, res: Response) => {
   try {
-    const papers = await ResearchPaper.find().sort({ createdAt: -1 });
+    const { field, difficulty } = req.query;
+    const filter: any = {};
+    if (field) filter.field = field;
+    if (difficulty) filter.difficulty = difficulty;
+
+    const papers = await ResearchPaper.find(filter)
+      .populate('author', 'firstName lastName')
+      .sort({ createdAt: -1 });
     res.json(papers);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch research papers.' });
+  }
+};
+
+export const updateResearchPaper = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, description, field, difficulty, fileUrl } = req.body;
+    const userId = (req as any).user?._id || (req as any).user?.id;
+    const userRole = (req as any).user?.userType || (req as any).user?.role;
+
+    const paper = await ResearchPaper.findById(id);
+    if (!paper) return res.status(404).json({ error: 'Research paper not found.' });
+
+    if (paper.author.toString() !== userId && userRole !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to update this paper.' });
+    }
+
+    if (title) paper.title = title;
+    if (description) paper.description = description;
+    if (field) paper.field = field;
+    if (difficulty) paper.difficulty = difficulty;
+    if (fileUrl) paper.fileUrl = fileUrl;
+
+    await paper.save();
+    res.json(paper);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update research paper.' });
+  }
+};
+
+export const deleteResearchPaper = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?._id || (req as any).user?.id;
+    const userRole = (req as any).user?.userType || (req as any).user?.role;
+
+    const paper = await ResearchPaper.findById(id);
+    if (!paper) return res.status(404).json({ error: 'Research paper not found.' });
+
+    if (paper.author.toString() !== userId && userRole !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to delete this paper.' });
+    }
+
+    await ResearchPaper.findByIdAndDelete(id);
+    res.json({ message: 'Research paper deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete research paper.' });
   }
 };
 // ✅ NEW FUNCTION - Adding this for PDF downloads

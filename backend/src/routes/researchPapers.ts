@@ -1,5 +1,5 @@
 import express from 'express';
-import { createResearchPaper, getAllResearchPapers, getResearchPaperById } from '../controllers/researchPaperController';
+import { createResearchPaper, getAllResearchPapers, getResearchPaperById, updateResearchPaper, deleteResearchPaper } from '../controllers/researchPaperController';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 import path from 'path';
@@ -28,5 +28,7 @@ router.get('/download/:filename', authenticate, (req, res) => {
 });
 
 router.get('/:id', getResearchPaperById);
+router.put('/:id', authenticate, updateResearchPaper);
+router.delete('/:id', authenticate, deleteResearchPaper);
 
 export default router;

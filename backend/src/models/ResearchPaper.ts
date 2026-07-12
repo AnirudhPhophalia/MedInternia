@@ -6,6 +6,7 @@ export interface IResearchPaper extends Document {
   field: string;
   difficulty: string;
   fileUrl: string;
+  author: mongoose.Types.ObjectId;
   createdAt: Date;
 }
 
@@ -15,6 +16,7 @@ const ResearchPaperSchema = new Schema<IResearchPaper>({
   field: { type: String, required: true },
   difficulty: { type: String, required: true },
   fileUrl: { type: String, required: true },
+  author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
 });
 
