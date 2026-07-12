@@ -13,7 +13,7 @@ export interface Notification {
 }
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
