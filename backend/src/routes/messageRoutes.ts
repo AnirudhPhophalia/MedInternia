@@ -6,12 +6,14 @@ import {
   sendMessage
 } from '../controllers/messageController';
 
+import { messageRateLimiter } from '../middleware/otpRateLimiter';
+
 const router = express.Router();
 
 router.use(authenticate);
 
 router.get('/conversations', getConversations);
 router.get('/:conversationId', getMessages);
-router.post('/', sendMessage);
+router.post('/', messageRateLimiter, sendMessage);
 
 export default router;

@@ -31,3 +31,14 @@ export const registerLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Too many registration attempts. Please try again after an hour.' }
 });
+
+export const messageRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // Limit each user to 30 messages per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return (req as any).user?._id?.toString() || req.ip;
+  },
+  message: { success: false, message: 'Too many messages sent. Please slow down and try again.' }
+});

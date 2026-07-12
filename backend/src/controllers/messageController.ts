@@ -66,6 +66,16 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
     throw new AppError("Unauthorized", 401);
   }
 
+  if (!content || typeof content !== 'string' || content.trim() === '') {
+    throw new AppError("Message content is required", 400);
+  }
+
+  if (content.length > 1000) {
+    throw new AppError("Message content exceeds maximum length of 1000 characters", 400);
+  }
+
+  const sanitizedContent = content.trim();
+
   if (senderId.toString() === receiverId) {
     throw new AppError("You cannot message yourself", 400);
   }
@@ -103,10 +113,10 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
   const message = await Message.create({
     conversationId: conversation._id,
     sender: senderId,
-    content
+    content: sanitizedContent
   });
 
-  conversation.lastMessage = content;
+  conversation.lastMessage = sanitizedContent;
   conversation.updatedAt = new Date();
   await conversation.save();
 
