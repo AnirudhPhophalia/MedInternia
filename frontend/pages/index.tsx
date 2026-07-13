@@ -455,6 +455,9 @@ export default function HomePage() {
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
 
+  // Needed by the feature cards below, and also by the hero mouse-parallax setup.
+  const shouldReduceMotion = useReducedMotion();
+
   React.useEffect(() => {
     const token = typeof window !== 'undefined' ? getAuthToken() : null;
     setIsLoggedIn(!!token);
@@ -486,29 +489,11 @@ export default function HomePage() {
     },
   };
 
-  const featureCardSx = {
-    p: 4,
-    borderRadius: '24px',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    bgcolor: '#fff',
-    border: '1px solid #e2e8f0',
-    transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
-    '&:hover': {
-      transform: 'translateY(-2px)',
-      borderColor: '#0072ff',
-      shadow: '0 12px 32px rgba(0, 114, 255, 0.1)',
-      '& .explore-underline': { width: '100%' },
-    },
-  };
-
   // ---- Hero mouse-parallax setup ----
   // Tracks pointer position within the hero section (normalized -0.5..0.5)
   // and drives a handful of differently-weighted transforms so background,
   // video, and floating cards each drift a slightly different amount.
   const heroRef = React.useRef<HTMLDivElement | null>(null);
-  const shouldReduceMotion = useReducedMotion();
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 60, damping: 20, mass: 0.4 });
@@ -952,11 +937,59 @@ export default function HomePage() {
               .filter((item) => !item.authRequired || isLoggedIn)
               .map((item, i) => (
                 <Grid size={{ xs: 12, sm: 6, md: isLoggedIn ? 3 : 4 }} key={i}>
-                  <motion.div variants={fadeInUp} style={{ height: '100%' }}>
-                    <Paper elevation={0} sx={featureCardSx}>
-                      <Box sx={{ bgcolor: item.color, width: 64, height: 64, borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+                  <motion.div
+                    variants={fadeInUp}
+                    style={{ height: '100%' }}
+                    whileHover={
+                      shouldReduceMotion
+                        ? undefined
+                        : { y: -10, scale: 1.035, transition: { duration: 0.25, ease: 'easeOut' } }
+                    }
+                  >
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 4,
+                        borderRadius: '24px',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        bgcolor: '#fff',
+                        border: '1px solid #e2e8f0',
+                        transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+                        '&:hover': {
+                          borderColor: '#0072ff',
+                          boxShadow: '0 20px 45px rgba(0, 114, 255, 0.22)',
+                          '& .explore-underline': { width: '100%' },
+                          '& .explore-arrow': { transform: shouldReduceMotion ? 'none' : 'translateX(6px)' },
+                        },
+                      }}
+                    >
+                      <motion.div
+                        className="feature-icon-box"
+                        style={{
+                          backgroundColor: item.color,
+                          width: 64,
+                          height: 64,
+                          borderRadius: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 24,
+                        }}
+                        whileHover={
+                          shouldReduceMotion
+                            ? undefined
+                            : {
+                                rotate: [0, -12, 10, -6, 0],
+                                scale: 1.12,
+                                transition: { duration: 0.55, ease: 'easeInOut' },
+                              }
+                        }
+                      >
                         {item.icon}
-                      </Box>
+                      </motion.div>
+
                       <Typography variant="h5" fontWeight={800} color="#1a202c" mb={1.5}>
                         {item.title}
                       </Typography>
@@ -976,7 +1009,7 @@ export default function HomePage() {
                           paddingBottom: 2,
                         }}
                       >
-                        Explore <ChevronRight size={18} style={{ marginLeft: 4 }} />
+                        Explore <ChevronRight className="explore-arrow" size={18} style={{ marginLeft: 4, transition: 'transform 0.25s ease' }} />
                         <Box
                           className="explore-underline"
                           sx={{
