@@ -73,8 +73,21 @@ export const addDiaryEntry = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { diaryId } = req.params;
-    const { day, content } = req.body;
+   const { diaryId } = req.params;
+    const {
+      day,
+      content,
+      time,
+      location,
+      diseaseDescription,
+      symptoms,
+      doctorReference,
+      imageUrl,
+      dataSource,
+      gender,
+      tags,
+      symptomsChecklist,
+    } = req.body;
 
     if (!day || !content) {
       return res.status(400).json({
@@ -98,6 +111,16 @@ export const addDiaryEntry = async (req: AuthRequest, res: Response) => {
     diary.entries.push({
       day,
       content,
+      time,
+      location,
+      diseaseDescription,
+      symptoms,
+      doctorReference,
+      imageUrl,
+      dataSource,
+      gender,
+      tags,
+      symptomsChecklist,
     });
 
     await diary.save();

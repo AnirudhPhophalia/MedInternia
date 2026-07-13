@@ -92,8 +92,10 @@ export const createDiary = async (title: string) => {
 };
 
 // Add a new entry to a diary
-export const addDiaryEntry = async (diaryId: string, day: string, content: string) => {
-  const res = await api.post(`/diaries/${diaryId}/entries`, { day, content });
+// Add a new entry to a diary
+// Add a new entry to a diary
+export const addDiaryEntry = async (diaryId: string, entry: Record<string, any>) => {
+  const res = await api.post(`/diaries/${diaryId}/entries`, entry);
   return res.data;
 };
 
