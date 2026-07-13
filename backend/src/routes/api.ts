@@ -20,6 +20,7 @@ import diseaseInsightRoutes from './diseaseInsights';
 import symptomRoutes from './symptoms';
 import diaryRoutes from "./diary";
 import messageRoutes from './messageRoutes';
+import flashcardRoutes from './flashcards';
 import collectionRoutes from './collections';
 import learningPathRoutes from './learningPaths';
 const router = Router();
@@ -87,6 +88,7 @@ router.use('/', enhancedRoutes);
 router.use('/research-papers', researchPaperRoutes);
 router.use("/diaries", diaryRoutes);
 router.use('/messages', messageRoutes);
+router.use('/flashcards', flashcardRoutes);
 router.use('/collections', collectionRoutes);
 router.use('/learning-paths', learningPathRoutes);
 

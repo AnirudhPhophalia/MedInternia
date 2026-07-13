@@ -23,6 +23,7 @@ import {
   Tab
 } from '@mui/material';
 import { MessageCircleReply, Pin, CheckCircle2, Sparkles, BookmarkPlus, Lock } from 'lucide-react';
+import SchoolIcon from '@mui/icons-material/School';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
@@ -497,6 +498,32 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
                 </Button>
                 <OfflineSaveButton caseId={caseData._id || id as string} caseData={caseData} />
                 <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+                <Tooltip title="Create Flashcard from this case">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<SchoolIcon />}
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        await api.post('/flashcards', {
+                          question: caseData.title,
+                          answer: caseData.specialization
+                            ? `Specialty: ${caseData.specialization}. ${(caseData.description || '').slice(0, 150)}`
+                            : (caseData.description || '').slice(0, 200),
+                          tags: caseData.tags || [],
+                          caseId: caseData._id
+                        }, { headers: { Authorization: `Bearer ${token}` } });
+                        setSuccess('Flashcard created! View it in your deck.');
+                      } catch {
+                        setError('Failed to create flashcard');
+                      }
+                    }}
+                    sx={{ borderRadius: 2, fontWeight: 600, textTransform: 'none' }}
+                  >
+                    Flashcard
+                  </Button>
+                </Tooltip>
               </Box>
             </Box>
 
