@@ -10,6 +10,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
 import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
@@ -118,6 +119,15 @@ app.use('/uploads', (req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Sanitize request data to prevent NoSQL injection attacks
+// Removes prohibited characters from keys and values (e.g., $ and .)
+app.use(mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    console.warn(`Sanitized suspicious key in ${req.method} ${req.path}: ${key}`);
+  }
+}));
 
 // Routes
 app.get('/health', (req: Request, res: Response) => {
