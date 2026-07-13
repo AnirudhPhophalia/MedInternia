@@ -239,7 +239,7 @@ const ProfileSidebar = () => {
             style={{
               width: "85%",
               height: "100%",
-              background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+              background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
               borderRadius: 4,
             }}
           ></div>
@@ -279,7 +279,7 @@ const ProfileSidebar = () => {
                     height: "100%",
                     borderRadius: "50%",
                     objectFit: "cover",
-                    boxShadow: "0 2px 8px #2193b022",
+                    boxShadow: "0 2px 8px #0072ff22",
                     border: "2px solid #e0e7ef",
                   }}
                 />
@@ -524,15 +524,15 @@ const PostForm = () => {
                   borderRadius: 20,
                   border:
                     activeTab === tab
-                      ? "2px solid #2193b0"
+                      ? "2px solid #0072ff"
                       : "1px solid #e2e8f0",
                   background:
                     activeTab === tab
-                      ? "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)"
+                      ? "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)"
                       : "#fff",
                   color: activeTab === tab ? "#fff" : "#64748b",
                   boxShadow:
-                    activeTab === tab ? "0 2px 8px #2193b044" : undefined,
+                    activeTab === tab ? "0 2px 8px #0072ff44" : undefined,
                   fontSize: 14,
                   fontWeight: activeTab === tab ? 600 : 500,
                   cursor: "pointer",
@@ -631,7 +631,7 @@ const PostForm = () => {
               padding: "8px 16px",
               border: "none",
               borderRadius: 8,
-              background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+              background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
               color: "#fff",
               fontSize: 14,
               fontWeight: 600,
@@ -728,7 +728,7 @@ const CaseStudyList = () => {
         .finally(() => setLoading(false));
     });
   }, []);
-
+  
   return (
     <div
       style={{
@@ -819,6 +819,25 @@ const RecentCaseStudies = ({ studies }: { studies: any[] }) => {
       </div>
     );
   }
+  const handleShare = async (study: any) => {
+  const shareUrl = `${window.location.origin}/cases/${study._id}`;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: study.title,
+        text: `Check out this case study: ${study.title}`,
+        url: shareUrl,
+      });
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Case link copied to clipboard!");
+    }
+  } catch (error) {
+    console.error("Share failed:", error);
+  }
+};
+
 
   // Helper to check if text is long enough to truncate
   const isLong = (text: string) => {
@@ -1044,18 +1063,29 @@ const RecentCaseStudies = ({ studies }: { studies: any[] }) => {
                   </span>
                 </button>
                 {/* Shares */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Share2 size={22} color="#10b981" />
-                  <span
-                    style={{ fontSize: 16, color: "#10b981", fontWeight: 600 }}
-                  >
-                    {typeof study.shares === "number"
-                      ? study.shares
-                      : typeof study.shareCount === "number"
-                      ? study.shareCount
-                      : 0}
-                  </span>
-                </div>
+<button
+  onClick={() => handleShare(study)}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    padding: 0,
+  }}
+>
+  <Share2 size={22} color="#10b981" />
+  <span
+    style={{ fontSize: 16, color: "#10b981", fontWeight: 600 }}
+  >
+    {typeof study.shares === "number"
+      ? study.shares
+      : typeof study.shareCount === "number"
+      ? study.shareCount
+      : 0}
+  </span>
+</button> 
                 {/* Bookmark/Save */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <StarBorderIcon

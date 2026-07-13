@@ -1,5 +1,4 @@
 import { useState } from 'react';
-// GSSoC: Added CircularProgress for loading state
 import { Typography, TextField, Button, Box, Alert, Paper, Divider, IconButton, InputAdornment, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import Link from 'next/link';
@@ -8,8 +7,23 @@ import { useRouter } from 'next/router';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { getSafeRedirectPath } from '../../utils/authRedirect';
+import AuthLayout, { AuthCard } from '../../components/auth/AuthLayout';
+import { useAuth, setGlobalToken } from '../../context/AuthContext';
+
+const persistAuthSession = (token: string, userId: string, user: any) => {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem('token', token);
+  localStorage.setItem('userId', userId);
+  localStorage.setItem('user', JSON.stringify(user));
+
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `token=${encodeURIComponent(token)}; Path=/; SameSite=Lax${secure}`;
+  document.cookie = `auth_status=authenticated; Path=/; SameSite=Lax${secure}`;
+};
 
 export default function Login() {
+  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,10 +47,10 @@ export default function Login() {
   const res = await api.post('/auth/login', { email, password });
   const token = res.data?.data?.token;
   const user = res.data?.data?.user;
-  const role = user?.role || '';
   const userId = user?._id || user?.id || '';
-  localStorage.setItem('token', token);
-  localStorage.setItem('userId', userId);
+  persistAuthSession(token, userId, user);
+  setGlobalToken(token);
+  authLogin(token, userId, user);
   router.push(getSafeRedirectPath(router.query.redirect));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
@@ -125,6 +139,33 @@ export default function Login() {
 </Box>
   {/* Removed decorative circle at top right */}
         <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#1565c0', letterSpacing: 1, zIndex: 1, position: 'relative' }}>Login</Typography>
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to access medical cases, peer discussions, job opportunities, and your personalized learning dashboard."
+    >
+      <AuthCard>
+        <IconButton
+          aria-label="close"
+          onClick={() => router.back()}
+          sx={{
+            position: 'absolute',
+            right: 16,
+            top: 16,
+            color: 'text.secondary',
+            zIndex: 2,
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+            }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+        <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 800, color: 'primary.main', mb: 1 }}>
+          Login
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+          Enter your credentials to continue
+        </Typography>
         {error && <Alert severity="error" sx={{ zIndex: 1, position: 'relative' }}>{error}</Alert>}
         <form onSubmit={handleSubmit} style={{ zIndex: 1, position: 'relative' }}>
           <TextField
@@ -135,7 +176,7 @@ export default function Login() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+            sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper' } }}
           />
           <TextField
             label="Password"
@@ -146,8 +187,7 @@ export default function Login() {
             onChange={e => setPassword(e.target.value)}
             required
             sx={{
-              bgcolor: '#f8fafd',
-              borderRadius: 2,
+              '& .MuiOutlinedInput-root': { bgcolor: 'background.paper' },
               '& .MuiInputBase-input': {
                 animation: showPassword
                   ? 'revealPassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards'
@@ -202,8 +242,7 @@ export default function Login() {
                       transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': {
                         transform: 'scale(1.12)',
-                        color: '#1565c0',
-                        filter: 'drop-shadow(0 0 4px rgba(21, 147, 176, 0.4))',
+                        color: 'primary.main',
                       },
                       '&:active': {
                         transform: 'scale(0.93)',
@@ -272,16 +311,9 @@ export default function Login() {
               fontSize: '1.1rem',
               borderRadius: 3,
               letterSpacing: 0.5,
-              background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
-              color: '#ffffff',
-              boxShadow: '0 4px 20px 0 rgba(33, 147, 176, 0.13)',
-              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
-              textTransform: 'uppercase',
+              textTransform: 'none',
               '&:hover': {
-                background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
-                transform: 'scale(1.03)',
-                boxShadow: '0 8px 32px 0 rgba(33, 147, 176, 0.18)',
-                color: '#ffffff'
+                transform: 'translateY(-1px)',
               },
               '&:active': {
                 color: '#ffffff',
@@ -300,30 +332,24 @@ export default function Login() {
           <Button
             component={Link}
             href="/auth/register"
-            variant="outlined"
+            variant="text"
             color="primary"
             fullWidth
             sx={{
               borderRadius: 3,
               fontWeight: 700,
               py: 1.3,
-              border: '2px solid #2193b0',
-              color: '#2193b0',
               textDecoration: 'none !important',
-              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
               '&:hover': {
-                border: '2px solid #1565c0',
-                background: 'rgba(33, 147, 176, 0.05)',
-                color: '#1565c0',
-                transform: 'scale(1.02)',
+                bgcolor: 'rgba(0, 114, 255, 0.06)',
                 textDecoration: 'none !important',
               },
             }}
           >
-            Register
+            Create an account
           </Button>
         </Box>
-      </Paper>
-    </Box>
+      </AuthCard>
+    </AuthLayout>
   );
 }

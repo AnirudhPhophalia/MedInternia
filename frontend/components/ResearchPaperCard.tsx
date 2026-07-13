@@ -5,6 +5,7 @@ import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import { getAuthToken } from '../utils/api';
 
 export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion }: { paper: any, onReadMore?: () => void, onOpenDiscussion?: (id: string) => void }) {
   const [starred, setStarred] = useState(false);
@@ -63,7 +64,7 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
   };
 
   return (
-    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 24px #2193b022', mb: 3, animation: 'fadeInCard 0.7s' }}>
+    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 24px #0072ff22', mb: 3, animation: 'fadeInCard 0.7s' }}>
       <CardContent>
         <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 1 }}>
           <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: '#e3f2fd', color: '#1976d2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 22 }}>
@@ -76,7 +77,7 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
         </Stack>
         {/* Title and status */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1, justifyContent: 'space-between' }}>
-          <Typography variant="h5" fontWeight={800} color="#1565c0" sx={{ flex: 1, letterSpacing: 0.5 }}>{paper?.title || "Untitled Paper"}</Typography>
+          <Typography variant="h5" fontWeight={800} color="#0056cc" sx={{ flex: 1, letterSpacing: 0.5 }}>{paper?.title || "Untitled Paper"}</Typography>
           <Box
             sx={{
               px: 2,
@@ -86,7 +87,7 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
               color: '#1976d2',
               fontWeight: 700,
               fontSize: 14,
-              boxShadow: '0 1px 4px #2193b022',
+              boxShadow: '0 1px 4px #0072ff22',
               letterSpacing: 1,
               display: 'flex',
               alignItems: 'center',
@@ -98,7 +99,7 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
               <IconButton
                 onClick={handleStarClick}
                 sx={{
-                  color: starred ? '#FFD700' : '#2193b0',
+                  color: starred ? '#FFD700' : '#0072ff',
                   transition: 'color 0.2s, transform 0.18s',
                   transform: starred ? 'scale(1.15)' : 'scale(1)',
                   boxShadow: starred ? '0 2px 12px #ffd70088' : 'none',
@@ -117,7 +118,7 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
               <IconButton
                 onClick={handlePinClick}
                 sx={{
-                  color: pinned ? '#e53935' : '#2193b0',
+                  color: pinned ? '#e53935' : '#0072ff',
                   transition: 'color 0.2s, transform 0.18s',
                   transform: pinned ? 'rotate(-20deg) scale(1.15)' : 'scale(1)',
                   boxShadow: pinned ? '0 2px 12px #1976d288' : 'none',
@@ -158,7 +159,7 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
           Field: {paper.field} | Difficulty: {paper.difficulty}
         </Typography>
         {paper.fileUrl && (
-          <Typography fontSize={13} color="#2193b0" mt={1}>
+          <Typography fontSize={13} color="#0072ff" mt={1}>
             PDF: {paper.fileUrl}
           </Typography>
         )}
@@ -175,13 +176,13 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
               color: "#1976d2",
               borderColor: "#1976d2",
               letterSpacing: 1,
-              boxShadow: "0 2px 8px #2193b022",
+              boxShadow: "0 2px 8px #0072ff22",
               transition: "all 0.2s",
               ml: 0,
               "&:hover": {
                 background: "#e3f2fd",
-                borderColor: "#1565c0",
-                color: "#1565c0",
+                borderColor: "#0056cc",
+                color: "#0056cc",
               },
             }}
             onClick={() => onOpenDiscussion && onOpenDiscussion(paper._id)}
@@ -197,16 +198,16 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
                 py: 1.1,
                 fontWeight: 700,
                 fontSize: "1.05rem",
-                color: "#2193b0",
-                borderColor: "#2193b0",
+                color: "#0072ff",
+                borderColor: "#0072ff",
                 letterSpacing: 1,
-                boxShadow: "0 2px 8px #2193b022",
+                boxShadow: "0 2px 8px #0072ff22",
                 transition: "all 0.2s",
                 ml: 1,
                 "&:hover": {
                   background: "#e3f2fd",
-                  borderColor: "#1565c0",
-                  color: "#1565c0",
+                  borderColor: "#0056cc",
+                  color: "#0056cc",
                 },
               }}
               startIcon={<DownloadIcon />}
@@ -219,8 +220,10 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
                 }
                 // Otherwise, fetch from backend (simulate for now)
                 try {
-                  // Replace with actual backend endpoint if needed
-                  const response = await fetch(`/api/research-papers/download/${encodeURIComponent(paper.fileUrl)}`);
+                  const token = getAuthToken();
+                  const response = await fetch(`/api/research-papers/download/        ${encodeURIComponent(paper.fileUrl)}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                 });
                   if (!response.ok) throw new Error('File not found');
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);

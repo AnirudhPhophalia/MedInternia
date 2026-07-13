@@ -5,6 +5,9 @@ import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import LockIcon from '@mui/icons-material/Lock';
+import {getCurrentUserRole} from "../utils/permissions";
+import BookmarkButton from './BookmarkButton';
 
 // Helper to get owner name from doctor field
 function getOwnerName(caseData: any) {
@@ -32,6 +35,7 @@ function getOwnerAvatar(caseData: any) {
 export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExpanded }: { caseData: any, onOpenDiscussion?: (caseId: string) => void, onReadMore?: () => void, isExpanded?: boolean }) {
   const [starred, setStarred] = useState(false);
   const [showPinned, setShowPinned] = useState(false);
+  const userRole = getCurrentUserRole();
 
   useEffect(() => {
     setStarred(!!caseData.isStarred);
@@ -85,18 +89,38 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
   // Pick a color based on case id (stable per card)
 
   return (
-    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 24px #2193b022', mb: 3, animation: 'fadeInCard 0.7s' }}>
+    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 24px #0072ff22', mb: 3, animation: 'fadeInCard 0.7s' }}>
       <CardContent>
-        <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 1 }}>
+        <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 2 }}>
           <Avatar src={ownerAvatar} sx={{ width: 48, height: 48, fontWeight: 700, fontSize: 22, bgcolor: '#e3f2fd', color: '#1976d2' }}>{ownerName[0]}</Avatar>
           <Box>
             <Typography fontWeight={700} fontSize={17} color="#1976d2">{ownerName}</Typography>
             <Typography fontSize={13} color="#888">Case Owner</Typography>
           </Box>
+          <Box sx={{ ml: 'auto', textAlign: 'right' }}>
+            <Typography fontSize={12} color="#94a3b8">
+              {caseData.createdAt ? new Date(caseData.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+            </Typography>
+          </Box>
         </Stack>
         {/* Title and status */}
-        <Box sx={{ display: "flex", alignItems: "center", mb: 1, justifyContent: 'space-between' }}>
-          <Typography variant="h5" fontWeight={800} color="#1565c0" sx={{ flex: 1, letterSpacing: 0.5 }}>{caseData?.title || "Untitled Case"}</Typography>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 1.5, justifyContent: 'space-between', gap: 2 }}>
+          <Link href={`/cases/${caseData._id}`} passHref style={{ textDecoration: 'none', flex: 1 }}>
+            <Typography
+              variant="h5"
+              fontWeight={800}
+              color="#0056cc"
+              sx={{
+                letterSpacing: 0.5,
+                cursor: 'pointer',
+                '&:hover': {
+                  color: '#0072ff',
+                }
+              }}
+            >
+              {caseData?.title || "Untitled Case"}
+            </Typography>
+          </Link>
           <Box
             sx={{
               px: 2,
@@ -106,7 +130,7 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
               color: '#1976d2',
               fontWeight: 700,
               fontSize: 14,
-              boxShadow: '0 1px 4px #2193b022',
+              boxShadow: '0 1px 4px #0072ff22',
               letterSpacing: 1,
               display: 'flex',
               alignItems: 'center',
@@ -114,48 +138,81 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
               border: '1.5px solid #90caf9',
             }}
           >
+            {caseData.verifiedDoctorsOnly && (
+              <Tooltip title="Restricted: Verified Doctors Only">
+                <LockIcon sx={{ fontSize: 18, color: 'error.main', mr: -1 }} />
+              </Tooltip>
+            )}
             {status}
             {/* Interactive Star and Pin icons with tooltips and color scheme */}
             <Tooltip title={starred ? 'Unstar' : 'Star'}>
               <IconButton
                 onClick={handleStarClick}
                 sx={{
-                  color: starred ? '#FFD700' : '#2193b0',
+                  color: starred ? '#FFD700' : '#0072ff',
                   transition: 'color 0.2s, transform 0.18s',
                   transform: starred ? 'scale(1.15)' : 'scale(1)',
-                  boxShadow: starred ? '0 2px 12px #ffd70088' : 'none',
                   ml: 1,
                   '&:hover': {
                     color: '#FFC107',
                     background: '#e3f6fc',
                   },
                 }}
-                size="large"
+                size="small"
               >
                 {starred ? <StarRoundedIcon fontSize="inherit" /> : <StarBorderRoundedIcon fontSize="inherit" />}
               </IconButton>
             </Tooltip>
-            {/* <Tooltip title={showPinned ? 'Unpin' : 'Pin'}>
-              <IconButton
-                onClick={handlePinIconClick}
-                sx={{
-                  color: showPinned ? '#e53935' : '#2193b0',
-                  transition: 'color 0.2s, transform 0.18s',
-                  transform: showPinned ? 'rotate(-20deg) scale(1.15)' : 'scale(1)',
-                  boxShadow: showPinned ? '0 2px 12px #1976d288' : 'none',
-                  ml: 1,
-                  '&:hover': {
-                    color: '#e57373',
-                    background: '#e3f6fc',
-                  },
-                }}
-                size="large"
-              >
-                {showPinned ? <PushPinIcon fontSize="inherit" /> : <PushPinOutlinedIcon fontSize="inherit" />}
-              </IconButton>
-            </Tooltip> */}
+            <BookmarkButton itemType="case" itemId={caseData._id} />
           </Box>
         </Box>
+
+        {/* Badges and Chips */}
+        <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
+          {caseData?.specialization && (
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                bgcolor: '#ebf8ff',
+                color: '#2b6cb0',
+                border: '1px solid #bee3f8',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              🩺 {caseData.specialization}
+            </Box>
+          )}
+          {caseData?.difficulty && (
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                textTransform: 'capitalize',
+                ...(() => {
+                  switch (caseData.difficulty.toLowerCase()) {
+                    case 'beginner':
+                      return { bgcolor: '#e6fffa', color: '#00a389', border: '1px solid #b2f5ea' };
+                    case 'advanced':
+                    case 'complex':
+                      return { bgcolor: '#fff5f5', color: '#e53e3e', border: '1px solid #feb2b2' };
+                    default: // intermediate
+                      return { bgcolor: '#fffaf0', color: '#dd6b20', border: '1px solid #fbd38d' };
+                  }
+                })()
+              }}
+            >
+              ⚡ {caseData.difficulty}
+            </Box>
+          )}
+        </Stack>
 
         {/* Description preview */}
         <Typography color="#444" fontSize={16} sx={{ mb: images.length ? 1 : 2, mt: 0.5, fontWeight: 400 }}>
@@ -165,7 +222,7 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
         {images.length > 0 && (
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             {images.slice(0, 3).map((img: string, idx: number) => (
-              <Box key={idx} sx={{ width: 70, height: 70, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 6px #2193b022', border: '1px solid #e3eafc', bgcolor: '#f8fafd' }}>
+              <Box key={idx} sx={{ width: 70, height: 70, borderRadius: 2, overflow: 'hidden', boxShadow: '0 1px 6px #0072ff22', border: '1px solid #e3eafc', bgcolor: '#f8fbff' }}>
                 <img src={img} alt={`case-img-${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </Box>
             ))}
@@ -181,15 +238,15 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
               py: 1.1,
               fontWeight: 700,
               fontSize: "1.05rem",
-              background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+              background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
               color: "#fff",
-              boxShadow: "0 2px 8px #2193b044",
+              boxShadow: "0 2px 8px #0072ff44",
               letterSpacing: 1,
               transition: "all 0.2s",
               "&:hover": {
-                background: "linear-gradient(90deg, #1565c0 0%, #2193b0 100%)",
+                background: "linear-gradient(90deg, #0056cc 0%, #0072ff 100%)",
                 color: "#fff",
-                boxShadow: "0 4px 16px #2193b066",
+                boxShadow: "0 4px 16px #0072ff66",
                 filter: "brightness(1.08)",
                 transform: "scale(1.03)",
               },
@@ -209,16 +266,17 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
               color: "#1976d2",
               borderColor: "#1976d2",
               letterSpacing: 1,
-              boxShadow: "0 2px 8px #2193b022",
+              boxShadow: "0 2px 8px #0072ff22",
               transition: "all 0.2s",
               ml: 1,
               "&:hover": {
                 background: "#e3f2fd",
-                borderColor: "#1565c0",
-                color: "#1565c0",
+                borderColor: "#0056cc",
+                color: "#0056cc",
               },
             }}
             onClick={() => onOpenDiscussion && onOpenDiscussion(caseData._id)}
+            disabled={userRole === 'patient'}
           >
             Discussions
           </Button>

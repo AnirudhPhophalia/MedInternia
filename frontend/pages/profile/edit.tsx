@@ -60,13 +60,14 @@ interface ProfileFormData {
   yearsOfExperience: number | string;
   // Shared fields
   linkedInUrl: string;
+  messagePrivacy: 'anyone' | 'verified_only' | 'none';
 }
 
 // Custom theme for a cohesive look and feel
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#2193b0', // A professional, calming blue
+      main: '#0072ff', // A professional, calming blue
     },
     secondary: {
       main: '#00b09b', // An accent green for success
@@ -174,6 +175,7 @@ const initialFormState: ProfileFormData = {
   specialtyExpertise: "",
   hospitalAffiliation: "",
   yearsOfExperience: "",
+  messagePrivacy: 'anyone',
 };
 
 const resolveProfileUser = (payload: any) =>
@@ -263,6 +265,7 @@ export default function EditProfilePage() {
               specialtyExpertise: user.specialization || user.specialtyExpertise || "",
               hospitalAffiliation: user.hospitalAffiliation || user.hospital || "",
               yearsOfExperience: user.experience || user.yearsOfExperience || "",
+              messagePrivacy: user.messagePrivacy || 'anyone',
             }));
         }
       } catch (err) {
@@ -295,6 +298,11 @@ export default function EditProfilePage() {
   const handleRoleChange = (event: SelectChangeEvent<"Intern" | "Doctor" | "Patient">) => {
     const role = event.target.value as "Intern" | "Doctor" | "Patient";
     setForm({ ...form, role });
+  };
+
+  const handleMessagePrivacyChange = (event: SelectChangeEvent<"anyone" | "verified_only" | "none">) => {
+    const messagePrivacy = event.target.value as "anyone" | "verified_only" | "none";
+    setForm({ ...form, messagePrivacy });
   };
 
   // Handles the change in profile picture from file input (store file in state, don't upload yet)
@@ -378,6 +386,7 @@ export default function EditProfilePage() {
         hospitalAffiliation: form.hospitalAffiliation,
         experience: form.yearsOfExperience ? Number(form.yearsOfExperience) : undefined,
         linkedInProfile: form.linkedInUrl,
+        messagePrivacy: form.messagePrivacy,
       };
       const res = await api.put(`/users/${userId}/profile`, payload);
       const data = res.data;
@@ -455,7 +464,7 @@ export default function EditProfilePage() {
                   border: '5px solid #fff',
                   boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
                   fontSize: 44,
-                  bgcolor: '#2193b0',
+                  bgcolor: '#0072ff',
                   color: '#fff',
                   transition: 'box-shadow 0.3s',
                 }}
@@ -697,6 +706,21 @@ export default function EditProfilePage() {
               <KeyIcon /> Password & Privacy
             </Typography>
             <Stack spacing={2} mb={4}>
+              <FormControl fullWidth>
+                <InputLabel id="message-privacy-label">Who can direct message you?</InputLabel>
+                <Select
+                  labelId="message-privacy-label"
+                  id="messagePrivacy"
+                  value={form.messagePrivacy}
+                  label="Who can direct message you?"
+                  onChange={handleMessagePrivacyChange}
+                >
+                  <MenuItem value="anyone">Anyone</MenuItem>
+                  <MenuItem value="verified_only">Connections / Verified Users Only</MenuItem>
+                  <MenuItem value="none">No one (Disable DMs)</MenuItem>
+                </Select>
+              </FormControl>
+
               <Button
                   variant="outlined"
                   color="primary"

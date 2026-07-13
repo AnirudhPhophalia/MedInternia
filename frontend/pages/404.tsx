@@ -20,7 +20,7 @@ export default function Custom404() {
         sx={{
           fontSize: { xs: "6rem", md: "10rem" },
           fontWeight: 900,
-          color: "#2193b0",
+          color: "#0072ff",
           lineHeight: 1,
           mb: 2,
         }}
@@ -57,10 +57,10 @@ export default function Custom404() {
           py: 1.5,
           fontWeight: 700,
           fontSize: "1rem",
-          background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
-          boxShadow: "0 4px 24px #2193b044",
+          background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
+          boxShadow: "0 4px 24px #0072ff44",
           "&:hover": {
-            background: "linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)",
+            background: "linear-gradient(90deg, #6dd5ed 0%, #0072ff 100%)",
           },
         }}
       >

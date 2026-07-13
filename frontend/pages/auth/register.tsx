@@ -1,15 +1,37 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
-import { Container, Typography, TextField, Button, Box, Alert, MenuItem, Card, Avatar, Fade, Grow, Stack, LinearProgress, IconButton, InputAdornment } from '@mui/material';
+import {
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Alert,
+  MenuItem,
+  Fade,
+  Grow,
+  Stack,
+  LinearProgress,
+  CircularProgress,
+  IconButton,
+  InputAdornment,
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import { medicalColleges } from "../../utils/medicalColleges";
 import api from '../../utils/api';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import AuthLayout, { AuthCard } from '../../components/auth/AuthLayout';
+import { useAuth, setGlobalToken } from '../../context/AuthContext';
 
 
 export default function Register() {
+  const { login: authLogin } = useAuth();
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -55,6 +77,11 @@ export default function Register() {
   const [otherAllergiesValue, setotherAllergiesValue] = useState('');
   const [doctors, setDoctors] = useState<any[]>([]);
   const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const authFieldSx = {
+    '& .MuiOutlinedInput-root': {
+      bgcolor: 'background.paper',
+    },
+  };
 
   const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -66,6 +93,7 @@ export default function Register() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
 
   // For progress bar
   const requiredFieldsStep1: (keyof typeof form)[] = ['firstName', 'lastName', 'email', 'password', 'userType'];
@@ -178,42 +206,47 @@ export default function Register() {
     }
   };
 
-  // Email change triggers OTP send
-  // const handleEmailChange = async (e: any) => {
-  //   handleChange(e);
-  //   setEmailVerified(false);
-  //   setOtp('');
-  //   setOtpError('');
-  //   if (e.target.value && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.target.value)) {
-  //     setSendingOtp(true);
-  //     try {
-  //       const res = await fetch('http://localhost:3000/api/auth/send-otp', {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({ email: e.target.value })
-  //       });
-  //       const data = await res.json();
-  //       if (data.success) {
-  //         setOtpModalOpen(true);
-  //       } else {
-  //         setOtpError(data.message || 'Failed to send OTP');
-  //       }
-  //     } catch (err) {
-  //       setOtpError('Failed to send OTP');
-  //     }
-  //     setSendingOtp(false);
-  //   }
-  // };
   const handleEmailChange = (e: any) => {
     handleChange(e);
-    // Email verification logic skipped
+    if (emailVerified) {
+      setEmailVerified(false);
+      setVerificationToken('');
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!form.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) {
+      setError('Please enter a valid email address before verifying.');
+      return;
+    }
+    setSendingOtp(true);
+    setError('');
+    setOtpError('');
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${backendUrl}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOtpModalOpen(true);
+      } else {
+        setError(data.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      setError('Failed to send OTP');
+    }
+    setSendingOtp(false);
   };
 
   const handleVerifyOtp = async () => {
     setVerifyingOtp(true);
     setOtpError('');
     try {
-      const res = await fetch('http://localhost:3000/api/auth/verify-otp', {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${backendUrl}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, otp })
@@ -221,6 +254,7 @@ export default function Register() {
       const data = await res.json();
       if (data.success) {
         setEmailVerified(true);
+        setVerificationToken(data.verificationToken);
         setOtpModalOpen(false);
       } else {
         setOtpError('Invalid OTP');
@@ -239,6 +273,10 @@ export default function Register() {
     const missing = requiredFieldsStep1.filter(f => !form[f]);
     if (missing.length > 0) {
       setError('Please fill all required fields.');
+      return;
+    }
+    if (!emailVerified) {
+      setError('Please verify your email address to proceed.');
       return;
     }
     if (confirmPassword !== form.password) {
@@ -280,9 +318,13 @@ export default function Register() {
         return;
       }
     }
-    if (form.userType === 'intern') {
-      if (!/^[A-Za-z\s.,'-]{3,100}$/.test(form.medicalSchool)) {
-        setError('Enter a valid Medical School name');
+    if (form.userType === "intern") {
+      const isValidCollege = medicalColleges.some(
+        (college) => college.name === form.medicalSchool
+      );
+
+      if (!isValidCollege) {
+        setError("Please select a valid medical school from the list.");
         return;
       }
     }
@@ -314,15 +356,10 @@ export default function Register() {
     // GSSoC: Show loading spinner while request is in-flight
     setLoading(true);
     try {
-      // Build payload — omit empty optional ObjectId fields so Mongoose doesn't
-      // try to cast an empty string to an ObjectId and throw a 400.
+      // Build payload — omit empty optional fields
       const payload: Record<string, any> = {
         ...form,
-        emergencyContactRelationship:
-          form.emergencyContactRelationship === 'Other'
-            ? otherRelationValue
-            : form.emergencyContactRelationship,
-
+        verificationToken,
         medicalHistory:
           form.medicalHistory === 'Other'
             ? otherMedicalHistoryValue
@@ -333,15 +370,32 @@ export default function Register() {
             ? otherAllergiesValue
             : form.allergies,
       };
+
+      if (form.userType === 'patient') {
+        payload.emergencyContact = {
+          name: form.emergencyContactName,
+          phone: form.emergencyContactPhone,
+          relationship:
+            form.emergencyContactRelationship === 'Other'
+              ? otherRelationValue
+              : form.emergencyContactRelationship,
+        };
+        // Remove flat keys from root of payload
+        delete payload.emergencyContactName;
+        delete payload.emergencyContactPhone;
+        delete payload.emergencyContactRelationship;
+        delete payload.emergencyContactRelationshipOther;
+      }
+
       if (!payload.mentorDoctor) delete payload.mentorDoctor;
       if (!payload.phone) delete payload.phone;
       if (!payload.dateOfBirth) delete payload.dateOfBirth;
       if (!payload.gender) delete payload.gender;
       const res = await api.post('/auth/register', payload);
+      const token = res.data.data.token;
       const user = res.data.data.user;
-      localStorage.setItem('token', res.data.data.token);
-      localStorage.setItem('userId', user._id || user.id);
-      localStorage.setItem('user', JSON.stringify(user));
+      setGlobalToken(token);
+      authLogin(token, user._id || user.id, user);
 
       router.push('/dashboard');
     } catch (err: any) {
@@ -396,181 +450,223 @@ export default function Register() {
               Create your account and start your journey in the medical community.
             </Typography>
           </Box>
+    <AuthLayout
+      wide
+      title="Join MedInternia"
+      subtitle="Create your account and connect with doctors, interns, and students. Start learning from real cases today."
+    >
+      <Box sx={{ animation: 'fadeIn 0.9s ease-out', width: '100%' }}>
+        <AuthCard
+          sx={{
+            maxHeight: { xs: 'calc(100vh - 112px)', md: 'none' },
+            overflowY: { xs: 'auto', md: 'visible' },
+            '& .MuiTextField-root': {
+              my: { xs: 1, sm: 1.25 },
+            },
+          }}
+        >
+          <Typography variant="h4" fontWeight={800} color="primary.main" gutterBottom align="center">
+            Create Account
+          </Typography>
+          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2 }}>
+            Step {step} of 2 — {step === 1 ? 'Basic information' : 'Profile details'}
+          </Typography>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           {/* Loader removed as requested */}
           <form onSubmit={step === 1 ? handleNext : handleSubmit}>
-            <Grow in timeout={700}>
+            <Box>
               <Box>
                 {step === 1 && (
                   <>
-                    <TextField label="First Name" name="firstName" fullWidth margin="normal" value={form.firstName} onChange={handleChange} required autoFocus />
-                    <TextField label="Last Name" name="lastName" fullWidth margin="normal" value={form.lastName} onChange={handleChange} required />
-                    <TextField label="Email" name="email" type="email" fullWidth margin="normal" value={form.email} onChange={handleChange} required />
-                    <TextField
-                      label="Password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      fullWidth
-                      margin="normal"
-                      value={form.password}
-                      onChange={handleChange}
-                      required
+                    <Box
                       sx={{
-                        '& .MuiInputBase-input': {
-                          animation: showPassword
-                            ? 'revealPassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards'
-                            : 'hidePassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                          '@keyframes revealPassword': {
-                            '0%': {
-                              filter: 'blur(5px)',
-                              letterSpacing: '0.12em',
-                              opacity: 0,
-                              clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                        columnGap: 2,
+                      }}
+                    >
+                      <TextField label="First Name" name="firstName" fullWidth margin="normal" value={form.firstName} onChange={handleChange} required autoFocus sx={authFieldSx} />
+                      <TextField label="Last Name" name="lastName" fullWidth margin="normal" value={form.lastName} onChange={handleChange} required sx={authFieldSx} />
+                      <TextField 
+                        label="Email" 
+                        name="email" 
+                        type="email" 
+                        fullWidth 
+                        margin="normal" 
+                        value={form.email} 
+                        onChange={handleEmailChange} 
+                        required 
+                        sx={{ ...authFieldSx, gridColumn: '1 / -1' }} 
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Button 
+                                variant="contained" 
+                                size="small" 
+                                onClick={handleSendOtp}
+                                disabled={sendingOtp || emailVerified || !form.email}
+                                color={emailVerified ? "success" : "primary"}
+                                sx={{ textTransform: 'none', borderRadius: 2 }}
+                              >
+                                {emailVerified ? "Verified" : sendingOtp ? "Sending..." : "Verify"}
+                              </Button>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      <TextField
+                        label="Password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        fullWidth
+                        margin="normal"
+                        value={form.password}
+                        onChange={handleChange}
+                        required
+                        sx={{
+                          ...authFieldSx,
+                          '& .MuiInputBase-input': {
+                            animation: showPassword
+                              ? 'revealPassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+                              : 'hidePassword 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                            '@keyframes revealPassword': {
+                              '0%': {
+                                filter: 'blur(5px)',
+                                letterSpacing: '0.12em',
+                                opacity: 0,
+                                clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                              },
+                              '40%': {
+                                opacity: 0.6,
+                              },
+                              '100%': {
+                                filter: 'blur(0)',
+                                letterSpacing: 'normal',
+                                opacity: 1,
+                                clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                              }
                             },
-                            '40%': {
-                              opacity: 0.6,
-                            },
-                            '100%': {
-                              filter: 'blur(0)',
-                              letterSpacing: 'normal',
-                              opacity: 1,
-                              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                            '@keyframes hidePassword': {
+                              '0%': {
+                                filter: 'blur(5px)',
+                                letterSpacing: '0.12em',
+                                opacity: 0,
+                                clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
+                              },
+                              '40%': {
+                                opacity: 0.6,
+                              },
+                              '100%': {
+                                filter: 'blur(0)',
+                                letterSpacing: 'normal',
+                                opacity: 1,
+                                clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
+                              }
                             }
                           },
-                          '@keyframes hidePassword': {
-                            '0%': {
-                              filter: 'blur(5px)',
-                              letterSpacing: '0.12em',
-                              opacity: 0,
-                              clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)',
-                            },
-                            '40%': {
-                              opacity: 0.6,
-                            },
-                            '100%': {
-                              filter: 'blur(0)',
-                              letterSpacing: 'normal',
-                              opacity: 1,
-                              clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
-                            }
+                        }}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                aria-pressed={showPassword}
+                                onClick={handleClickShowPassword}
+                                onMouseDown={handleMouseDownPassword}
+                                edge="end"
+                                sx={{
+                                  color: 'text.secondary',
+                                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  '&:hover': {
+                                    transform: 'scale(1.12)',
+                                    color: 'primary.main',
+                                  },
+                                  '&:active': {
+                                    transform: 'scale(0.93)',
+                                  },
+                                  mr: 0.5,
+                                }}
+                              >
+                                {showPassword ? (
+                                  <VisibilityOff
+                                    sx={{
+                                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      animation: 'premiumRotateOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                      '@keyframes premiumRotateOut': {
+                                        '0%': { opacity: 0, transform: 'rotate(-25deg) scale(0.8)' },
+                                        '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <Visibility
+                                    sx={{
+                                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      animation: 'premiumRotateIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                                      '@keyframes premiumRotateIn': {
+                                        '0%': { opacity: 0, transform: 'rotate(25deg) scale(0.8)' },
+                                        '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      <TextField
+                        label="Confirm Password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        fullWidth
+                        margin="normal"
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (e.target.value !== form.password) {
+                            setConfirmPasswordError('Passwords do not match');
+                          } else {
+                            setConfirmPasswordError('');
                           }
+                        }}
+                        required
+                        error={Boolean((confirmPassword && confirmPassword !== form.password) || (!confirmPassword && confirmPasswordError))}
+                        helperText={
+                          confirmPassword && confirmPassword !== form.password
+                            ? 'Passwords do not match'
+                            : !confirmPassword
+                              ? confirmPasswordError
+                              : ''
                         }
-                      }}
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              aria-label={showPassword ? 'Hide password' : 'Show password'}
-                              onClick={handleClickShowPassword}
-                              onMouseDown={handleMouseDownPassword}
-                              edge="end"
-                              sx={{
-                                color: 'text.secondary',
-                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                '&:hover': {
-                                  transform: 'scale(1.12)',
-                                  color: '#1565c0',
-                                  filter: 'drop-shadow(0 0 4px rgba(21, 147, 176, 0.4))',
-                                },
-                                '&:active': {
-                                  transform: 'scale(0.93)',
-                                },
-                                mr: 0.5,
-                              }}
-                            >
-                              {showPassword ? (
-                                <VisibilityOff
-                                  sx={{
-                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    animation: 'premiumRotateOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                    '@keyframes premiumRotateOut': {
-                                      '0%': { opacity: 0, transform: 'rotate(-25deg) scale(0.8)' },
-                                      '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <Visibility
-                                  sx={{
-                                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    animation: 'premiumRotateIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                                    '@keyframes premiumRotateIn': {
-                                      '0%': { opacity: 0, transform: 'rotate(25deg) scale(0.8)' },
-                                      '100%': { opacity: 1, transform: 'rotate(0deg) scale(1)' }
-                                    }
-                                  }}
-                                />
-                              )}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                    <TextField
-                      label="Confirm Password"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      fullWidth
-                      margin="normal"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        if (e.target.value !== form.password) {
-                          setConfirmPasswordError('Passwords do not match');
-                        } else {
-                          setConfirmPasswordError('');
-                        }
-                      }}
-                      required
-                      error={Boolean((confirmPassword && confirmPassword !== form.password) || (!confirmPassword && confirmPasswordError))}
-                      helperText={
-                        confirmPassword && confirmPassword !== form.password
-                          ? 'Passwords do not match'
-                          : !confirmPassword
-                            ? confirmPasswordError
-                            : ''
-                      }
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              onClick={() => setShowConfirmPassword((show) => !show)}
-                              edge="end"
-                              sx={{ color: 'text.secondary' }}
-                            >
-                              {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                    <TextField select label="User Type" name="userType" fullWidth margin="normal" value={form.userType} onChange={handleChange} required>
-                      <MenuItem value="patient">Patient</MenuItem>
-                      <MenuItem value="doctor">Doctor</MenuItem>
-                      <MenuItem value="intern">Intern</MenuItem>
-                    </TextField>
+                        sx={authFieldSx}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                                aria-pressed={showConfirmPassword}
+                                onClick={() => setShowConfirmPassword((show) => !show)}
+                                edge="end"
+                                sx={{ color: 'text.secondary' }}
+                              >
+                                {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      <TextField select label="User Type" name="userType" fullWidth margin="normal" value={form.userType} onChange={handleChange} required sx={{ ...authFieldSx, gridColumn: '1 / -1' }}>
+                        <MenuItem value="patient">Patient</MenuItem>
+                        <MenuItem value="doctor">Doctor</MenuItem>
+                        <MenuItem value="intern">Intern</MenuItem>
+                      </TextField>
+                    </Box>
                     <Button
                       type="submit"
                       variant="contained"
+                      color="primary"
                       fullWidth
-                      sx={{
-                        mt: 2,
-                        py: 1.3,
-                        fontWeight: 800,
-                        fontSize: '1.1rem',
-                        borderRadius: 3,
-                        letterSpacing: 0.5,
-                        background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
-                        color: '#ffffff',
-                        boxShadow: '0 4px 20px 0 rgba(33, 147, 176, 0.13)',
-                        transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                        textTransform: 'uppercase',
-                        '&:hover': {
-                          background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
-                          transform: 'scale(1.03)',
-                          boxShadow: '0 8px 32px 0 rgba(33, 147, 176, 0.18)',
-                          color: '#ffffff'
-                        }
-                      }}
+                      sx={{ mt: 2, py: 1.3, fontWeight: 700, borderRadius: 3, textTransform: 'none' }}
                     >
                       Next
                     </Button>
@@ -584,32 +680,41 @@ export default function Register() {
                 )}
                 {step === 2 && (
                   <>
-                    <TextField
-                      label="Phone"
-                      name="phone"
-                      fullWidth
-                      margin="normal"
-                      value={form.phone}
-                      onChange={handlePhoneChange}
-                      error={Boolean(phoneError)}
-                      helperText={phoneError || 'Enter a 10-digit mobile number'}
-                      inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
-                    />
-                    <TextField label="Date of Birth" name="dateOfBirth" type="date" fullWidth margin="normal" value={form.dateOfBirth} onChange={handleChange} InputLabelProps={{ shrink: true }} />
-                    <TextField select label="Gender" name="gender" fullWidth margin="normal" value={form.gender} onChange={handleChange}>
-                      <MenuItem value="male">Male</MenuItem>
-                      <MenuItem value="female">Female</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
-                    </TextField>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                        columnGap: 2,
+                      }}
+                    >
+                      <TextField
+                        label="Phone"
+                        name="phone"
+                        fullWidth
+                        margin="normal"
+                        value={form.phone}
+                        onChange={handlePhoneChange}
+                        error={Boolean(phoneError)}
+                        helperText={phoneError || 'Enter a 10-digit mobile number'}
+                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
+                        sx={authFieldSx}
+                      />
+                      <TextField label="Date of Birth" name="dateOfBirth" type="date" fullWidth margin="normal" value={form.dateOfBirth} onChange={handleChange} InputLabelProps={{ shrink: true }} sx={authFieldSx} />
+                      <TextField select label="Gender" name="gender" fullWidth margin="normal" value={form.gender} onChange={handleChange} sx={{ ...authFieldSx, gridColumn: { xs: 'auto', sm: '1 / -1' } }}>
+                        <MenuItem value="male">Male</MenuItem>
+                        <MenuItem value="female">Female</MenuItem>
+                        <MenuItem value="other">Other</MenuItem>
+                      </TextField>
+                    </Box>
 
                     {/* Doctor-specific fields */}
                     {form.userType === 'doctor' && (
                       <Fade in timeout={600}>
-                        <Box>
-                          <TextField label="Specialization" name="specialization" fullWidth margin="normal" value={form.specialization} onChange={handleChange} required />
-                          <TextField label="License Number" name="licenseNumber" fullWidth margin="normal" value={form.licenseNumber} onChange={handleChange} required />
-                          <TextField label="Experience (years)" name="experience" type="number" fullWidth margin="normal" value={form.experience} onChange={handleChange} />
-                          <TextField label="Qualifications (comma separated)" name="qualifications" fullWidth margin="normal" value={form.qualifications} onChange={handleChange} />
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+                          <TextField label="Specialization" name="specialization" fullWidth margin="normal" value={form.specialization} onChange={handleChange} required sx={authFieldSx} />
+                          <TextField label="License Number" name="licenseNumber" fullWidth margin="normal" value={form.licenseNumber} onChange={handleChange} required sx={authFieldSx} />
+                          <TextField label="Experience (years)" name="experience" type="number" fullWidth margin="normal" value={form.experience} onChange={handleChange} sx={authFieldSx} />
+                          <TextField label="Qualifications (comma separated)" name="qualifications" fullWidth margin="normal" value={form.qualifications} onChange={handleChange} sx={authFieldSx} />
                         </Box>
                       </Fade>
                     )}
@@ -617,8 +722,39 @@ export default function Register() {
                     {/* Intern-specific fields */}
                     {form.userType === 'intern' && (
                       <Fade in timeout={600}>
-                        <Box>
-                          <TextField label="Medical School" name="medicalSchool" fullWidth margin="normal" value={form.medicalSchool} onChange={handleChange} required />
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+                          <Autocomplete
+                            sx={{ width: "100%" }}
+                            options={medicalColleges}
+                            clearOnBlur={false}
+                            selectOnFocus
+                            getOptionLabel={(option) =>
+                              `${option.name} (${option.state})`
+                            }
+                            isOptionEqualToValue={(option, value) =>
+                              option.id === value.id}
+                            value={
+                              medicalColleges.find(
+                                (college) => college.name === form.medicalSchool
+                              ) || null
+                            }
+                            onChange={(_, value) =>
+                              setForm({
+                                ...form,
+                                medicalSchool: value?.name || "",
+                              })
+                            }
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Medical School"
+                                required
+                                margin="normal"
+                                fullWidth
+                                sx={authFieldSx}
+                              />
+                            )}
+                          />
                           <TextField
                             select
                             label="Year of Study"
@@ -627,6 +763,7 @@ export default function Register() {
                             margin="normal"
                             value={form.yearOfStudy}
                             onChange={handleChange}
+                            sx={authFieldSx}
                           >
                             <MenuItem value="">Select year</MenuItem>
                             <MenuItem value="1">1st Year</MenuItem>
@@ -636,7 +773,7 @@ export default function Register() {
                             <MenuItem value="5">5th Year</MenuItem>
                             <MenuItem value="6+">6th Year+</MenuItem>
                           </TextField>
-                          <TextField label="Interests (comma separated)" name="interests" fullWidth margin="normal" value={form.interests} onChange={handleChange} />
+                          <TextField label="Interests (comma separated)" name="interests" fullWidth margin="normal" value={form.interests} onChange={handleChange} sx={authFieldSx} />
                           <TextField
                             select
                             label="Mentor Doctor (Optional)"
@@ -645,6 +782,7 @@ export default function Register() {
                             margin="normal"
                             value={form.mentorDoctor}
                             onChange={handleChange}
+                            sx={authFieldSx}
                           >
                             <MenuItem value="">
                               No Mentor Selected
@@ -666,8 +804,8 @@ export default function Register() {
                     {/* Patient-specific fields */}
                     {form.userType === 'patient' && (
                       <Fade in timeout={600}>
-                        <Box>
-                          <TextField label="Emergency Contact Name" name="emergencyContactName" fullWidth margin="normal" value={form.emergencyContactName} onChange={handleChange} />
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
+                          <TextField label="Emergency Contact Name" name="emergencyContactName" fullWidth margin="normal" value={form.emergencyContactName} onChange={handleChange} sx={authFieldSx} />
                           <TextField
                             label="Emergency Contact Phone"
                             name="emergencyContactPhone"
@@ -678,6 +816,7 @@ export default function Register() {
                             error={Boolean(emergencyPhoneError)}
                             helperText={emergencyPhoneError || 'Enter a 10-digit mobile number'}
                             inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 10 }}
+                            sx={authFieldSx}
                           />
                           <TextField
                             select
@@ -687,6 +826,7 @@ export default function Register() {
                             margin="normal"
                             value={form.emergencyContactRelationship}
                             onChange={handleChange}
+                            sx={authFieldSx}
                           >
                             <MenuItem value="">Select relationship</MenuItem>
                             <MenuItem value="Spouse">Spouse</MenuItem>
@@ -705,6 +845,7 @@ export default function Register() {
                               margin="normal"
                               value={otherRelationValue}
                               onChange={handleChange}
+                              sx={authFieldSx}
                             />
                           )}
                           <TextField
@@ -715,6 +856,7 @@ export default function Register() {
                             margin="normal"
                             value={form.medicalHistory}
                             onChange={handleChange}
+                            sx={authFieldSx}
                           >
                             <MenuItem value="">Select medical history</MenuItem>
                             <MenuItem value="None">None</MenuItem>
@@ -735,6 +877,7 @@ export default function Register() {
                               margin="normal"
                               value={otherMedicalHistoryValue}
                               onChange={handleChange}
+                              sx={authFieldSx}
                             />
                           )}
                           <TextField
@@ -745,6 +888,7 @@ export default function Register() {
                             margin="normal"
                             value={form.allergies}
                             onChange={handleChange}
+                            sx={authFieldSx}
                           >
                             <MenuItem value="">Select allergies</MenuItem>
                             <MenuItem value="None">None</MenuItem>
@@ -765,59 +909,28 @@ export default function Register() {
                               margin="normal"
                               value={otherAllergiesValue}
                               onChange={handleChange}
+                              sx={authFieldSx}
                             />
                           )}
                         </Box>
                       </Fade>
                     )}
-                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                    <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={2} sx={{ mt: 2 }}>
                       <Button
-                        variant="outlined"
+                        variant="text"
+                        color="primary"
                         onClick={handleBack}
-                        sx={{
-                          flex: 1,
-                          py: 1.3,
-                          fontWeight: 700,
-                          fontSize: '1.1rem',
-                          borderRadius: 3,
-                          border: '2px solid #2193b0',
-                          color: '#2193b0',
-                          transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                          '&:hover': {
-                            border: '2px solid #1565c0',
-                            background: 'rgba(33, 147, 176, 0.05)',
-                            color: '#1565c0',
-                            transform: 'scale(1.02)'
-                          }
-                        }}
+                        sx={{ flex: 1, py: 1.3, fontWeight: 600, borderRadius: 3 }}
                       >
                         Back
                       </Button>
-                      {/* GSSoC: Disabled + spinner when loading */}
                       <Button
                         type="submit"
                         variant="contained"
+                        color="primary"
                         disabled={loading}
                         aria-label="Register"
-                        sx={{
-                          flex: 1,
-                          py: 1.3,
-                          fontWeight: 800,
-                          fontSize: '1.13rem',
-                          borderRadius: 3,
-                          letterSpacing: 1,
-                          background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
-                          color: '#ffffff',
-                          boxShadow: '0 4px 20px 0 rgba(33,147,176,0.13)',
-                          transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                          textTransform: 'uppercase',
-                          '&:hover': {
-                            background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
-                            transform: 'scale(1.04)',
-                            boxShadow: '0 8px 32px 0 rgba(33,147,176,0.18)',
-                            color: '#ffffff'
-                          }
-                        }}
+                        sx={{ flex: 1, py: 1.3, fontWeight: 700, borderRadius: 3, textTransform: 'none' }}
                       >
                         {loading ? <CircularProgress size={22} color="inherit" /> : 'Register'}
                       </Button>
@@ -825,10 +938,35 @@ export default function Register() {
                   </>
                 )}
               </Box>
-            </Grow>
+            </Box>
           </form>
-        </Card>
-      </Fade>
-    </Box>
+        </AuthCard>
+      </Box>
+      <Dialog open={otpModalOpen} onClose={() => setOtpModalOpen(false)}>
+        <DialogTitle>Verify Email</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            An OTP has been sent to {form.email}. Please enter it below.
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="OTP Code"
+            type="text"
+            fullWidth
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            error={!!otpError}
+            helperText={otpError}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOtpModalOpen(false)}>Cancel</Button>
+          <Button onClick={handleVerifyOtp} variant="contained" disabled={!otp || verifyingOtp}>
+            {verifyingOtp ? <CircularProgress size={20} /> : 'Verify'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </AuthLayout>
   );
 }

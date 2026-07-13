@@ -57,7 +57,7 @@ const achievements: Achievement[] = [
   {
     id: 2,
     name: "Expert Reviewer",
-    icon: <StarIcon sx={{ color: "#2193b0", fontSize: 80 }} />,
+    icon: <StarIcon sx={{ color: "#0072ff", fontSize: 80 }} />,
     progress: 60,
     unlocked: true,
     date: "2025-06-20",

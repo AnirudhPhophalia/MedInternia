@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, optionalAuthenticate } from '../middleware/auth';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
 // Get all doctors
-router.get('/', authenticate, async (req: AuthRequest, res) => {
+router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {
   try {
     const { specialization } = req.query;
     
@@ -36,7 +36,7 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
 });
 
 // Get doctor by ID
-router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 

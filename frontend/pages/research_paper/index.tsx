@@ -15,6 +15,7 @@ import DialogContent from '@mui/material/DialogContent';
 import { useRouter } from 'next/router';
 import api from '../../utils/api';
 import { getCurrentUserRole } from '../../utils/permissions';
+import { FileText, Upload } from 'lucide-react';
 
 export default function ResearchPaperUpload() {
   const [form, setForm] = useState({
@@ -154,12 +155,12 @@ const filteredPapers = papers.filter((paper) => {
             py: 1.2,
             fontWeight: 700,
             fontSize: '1.1rem',
-            background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
-            boxShadow: '0 4px 20px #2193b044',
+            background: 'linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)',
+            boxShadow: '0 4px 20px #0072ff44',
             textTransform: 'none',
             mb: 2,
             '&:hover': {
-              background: 'linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)',
+              background: 'linear-gradient(90deg, #6dd5ed 0%, #0072ff 100%)',
             },
           }}
           onClick={() => {
@@ -225,7 +226,7 @@ const filteredPapers = papers.filter((paper) => {
         {loading ? (
           <Typography align="center" color="text.secondary">Loading...</Typography>
         ) :  filteredPapers.length === 0 ? (
-          <Box sx={{ borderRadius: 4, boxShadow: '0 4px 24px #2193b022', mb: 3, bgcolor: '#fff', p: 3, textAlign: 'center' }}>
+          <Box sx={{ borderRadius: 4, boxShadow: '0 4px 24px #0072ff22', mb: 3, bgcolor: '#fff', p: 3, textAlign: 'center' }}>
             <Typography fontWeight={700} fontSize={20} color="#1976d2">No research papers yet</Typography>
             <Typography fontSize={15} color="#888">Be the first to share a research paper with the community!</Typography>
           </Box>
@@ -241,7 +242,7 @@ const filteredPapers = papers.filter((paper) => {
         )}
       {/* Read More Modal */}
       <Dialog open={!!openPaper} onClose={() => setOpenPaper(null)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={800} color="#1565c0">{openPaper?.title}</DialogTitle>
+        <DialogTitle fontWeight={800} color="#0056cc">{openPaper?.title}</DialogTitle>
         <DialogContent>
           <Typography color="#444" fontSize={16} sx={{ mb: 2, mt: 0.5, fontWeight: 400 }}>
             {openPaper?.description}
@@ -252,8 +253,8 @@ const filteredPapers = papers.filter((paper) => {
           {openPaper?.fileUrl && (
             <Button
               variant="outlined"
-              sx={{ mt: 2, borderRadius: 3, fontWeight: 700, color: '#2193b0', borderColor: '#2193b0', background: '#f8fafd', '&:hover': { background: '#e3f2fd' } }}
-              startIcon={<span style={{ display: 'flex', alignItems: 'center' }}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="#2193b0" d="M12 16.5a1 1 0 0 1-1-1V5a1 1 0 1 1 2 0v10.5a1 1 0 0 1-1 1Z"/><path fill="#2193b0" d="M7.21 13.79a1 1 0 0 1 1.42-1.42l2.29 2.3 2.29-2.3a1 1 0 1 1 1.42 1.42l-3 3a1 1 0 0 1-1.42 0l-3-3Z"/><path fill="#2193b0" d="M5 20a1 1 0 0 1 0-2h14a1 1 0 1 1 0 2H5Z"/></svg></span>}
+              sx={{ mt: 2, borderRadius: 3, fontWeight: 700, color: '#0072ff', borderColor: '#0072ff', background: '#f8fbff', '&:hover': { background: '#e3f2fd' } }}
+              startIcon={<span style={{ display: 'flex', alignItems: 'center' }}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="#0072ff" d="M12 16.5a1 1 0 0 1-1-1V5a1 1 0 1 1 2 0v10.5a1 1 0 0 1-1 1Z"/><path fill="#0072ff" d="M7.21 13.79a1 1 0 0 1 1.42-1.42l2.29 2.3 2.29-2.3a1 1 0 1 1 1.42 1.42l-3 3a1 1 0 0 1-1.42 0l-3-3Z"/><path fill="#0072ff" d="M5 20a1 1 0 0 1 0-2h14a1 1 0 1 1 0 2H5Z"/></svg></span>}
               href={openPaper.fileUrl}
               download
               target="_blank"
@@ -265,7 +266,7 @@ const filteredPapers = papers.filter((paper) => {
       </Dialog>
       {/* Discussions Modal (full-featured) */}
       <Dialog open={!!openDiscussionId} onClose={() => setOpenDiscussionId(null)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={800} color="#1565c0">Discussions</DialogTitle>
+        <DialogTitle fontWeight={800} color="#0056cc">Discussions</DialogTitle>
         <DialogContent>
           {openDiscussionId && <ResearchPaperDiscussion id={openDiscussionId} modalMode />}
         </DialogContent>
@@ -284,8 +285,8 @@ const filteredPapers = papers.filter((paper) => {
           position: 'relative',
           overflow: 'hidden',
         }}>
-          <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#1565c0', letterSpacing: 1, zIndex: 1, position: 'relative' }}>
-            <span style={{ color: '#2193b0', marginRight: 8, fontSize: 36, verticalAlign: 'middle' }}>📄</span>
+          <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#0056cc', letterSpacing: 1, zIndex: 1, position: 'relative' }}>
+            <FileText size={34} color="#0072ff" aria-hidden style={{ marginRight: 8, verticalAlign: 'middle' }} />
             Upload Research Paper
           </Typography>
           <Typography variant="subtitle1" color="text.secondary" mb={3} align="center" sx={{ fontSize: '1.12rem', fontWeight: 500 }}>
@@ -307,7 +308,7 @@ const filteredPapers = papers.filter((paper) => {
               fullWidth
               margin="normal"
               required
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
             <TextField
               label="Description"
@@ -319,7 +320,7 @@ const filteredPapers = papers.filter((paper) => {
               required
               multiline
               minRows={4}
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
             <TextField
               label="Field"
@@ -329,7 +330,7 @@ const filteredPapers = papers.filter((paper) => {
               fullWidth
               margin="normal"
               required
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
             <TextField
               label="Difficulty"
@@ -340,7 +341,7 @@ const filteredPapers = papers.filter((paper) => {
               margin="normal"
               required
               select
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             >
               <MenuItem value="beginner">Beginner</MenuItem>
               <MenuItem value="intermediate">Intermediate</MenuItem>
@@ -350,7 +351,7 @@ const filteredPapers = papers.filter((paper) => {
               variant="outlined"
               component="label"
               fullWidth
-              sx={{ mt: 2, mb: 2, fontWeight: 700, color: '#2193b0', borderColor: '#2193b0', borderRadius: 2, background: '#f8fafd', '&:hover': { background: '#e3f2fd' } }}
+              sx={{ mt: 2, mb: 2, fontWeight: 700, color: '#0072ff', borderColor: '#0072ff', borderRadius: 2, background: '#f8fbff', '&:hover': { background: '#e3f2fd' } }}
             >
               UPLOAD RESEARCH PAPER (PDF)
               <input type="file" hidden accept="application/pdf" onChange={handleFileChange} />
@@ -364,6 +365,7 @@ const filteredPapers = papers.filter((paper) => {
                 type="submit"
                 variant="contained"
                 fullWidth
+                startIcon={<Upload size={18} />}
                 sx={{
                   mt: 2,
                   py: 1.3,
@@ -371,15 +373,15 @@ const filteredPapers = papers.filter((paper) => {
                   fontSize: '1.1rem',
                   borderRadius: 3,
                   boxShadow: '0 4px 20px 0 rgba(31, 38, 135, 0.10)',
-                  background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
+                  background: 'linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)',
                   textTransform: 'none',
                   letterSpacing: 1,
                   '&:hover': {
-                    background: 'linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)',
+                    background: 'linear-gradient(90deg, #6dd5ed 0%, #0072ff 100%)',
                   },
                 }}
               >
-                📤 SUBMIT PAPER
+                Submit Paper
               </Button>
             </form>
           )}

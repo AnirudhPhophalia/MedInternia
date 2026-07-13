@@ -1,15 +1,42 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Button, TextField, IconButton, Stack, Collapse, Tooltip, Tabs, Tab } from '@mui/material';
-import { MessageCircleReply, Pin } from 'lucide-react';
+import {
+  Container,
+  Typography,
+  Box,
+  CircularProgress,
+  Alert,
+  Button,
+  TextField,
+  IconButton,
+  Stack,
+  Collapse,
+  Tooltip,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  Chip,
+  Avatar,
+  Divider,
+  Tabs,
+  Tab
+} from '@mui/material';
+import { MessageCircleReply, Pin, CheckCircle2, Sparkles, BookmarkPlus, Lock } from 'lucide-react';
+import SchoolIcon from '@mui/icons-material/School';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
-import { motion } from 'framer-motion';
+import BookmarkButton from '../../components/BookmarkButton';
+import GlossaryText from '../../components/GlossaryText';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../utils/api';
 import PdfExportButton from '../../components/PdfExportButton';
+import OfflineSaveButton from '../../components/OfflineSaveButton';
 import ClinicalTimeline from '../../components/ClinicalTimeline';
+import AddToCollectionModal from '../../components/AddToCollectionModal';
 
 export default function CaseDiscussion({ id: propId, modalMode, hideDescription }: { id?: string, modalMode?: boolean, hideDescription?: boolean }) {
   const router = useRouter();
@@ -17,24 +44,78 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [caseData, setCaseData] = useState<any>(null);
   const [discussions, setDiscussions] = useState<any[]>([]);
   const [pinned, setPinned] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isSolved, setIsSolved] = useState(false);
+  const [solving, setSolving] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedComment, setSelectedComment] = useState<any>(null);
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+
+  const [replyTo, setReplyTo] = useState<any>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [comment, setComment] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(true);
   const [openReplies, setOpenReplies] = useState<{[key: string]: boolean}>({});
-  // Like and rate logic
+
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+  const canModerate = currentUser && ['admin', 'doctor', 'moderator'].includes(currentUser.userType);
+
+  // Fetch Case Data & Profile details
+  useEffect(() => {
+    if (!id) return;
+    const token = localStorage.getItem('token');
+    
+    // Fetch profile to check solved list
+    if (token) {
+      api.get('/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => {
+        const user = res.data.data.user;
+        setCurrentUser(user);
+        if (user.solvedCases) {
+          setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
+        }
+      })
+      .catch(err => console.warn('Failed to fetch profile', err));
+    }
+
+    api.get(`/cases/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => {
+        setCaseData(res.data.data.case);
+        const all = res.data.data.case.comments || [];
+        setPinned(all.filter((c: any) => c.pinned));
+        setDiscussions(all.filter((c: any) => !c.pinned));
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (err.response && err.response.status === 403) {
+          setError(err.response.data.message || 'Access Denied');
+        } else {
+          setError('Failed to fetch case');
+        }
+        setLoading(false);
+      });
+  }, [id]);
+
   const handleLike = async (commentId: string) => {
     try {
       const token = localStorage.getItem('token');
       await api.post(`/cases/${id}/comments/${commentId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Refresh discussions
+      
       const res = await api.get(`/cases/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-  const all = res.data.data.case.comments || [];
-  setPinned(all.filter((c: any) => c.pinned));
-  setDiscussions(all); // Show all comments in discussions, including pinned
+      const all = res.data.data.case.comments || [];
+      setPinned(all.filter((c: any) => c.pinned));
+      setDiscussions(all.filter((c: any) => !c.pinned));
     } catch {
       setError('Failed to like discussion');
     }
@@ -46,7 +127,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
       await api.post(`/cases/${id}/comments/${commentId}/rate`, { rating }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Refresh discussions
+      
       const res = await api.get(`/cases/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -57,35 +138,10 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
       setError('Failed to rate discussion');
     }
   };
-  const [replyTo, setReplyTo] = useState<any>(null);
-  const [replyContent, setReplyContent] = useState('');
-  const [comment, setComment] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!id) return;
-    const token = localStorage.getItem('token');
-    api.get(`/cases/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => {
-        setCaseData(res.data.data.case);
-        const all = res.data.data.case.comments || [];
-        setPinned(all.filter((c: any) => c.pinned));
-        setDiscussions(all.filter((c: any) => !c.pinned));
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to fetch case');
-        setLoading(false);
-      });
-  }, [id]);
 
   const handleDiscussion = async () => {
     try {
       const token = localStorage.getItem('token');
-      // If replying, post as a reply to the selected comment
       if (replyTo) {
         await api.post(`/cases/${id}/comments/${replyTo._id}/reply`, { content: replyContent }, {
           headers: { Authorization: `Bearer ${token}` }
@@ -98,7 +154,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
       setComment('');
       setReplyTo(null);
       setReplyContent('');
-      // Refresh discussions
+      
       const res = await api.get(`/cases/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -110,15 +166,15 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
     }
   };
 
-  function handleReply(comment: any) {
+  const handleReply = (comment: any) => {
     setReplyTo(comment);
     setReplyContent('');
-  }
+  };
 
-  async function submitReply() {
+  const submitReply = async () => {
     if (!replyContent.trim()) return;
     await handleDiscussion();
-  }
+  };
 
   const handlePin = async (commentId: string) => {
     try {
@@ -126,7 +182,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
       await api.post(`/cases/${id}/comments/${commentId}/pin`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Refresh discussions
+      
       const res = await api.get(`/cases/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -144,7 +200,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
       await api.post(`/cases/${id}/comments/${commentId}/unpin`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Refresh discussions
+      
       const res = await api.get(`/cases/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -156,290 +212,667 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
     }
   };
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  const handleSolveCase = async () => {
+    setSolving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await api.post(`/cases/${id}/solve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsSolved(true);
+      setSolving(false);
+      setSuccess('Case marked as solved successfully! You earned +5 points.');
+      setError('');
+    } catch (err) {
+      setSolving(false);
+      setError('Failed to mark case as solved');
+      setSuccess('');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+  
+  if (error) {
+    const isAccessDenied = error.startsWith('Access Denied');
+    return (
+      <Container maxWidth="md" sx={{ py: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Alert 
+          severity="error" 
+          icon={isAccessDenied ? <Lock size={24} /> : undefined}
+          sx={{ mb: 3, width: '100%', py: 2, borderRadius: 3, fontSize: '1.1rem' }}
+        >
+          <Typography variant="subtitle1" fontWeight={700} sx={{ display: 'inline-block', mr: 1 }}>
+            {isAccessDenied ? 'Protected Case' : 'Error'}
+          </Typography>
+          {error}
+        </Alert>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          component={Link}
+          href="/cases"
+          variant="contained"
+          sx={{ mt: 2, borderRadius: 2 }}
+        >
+          Return to Cases Feed
+        </Button>
+      </Container>
+    );
+  }
+
   if (!caseData) return null;
 
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-  const isAuthor = userId && caseData?.author?.id === userId;
+  const caseAuthorName = caseData.doctor
+    ? `${caseData.doctor.firstName || ''} ${caseData.doctor.lastName || ''}`.trim()
+    : 'Unknown Clinician';
+  const caseAuthorAvatar = caseData.doctor?.profilePicture || undefined;
 
   // Merge pinned and regular discussions for PDF export
   const allDiscussions = [...pinned, ...discussions];
 
-  return (
-    <Container maxWidth="sm">
-      <Box sx={{ my: 4 }}>
-        {!hideDescription && <>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="h4" gutterBottom sx={{ flex: 1 }}>{caseData.title}</Typography>
-            <PdfExportButton caseData={caseData} discussions={allDiscussions} />
-          </Box>
-          <Typography variant="body1">{caseData.description}</Typography>
-        </>}
+  // Comments / Peer reviews sub-panel JSX
+  const discussionPanel = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '400px' }}>
+      <Typography variant="h5" fontWeight={800} sx={{ mb: 2, color: 'text.primary' }}>
+        Peer Discussions
+      </Typography>
 
-        <Tabs 
-          value={activeTab} 
-          onChange={(e, val) => setActiveTab(val)} 
-          centered 
-          sx={{ my: 3, borderBottom: '1px solid #e2e8f0' }}
-        >
-          <Tab label="Clinical Timeline" sx={{ fontWeight: 600 }} />
-          <Tab label={`Discussions (${allDiscussions.length})`} sx={{ fontWeight: 600 }} />
-        </Tabs>
+      {/* Pinned keypoints */}
+      {pinned.length > 0 && (
+        <Box sx={{ mb: 3, p: 2, bgcolor: '#fffbe6', borderRadius: 3, border: '1.5px solid #ffe066' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: '#b7860b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Pin size={16} /> Key Pinned Insights
+          </Typography>
+          {pinned.map((c, idx) => {
+            const authorName = c.author ? `${c.author.firstName || ''} ${c.author.lastName || ''}`.trim() : 'Unknown';
+            return (
+              <Box key={c._id || idx} sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                  "{c.content}"
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    — {authorName} ({c.author?.userType})
+                  </Typography>
+                  {canModerate && (
+                    <Button size="small" onClick={() => handleUnpin(c._id)} sx={{ p: 0, minWidth: 0, fontSize: 11, color: 'error.main' }}>
+                      Unpin
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
-        {activeTab === 0 && (
-          <ClinicalTimeline caseData={caseData} discussions={allDiscussions} />
-        )}
+      {/* Main comments feed */}
+      <Box sx={{ flex: 1, overflowY: 'auto', maxHeight: '500px', pr: 1, mb: 2 }}>
+        {discussions.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center', py: 4 }}>
+            No peer reviews yet. Share your diagnosis and feedback!
+          </Typography>
+        ) : (
+          discussions
+            .filter((c) => !c.replyTo)
+            .map((c, idx) => {
+              const isMe = c.author?._id === userId;
+              const authorName = c.author ? `${c.author.firstName || ''} ${c.author.lastName || ''}`.trim() : 'Unknown';
+              const initial = authorName[0]?.toUpperCase() || 'U';
 
-        {activeTab === 1 && (
-          <>
-          {pinned.length > 0 && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: '#fffbe6', borderRadius: 3, boxShadow: '0 2px 12px #ffd70022', border: '1.5px solid #ffe066' }}>
-              <Typography variant="h6" sx={{ mb: 2, color: '#FFD700', fontWeight: 700 }}>Keypoints</Typography>
-              {pinned
-                .filter((c) => !c.replyTo)
-                .map((c, idx) => {
-                  const isMe = c.author?.id === userId;
-                  const authorName = c.author?.firstName || 'Unknown';
-                  const initial = authorName[0]?.toUpperCase() || 'U';
-                  return (
-                    <motion.div
-                      key={c._id || idx}
-                      initial={{ opacity: 0, x: isMe ? 50 : -50 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.03 }}
-                    >
-                      <Box sx={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', mb: 2 }}>
-                        <Box sx={{ background: isMe ? 'linear-gradient(135deg, #FFD700 60%, #ffe066 100%)' : 'linear-gradient(135deg, #ffe066 60%, #fffbe6 100%)', color: '#fff', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 20, boxShadow: 1, mr: isMe ? 0 : 2, ml: isMe ? 2 : 0 }}>{initial}</Box>
-                        <Box sx={{ bgcolor: '#fffbe6', color: '#222', borderRadius: 3, px: 2.5, py: 2, minWidth: 180, maxWidth: 420, boxShadow: '0 2px 12px #ffd70022', position: 'relative', border: '1.5px solid #ffe066' }}>
-                          <Typography sx={{ wordBreak: 'break-word', fontSize: '1.15rem', fontWeight: 500 }}>{c.content}</Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>{authorName}</Typography>
-                            <Typography variant="caption" sx={{ ml: 1, color: '#FFD700' }}>{c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Typography>
-                            {/* Reply icon (lucide, always visible) */}
-                            <IconButton size="small" sx={{ ml: 1, p: 0.5, color: '#FFD700', '&:hover': { bgcolor: '#ffe066' }, borderRadius: 2 }} onClick={() => handleReply(c)}>
-                              <MessageCircleReply size={20} strokeWidth={2.2} />
-                            </IconButton>
-                            {/* Unpin icon/button for pinned comments */}
-                            <Tooltip title="Unpin">
-                              <IconButton
-                                size="small"
-                                sx={{ ml: 1, p: 0.5, color: '#FFD700', borderRadius: 2, '&:hover': { bgcolor: '#ffe066', color: '#222' }, boxShadow: '0 2px 8px #ffd70088' }}
-                                onClick={() => handleUnpin(c._id)}
-                              >
-                                <PushPinIcon sx={{ fontSize: 22 }} />
-                              </IconButton>
-                            </Tooltip>
-                            {/* Like button with active state */}
-                            <IconButton size="small" sx={{ ml: 1, p: 0.5 }} onClick={() => handleLike(c._id)}>
-                              <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likedBy?.includes(userId) ? '#FFD700' : '#2193b0' }} />
-                            </IconButton>
-                          </Box> {/* end inner Box (actions) */}
-                        </Box>
-                      </Box> {/* end Box (content + avatar) */}
-                    </motion.div>
-                  );
-                })}
-            </Box>
-          )}
-          <Box sx={{ maxHeight: 400, overflowY: 'auto', px: 1 }}>
-            {discussions.length === 0 && (
-              <Typography variant="body2" sx={{ color: '#888', textAlign: 'center', py: 4 }}>
-                No discussions yet. Be the first to discuss!
-              </Typography>
-            )}
-            {discussions
-              .filter((c) => !c.replyTo) // Only top-level comments
-              .map((c, idx) => {
-                const isMe = c.author?.id === userId;
-                const authorName = c.author?.firstName || 'Unknown';
-                const initial = authorName[0]?.toUpperCase() || 'U';
-                return (
-                  <motion.div
-                    key={c._id || idx}
-                    initial={{ opacity: 0, x: isMe ? 50 : -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.03 }}
-                  >
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: isMe ? 'row-reverse' : 'row',
-                      alignItems: 'flex-end',
-                      mb: 2,
-                    }}>
-                      <Box sx={{
-                        background: isMe ? 'linear-gradient(135deg, #1976d2 60%, #64b5f6 100%)' : 'linear-gradient(135deg, #90caf9 60%, #e3f2fd 100%)',
-                        color: '#fff',
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: 20,
-                        boxShadow: 1,
-                        mr: isMe ? 0 : 2,
-                        ml: isMe ? 2 : 0,
-                      }}>{initial}</Box>
-                      <Box sx={{
-                        bgcolor: isMe ? '#1976d2' : '#fff',
-                        color: isMe ? '#fff' : '#222',
+              return (
+                <Box key={c._id || idx} sx={{ mb: 3 }}>
+                  <Stack direction={isMe ? 'row-reverse' : 'row'} gap={1.5} alignItems="flex-start">
+                    <Avatar sx={{ bgcolor: isMe ? 'primary.main' : 'secondary.main', width: 36, height: 36, fontWeight: 700 }}>
+                      {initial}
+                    </Avatar>
+                    <Box
+                      sx={{
+                        p: 2,
                         borderRadius: 3,
-                        px: 2.5,
-                        py: 2,
-                        minWidth: 180,
-                        maxWidth: 420,
-                        boxShadow: '0 2px 12px #1976d222',
-                        position: 'relative',
-                      }}>
-                        <Typography sx={{ wordBreak: 'break-word', fontSize: '1.15rem', fontWeight: 500 }}>{c.content}</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>{authorName}</Typography>
-                          <Typography variant="caption" sx={{ ml: 1, color: '#90caf9' }}>
-                            {c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                          </Typography>
-                          {/* Reply icon (lucide, always visible) */}
-                          <IconButton size="small" sx={{ ml: 1, p: 0.5, color: '#1976d2', '&:hover': { bgcolor: '#e3f2fd' }, borderRadius: 2 }} onClick={() => handleReply(c)}>
-                            <MessageCircleReply size={20} strokeWidth={2.2} />
+                        bgcolor: isMe ? 'primary.light' : '#f1f5f9',
+                        color: 'text.primary',
+                        maxWidth: '85%',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600} sx={{ color: 'primary.dark', mb: 0.5 }}>
+                        {authorName} <span style={{ fontSize: '11px', fontWeight: 500, opacity: 0.8 }}>({c.author?.userType})</span>
+                      </Typography>
+                      <Typography variant="body1" fontSize={15} sx={{ whiteSpace: 'pre-line' }}>
+                        {c.content}
+                      </Typography>
+
+                      <Stack direction="row" alignItems="center" gap={1.5} sx={{ mt: 1 }}>
+                        <Typography fontSize={11} color="text.disabled">
+                          {c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </Typography>
+
+                        <Tooltip title="Like comment">
+                          <IconButton size="small" onClick={() => handleLike(c._id)} sx={{ p: 0.5 }}>
+                            <ThumbUpAltOutlinedIcon sx={{ fontSize: 16, color: c.likes?.includes(userId) ? 'primary.main' : 'text.disabled' }} />
                           </IconButton>
-                          {/* Pin button visible to all users */}
-                          <Tooltip title={c.pinned ? 'Unpin' : 'Pin'}>
-                            <IconButton
-                              size="small"
-                              sx={{ ml: 1, p: 0.5, color: c.pinned ? '#FFD700' : '#2193b0', borderRadius: 2, '&:hover': { bgcolor: '#e3f2fd', color: '#1976d2' }, boxShadow: c.pinned ? '0 2px 8px #ffd70088' : 'none' }}
-                              onClick={() => handlePin(c._id)}
-                            >
-                              <PushPinIcon sx={{ fontSize: 22 }} />
+                        </Tooltip>
+
+                        {canModerate && (
+                          <Tooltip title="Pin insight">
+                            <IconButton size="small" onClick={() => handlePin(c._id)} sx={{ p: 0.5, color: 'text.disabled' }}>
+                              <Pin size={16} />
                             </IconButton>
                           </Tooltip>
-                          {/* Like button with active state */}
-                          <IconButton size="small" sx={{ ml: 1, p: 0.5 }} onClick={() => handleLike(c._id)}>
-                            <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likedBy?.includes(userId) ? '#1976d2' : '#2193b0' }} />
-                          </IconButton>
-                          {/* Dropdown for replies */}
-                          {c.replies && c.replies.length > 0 && (
-                            <Button size="small" sx={{ ml: 1, fontSize: 12, color: '#1976d2', textTransform: 'none' }} onClick={() => setOpenReplies(prev => ({ ...prev, [c._id]: !prev[c._id] }))}>
-                              {openReplies[c._id] ? 'Hide Replies' : `Show Replies (${c.replies.length})`}
-                            </Button>
-                          )}
-                        </Box>
-                        {/* Collapsible replies with WhatsApp-style reply preview */}
-                        {c.replies && c.replies.length > 0 && (
-                          <Collapse in={!!openReplies[c._id]}>
-                            <Box sx={{ mt: 1, ml: 4, pl: 2, borderLeft: '2px solid #90caf9', bgcolor: '#f5fafd', borderRadius: 2 }}>
-                              {discussions
-                                .filter((r: any) => r.replyTo === c._id)
-                                .map((r: any, ridx: number) => {
-                                  // Find parent comment content by _id in pinned or discussions
-                                  const parentContent = (() => {
-                                    if (!r.replyTo) return '';
-                                    const allComments = [...pinned, ...discussions];
-                                    const parent = allComments.find((cm: any) => cm._id === r.replyTo);
-                                    return parent?.content || '';
-                                  })();
-                                  return (
-                                    <Box key={r._id || ridx} sx={{ mb: 2, display: 'flex', alignItems: 'flex-end' }}>
-                                      <Box sx={{
-                                        background: 'linear-gradient(135deg, #1976d2 60%, #64b5f6 100%)',
-                                        color: '#fff',
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontWeight: 700,
-                                        fontSize: 16,
-                                        mr: 1.5,
-                                        boxShadow: '0 2px 8px #1976d222',
-                                      }}>{r.author?.firstName?.[0]?.toUpperCase() || 'U'}</Box>
-                                      <Box sx={{
-                                        bgcolor: '#e3f2fd',
-                                        color: '#1976d2',
-                                        borderRadius: 3,
-                                        px: 2.5,
-                                        py: 1.5,
-                                        boxShadow: '0 2px 12px #1976d222',
-                                        border: '1.5px solid #90caf9',
-                                        minWidth: 120,
-                                        maxWidth: 340,
-                                        ml: 0.5
-                                      }}>
-                                        <Typography sx={{ fontSize: '1.05rem', fontWeight: 500, mb: 0.5 }}>{r.content}</Typography>
-                                        <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.85rem', color: '#1976d2' }}>
-                                          {r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                        </Typography>
-                                      </Box>
-                                    </Box>
-                                  );
-                                })}
-                            </Box>
-                          </Collapse>
                         )}
-                      </Box>
+
+                        <Button size="small" onClick={() => handleReply(c)} sx={{ fontSize: 11, minWidth: 0, p: 0 }}>
+                          Reply
+                        </Button>
+
+                        {c.replies && c.replies.length > 0 && (
+                          <Button size="small" sx={{ fontSize: 11, minWidth: 0, p: 0 }} onClick={() => setOpenReplies(prev => ({ ...prev, [c._id]: !prev[c._id] }))}>
+                            {openReplies[c._id] ? 'Hide Replies' : `Replies (${c.replies.length})`}
+                          </Button>
+                        )}
+                      </Stack>
                     </Box>
-                  </motion.div>
-                );
-              })}
-          </Box>
-          {/* Removed MoreVert menu for main actions */}
-          {/* Reply input bar */}
-          {replyTo && (
-            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', bgcolor: '#e3f2fd', borderRadius: 3, boxShadow: 1, px: 2, py: 1 }}>
-              <TextField
-                placeholder={`Replying to ${replyTo.author?.firstName || 'user'}...`}
-                value={replyContent}
-                onChange={e => setReplyContent(e.target.value)}
-                variant="standard"
-                fullWidth
-                InputProps={{ disableUnderline: true, sx: { fontSize: 16 } }}
-                sx={{ mr: 2 }}
-                onKeyDown={e => { if (e.key === 'Enter') submitReply(); }}
-              />
-              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{ borderRadius: '50%', minWidth: 44, minHeight: 44, boxShadow: 2, fontSize: 18 }}
-                  onClick={submitReply}
-                  disabled={!replyContent.trim()}
-                >
-                  &#9658;
-                </Button>
-              </motion.div>
-              <Button onClick={() => setReplyTo(null)} sx={{ ml: 2, color: '#1976d2', fontWeight: 700 }}>Cancel</Button>
-            </Box>
-          )}
-          {/* Modern input bar */}
-          {!replyTo && (
-            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', bgcolor: '#fff', borderRadius: 3, boxShadow: 1, px: 2, py: 1 }}>
-              <TextField
-                placeholder="Type your discussion..."
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                variant="standard"
-                fullWidth
-                InputProps={{ disableUnderline: true, sx: { fontSize: 16 } }}
-                sx={{ mr: 2 }}
-                onKeyDown={e => { if (e.key === 'Enter') handleDiscussion(); }}
-              />
-              <motion.div whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  sx={{ borderRadius: '50%', minWidth: 44, minHeight: 44, boxShadow: 2, fontSize: 18 }}
-                  onClick={handleDiscussion}
-                  disabled={!comment.trim()}
-                >
-                  &#9658;
-                </Button>
-              </motion.div>
-            </Box>
-          )}
-          </>
+                  </Stack>
+
+                  {/* Replies nesting */}
+                  {c.replies && c.replies.length > 0 && openReplies[c._id] && (
+                    <Box sx={{ mt: 1, ml: 6, pl: 2, borderLeft: '2px solid #cbd5e1' }}>
+                      {discussions
+                        .filter((r: any) => r.replyTo === c._id)
+                        .map((r: any, rIdx: number) => {
+                          const replyAuthorName = r.author ? `${r.author.firstName || ''} ${r.author.lastName || ''}`.trim() : 'Unknown';
+                          return (
+                            <Box key={r._id || rIdx} sx={{ mt: 1.5, display: 'flex', gap: 1 }}>
+                              <Avatar sx={{ width: 28, height: 28, bgcolor: 'divider', fontSize: 13, fontWeight: 700 }}>
+                                {replyAuthorName[0]?.toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ p: 1.5, bgcolor: '#f8fafc', borderRadius: 3, width: '100%' }}>
+                                <Typography variant="body2" fontWeight={600} color="text.primary">
+                                  {replyAuthorName} <span style={{ fontSize: '10px', opacity: 0.7 }}>({r.author?.userType})</span>
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>{r.content}</Typography>
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                    </Box>
+                  )}
+                </Box>
+              );
+            })
         )}
       </Box>
+
+      {/* Input controls */}
+      {replyTo ? (
+        <Box sx={{ p: 2, bgcolor: '#e0f2fe', borderRadius: 3, border: '1px solid #bae6fd' }}>
+          <Typography variant="caption" color="primary.dark" fontWeight={700}>
+            Replying to {replyTo.author?.firstName || 'user'}
+          </Typography>
+          <TextField
+            placeholder="Type your reply..."
+            value={replyContent}
+            onChange={e => setReplyContent(e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+            sx={{ mt: 1, bgcolor: 'white', borderRadius: 2 }}
+          />
+          <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 1.5 }}>
+            <Button size="small" variant="text" onClick={() => setReplyTo(null)}>
+              Cancel
+            </Button>
+            <Button size="small" variant="contained" onClick={submitReply} disabled={!replyContent.trim()}>
+              Send Reply
+            </Button>
+          </Stack>
+        </Box>
+      ) : (
+        <Stack direction="row" gap={1} alignItems="flex-end" sx={{ mt: 'auto', pt: 1 }}>
+          <TextField
+            placeholder="Write comments, peer advice, or ask questions..."
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            fullWidth
+            multiline
+            maxRows={4}
+            InputProps={{ sx: { borderRadius: '12px', bgcolor: '#f8fbff' } }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleDiscussion}
+            disabled={!comment.trim()}
+            sx={{ height: 48, borderRadius: '12px', px: 3 }}
+          >
+            Post
+          </Button>
+        </Stack>
+      )}
+    </Box>
+  );
+
+  // If in Modal Mode, just display discussions
+  if (modalMode) {
+    return discussionPanel;
+  }
+
+  // Full detail page layout
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Back button */}
+      <Button
+        startIcon={<ArrowBackIcon />}
+        component={Link}
+        href="/cases"
+        sx={{ mb: 3, color: 'text.secondary', fontWeight: 600, '&:hover': { color: 'primary.main' } }}
+      >
+        Back to Cases
+      </Button>
+
+      {success && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
+
+      <Grid container spacing={4}>
+        {/* Left Column: Case details or Timeline (depending on active tab) */}
+        <Grid size={{ xs: 12, md: 7, lg: 8 }}>
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 2 }}>
+              <Typography variant="h3" fontWeight={900} color="text.primary" sx={{ flex: 1, letterSpacing: -0.5, mb: 0 }}>
+                {caseData.title}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <BookmarkButton itemType="case" itemId={caseData._id || id as string} />
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  startIcon={<BookmarkPlus size={16} />}
+                  onClick={() => setCollectionModalOpen(true)}
+                  sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, borderColor: 'primary.main', color: 'primary.main' }}
+                >
+                  Save
+                </Button>
+                <OfflineSaveButton caseId={caseData._id || id as string} caseData={caseData} />
+                <PdfExportButton caseData={caseData} discussions={allDiscussions} />
+                <Tooltip title="Create Flashcard from this case">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<SchoolIcon />}
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        await api.post('/flashcards', {
+                          question: caseData.title,
+                          answer: caseData.specialization
+                            ? `Specialty: ${caseData.specialization}. ${(caseData.description || '').slice(0, 150)}`
+                            : (caseData.description || '').slice(0, 200),
+                          tags: caseData.tags || [],
+                          caseId: caseData._id
+                        }, { headers: { Authorization: `Bearer ${token}` } });
+                        setSuccess('Flashcard created! View it in your deck.');
+                      } catch {
+                        setError('Failed to create flashcard');
+                      }
+                    }}
+                    sx={{ borderRadius: 2, fontWeight: 600, textTransform: 'none' }}
+                  >
+                    Flashcard
+                  </Button>
+                </Tooltip>
+              </Box>
+            </Box>
+
+            {/* AI Prominent Badges */}
+            <Stack direction="row" gap={1.5} flexWrap="wrap" sx={{ mb: 3, mt: 1 }}>
+              {caseData.specialization && (
+                <Chip
+                  label={`🩺 specialty: ${caseData.specialization}`}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '13px', px: 0.5 }}
+                />
+              )}
+              {caseData.difficulty && (
+                <Chip
+                  label={`⚡ Difficulty: ${caseData.difficulty}`}
+                  sx={{
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    px: 0.5,
+                    textTransform: 'capitalize',
+                    ...(() => {
+                      switch (caseData.difficulty.toLowerCase()) {
+                        case 'beginner':
+                          return { bgcolor: '#e6fffa', color: '#00a389', border: '1px solid #b2f5ea' };
+                        case 'advanced':
+                        case 'complex':
+                          return { bgcolor: '#fff5f5', color: '#e53e3e', border: '1px solid #feb2b2' };
+                        default:
+                          return { bgcolor: '#fffaf0', color: '#dd6b20', border: '1px solid #fbd38d' };
+                      }
+                    })()
+                  }}
+                />
+              )}
+              {isSolved && (
+                <Chip
+                  icon={<CheckCircle2 size={16} />}
+                  label="Solved"
+                  color="success"
+                  sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '13px', px: 0.5 }}
+                />
+              )}
+              {caseData.verifiedDoctorsOnly && (
+                <Chip
+                  icon={<Lock size={14} />}
+                  label="Verified Doctors Only"
+                  color="error"
+                  variant="filled"
+                  sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '13px', px: 0.5, bgcolor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}
+                />
+              )}
+              {caseData.tags && caseData.tags.map((tag: string) => (
+                <Chip
+                  key={tag}
+                  label={`#${tag}`}
+                  sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '13px', px: 0.5, bgcolor: '#f1f5f9', color: '#475569' }}
+                />
+              ))}
+            </Stack>
+
+            {/* Author and Date Meta Row */}
+            <Stack direction="row" alignItems="center" gap={1.5} sx={{ mb: 2 }}>
+              <Avatar src={caseAuthorAvatar} sx={{ width: 44, height: 44, bgcolor: 'primary.light', color: 'primary.dark', fontWeight: 700 }}>
+                {caseAuthorName[0]}
+              </Avatar>
+              <Box>
+                <Typography variant="body1" fontWeight={700} color="text.primary">
+                  {caseAuthorName}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Published {caseData.createdAt ? new Date(caseData.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                </Typography>
+              </Box>
+
+              {/* Mark as Solved Button */}
+              {userId && !isSolved && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  disabled={solving}
+                  startIcon={solving ? <CircularProgress size={16} color="inherit" /> : <CheckCircle2 size={18} />}
+                  onClick={handleSolveCase}
+                  sx={{
+                    ml: 'auto',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    px: 3,
+                    boxShadow: '0 4px 14px 0 rgba(34,197,94,0.39)',
+                    '&:hover': {
+                      boxShadow: '0 6px 20px rgba(34,197,94,0.4)',
+                    }
+                  }}
+                >
+                  Mark as Solved
+                </Button>
+              )}
+
+              {/* Virtual Consult Room Button */}
+              {userId && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => router.push(`/cases/${id}/consult`)}
+                  sx={{
+                    ml: isSolved ? 'auto' : 1,
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    px: 3,
+                    bgcolor: '#4f46e5',
+                    boxShadow: '0 4px 14px 0 rgba(79,70,229,0.39)',
+                    '&:hover': {
+                      bgcolor: '#4338ca',
+                      boxShadow: '0 6px 20px rgba(79,70,229,0.4)',
+                    }
+                  }}
+                >
+                  Open Consult Room
+                </Button>
+              )}
+            </Stack>
+          </Box>
+
+          <Tabs
+            value={activeTab}
+            onChange={(e, val) => setActiveTab(val)}
+            sx={{ mb: 3, borderBottom: '1px solid #e2e8f0' }}
+          >
+            <Tab label="Case Details" sx={{ fontWeight: 600 }} />
+            <Tab label="Clinical Timeline" sx={{ fontWeight: 600 }} />
+          </Tabs>
+
+          {activeTab === 0 && (
+            <>
+              <Divider sx={{ mb: 4 }} />
+
+              {/* Patient Info Card */}
+              {caseData.patientInfo && (caseData.patientInfo.age || caseData.patientInfo.gender || (caseData.patientInfo.medicalHistory && caseData.patientInfo.medicalHistory.length > 0) || (caseData.patientInfo.currentMedications && caseData.patientInfo.currentMedications.length > 0)) && (
+                <Card sx={{ p: 2.5, mb: 4, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#fafcff' }}>
+                  <Typography variant="subtitle1" fontWeight={700} color="primary.main" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    📋 Patient Information
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {caseData.patientInfo.age && (
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <Typography variant="caption" color="text.secondary" display="block">Age</Typography>
+                        <Typography variant="body2" fontWeight={600} color="text.primary">{caseData.patientInfo.age} years</Typography>
+                      </Grid>
+                    )}
+                    {caseData.patientInfo.gender && (
+                      <Grid size={{ xs: 6, sm: 3 }}>
+                        <Typography variant="caption" color="text.secondary" display="block">Gender</Typography>
+                        <Typography variant="body2" fontWeight={600} color="text.primary" sx={{ textTransform: 'capitalize' }}>{caseData.patientInfo.gender}</Typography>
+                      </Grid>
+                    )}
+                    {caseData.patientInfo.medicalHistory && caseData.patientInfo.medicalHistory.length > 0 && (
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="caption" color="text.secondary" display="block">Medical History</Typography>
+                        <Typography variant="body2" fontWeight={600} color="text.primary">{caseData.patientInfo.medicalHistory.join(', ')}</Typography>
+                      </Grid>
+                    )}
+                    {caseData.patientInfo.currentMedications && caseData.patientInfo.currentMedications.length > 0 && (
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant="caption" color="text.secondary" display="block">Current Medications</Typography>
+                        <Typography variant="body2" fontWeight={600} color="text.primary">{caseData.patientInfo.currentMedications.join(', ')}</Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Card>
+              )}
+
+              {/* Description */}
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: 'primary.dark' }}>
+                  Clinical History & Details
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', color: 'text.primary', fontSize: '1.05rem', lineHeight: 1.7 }}>
+                  <GlossaryText text={caseData.description} />
+                </Typography>
+              </Box>
+
+              {/* Supporting materials */}
+              {caseData.images && caseData.images.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: 'primary.dark' }}>
+                    Supporting Medical Media (Images)
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {caseData.images.map((img: string, idx: number) => (
+                      <Grid size={{ xs: 12, sm: 6 }} key={idx}>
+                        <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.01)', overflow: 'hidden' }}>
+                          <CardMedia
+                            component="img"
+                            image={img}
+                            alt={`Clinical supporting photo ${idx + 1}`}
+                            sx={{ height: 260, objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}
+                            onClick={() => window.open(img, '_blank')}
+                          />
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+
+              {caseData.attachments && caseData.attachments.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ mb: 2, color: 'primary.dark' }}>
+                    Supporting Media
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {caseData.attachments.map((att: any, idx: number) => (
+                      <Grid size={{ xs: 12, sm: att.type === 'audio' ? 12 : 6 }} key={`att-${idx}`}>
+                        <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.01)', overflow: 'hidden', p: att.type === 'audio' ? 2 : 0 }}>
+                          {att.type === 'image' && (
+                            <CardMedia
+                              component="img"
+                              image={att.url}
+                              alt={`Clinical supporting media ${idx + 1}`}
+                              sx={{ height: 260, objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.02)' } }}
+                              onClick={() => window.open(att.url, '_blank')}
+                            />
+                          )}
+                          {att.type === 'video' && (
+                            <video
+                              src={att.url}
+                              controls
+                              style={{ width: '100%', maxHeight: 260, objectFit: 'contain', backgroundColor: '#000' }}
+                            />
+                          )}
+                          {att.type === 'audio' && (
+                            <Box sx={{ width: '100%' }}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Audio Attachment</Typography>
+                              <audio
+                                src={att.url}
+                                controls
+                                style={{ width: '100%' }}
+                              />
+                            </Box>
+                          )}
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+
+              {/* AI Clinical Insights card */}
+              <Card
+                sx={{
+                  borderRadius: 4,
+                  border: '1.5px solid rgba(0, 114, 255, 0.15)',
+                  background: 'linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)',
+                  boxShadow: '0 4px 20px rgba(0, 114, 255, 0.05)',
+                  mb: 4,
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Stack direction="row" alignItems="center" gap={1.2} sx={{ mb: 2 }}>
+                    <Box sx={{ bgcolor: 'primary.light', p: 0.8, borderRadius: '8px', color: 'primary.main', display: 'flex', alignItems: 'center' }}>
+                      <Sparkles size={20} />
+                    </Box>
+                    <Typography variant="h6" fontWeight={800} color="primary.dark">
+                      AI Clinical Insights
+                    </Typography>
+                  </Stack>
+
+                  {caseData.symptoms && caseData.symptoms.length > 0 && (
+                    <Box sx={{ mb: 2.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">
+                        Extracted symptoms:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        {caseData.symptoms.map((s: string) => (
+                          <Chip key={s} label={s} size="small" sx={{ bgcolor: '#ebf4ff', color: 'primary.dark', fontWeight: 600 }} />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {caseData.diagnosis && (
+                    <Box sx={{ mb: 2.5 }}>
+                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">
+                        Likely Diagnosis:
+                      </Typography>
+                      <Typography variant="body1" fontWeight={700} color="text.primary" sx={{ mt: 0.5, bgcolor: '#f1f5f9', p: 1.5, borderRadius: 2 }}>
+                        💡 {caseData.diagnosis}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {caseData.treatment && (
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={700} color="text.secondary">
+                        Recommended Treatment / Management:
+                      </Typography>
+                      <Typography variant="body2" color="text.primary" sx={{ mt: 0.7, whiteSpace: 'pre-line', bgcolor: '#fdfdfd', border: '1px solid #e2e8f0', p: 2, borderRadius: 2 }}>
+                        {caseData.treatment}
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {activeTab === 1 && (
+            <ClinicalTimeline caseData={caseData} discussions={allDiscussions} />
+          )}
+
+          {/* Pinned insight placeholder container */}
+          <Box sx={{ mb: 1 }} />
+        </Grid>
+
+        {/* Right Column: Peer review discussion comments */}
+        <Grid size={{ xs: 12, md: 5, lg: 4 }}>
+          <Card
+            elevation={2}
+            sx={{
+              p: 3,
+              borderRadius: 4,
+              height: '100%',
+              bgcolor: 'white',
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'sticky',
+              top: '84px', // account for navbar
+            }}
+          >
+            {discussionPanel}
+          </Card>
+        </Grid>
+      </Grid>
+      
+      {/* Add To Collection Modal */}
+      {id && (
+        <AddToCollectionModal 
+          open={collectionModalOpen} 
+          onClose={() => setCollectionModalOpen(false)} 
+          caseId={id as string} 
+        />
+      )}
     </Container>
   );
 }

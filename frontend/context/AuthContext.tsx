@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import api from '../utils/api';
 
 interface AuthContextType {
   token: string | null;
@@ -10,6 +11,11 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => void;
 }
+
+let _globalToken: string | null = null;
+
+export const setGlobalToken = (t: string | null) => { _globalToken = t; };
+export const getGlobalToken = () => _globalToken;
 
 const AuthContext = createContext<AuthContextType>({
   token: null,
@@ -35,27 +41,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
       return;
     }
-    try {
-      const storedToken = localStorage.getItem('token');
-      const storedUserId = localStorage.getItem('userId');
-      const storedUserStr = localStorage.getItem('user');
-      if (storedToken) setToken(storedToken);
-      if (storedUserId) setUserId(storedUserId);
-      if (storedUserStr) {
-        try {
-          setUser(JSON.parse(storedUserStr));
-        } catch {
-          // corrupted user data
+    api.get('/auth/validate-token')
+      .then((res) => {
+        const userData = res.data?.user || res.data?.data?.user;
+        if (userData) {
+          const id = String(userData._id || userData.id);
+          setUserId(id);
+          setUser(userData);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userId', id);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
         }
-      }
-    } catch {
-      // localStorage not available
-    }
-    setIsLoading(false);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback((newToken: string, newUserId: string, newUser: any) => {
     setToken(newToken);
+    setGlobalToken(newToken);
     setUserId(newUserId);
     setUser(newUser);
     if (typeof window !== 'undefined') {
@@ -67,30 +72,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(() => {
     setToken(null);
+    setGlobalToken(null);
     setUserId(null);
     setUser(null);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('user');
-      localStorage.removeItem('starredCases');
-      localStorage.removeItem('starredPapers');
-      localStorage.removeItem('pinnedPapers');
-    }
   }, []);
 
   const refreshUser = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const storedUserStr = localStorage.getItem('user');
-        if (storedUserStr) {
-          const parsed = JSON.parse(storedUserStr);
-          setUser(parsed);
+    api.get('/auth/validate-token')
+      .then((res) => {
+        const userData = res.data?.user || res.data?.data?.user;
+        if (userData) {
+          const id = String(userData._id || userData.id);
+          setUserId(id);
+          setUser(userData);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userId', id);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
         }
-      } catch {
-        // ignore
-      }
-    }
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -99,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         token,
         userId,
         user,
-        isAuthenticated: !!token,
+        isAuthenticated: !!token || !!userId,
         isLoading,
         login,
         logout,

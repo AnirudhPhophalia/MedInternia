@@ -15,6 +15,7 @@ import {
   unfollowUser,
   getConnections
 } from '../controllers/userController';
+import { toggleBookmark, getSavedItems } from '../controllers/userBookmarksController';
 
 const router = Router();
 
@@ -49,9 +50,15 @@ router.post('/:internId/award-points', authenticate, requirePermission('user:awa
 router.post('/follow', authenticate, followUser);
 
 // Unfollow a user
-router.post('/unfollow', authenticate, unfollowUser);
+router.delete('/:userId/following/:followId', authenticate, unfollowUser);
 
-// Get connections (following and followers)
-router.get('/connections', authenticate, getConnections);
+// Get user connections (followers/following)
+router.get('/:userId/connections', getConnections);
+
+// Get saved items for user profile
+router.get('/:userId/saved', authenticate, getSavedItems);
+
+// Toggle bookmark for case, job, or webinar
+router.post('/:userId/save/:itemType/:itemId', authenticate, toggleBookmark);
 
 export default router;

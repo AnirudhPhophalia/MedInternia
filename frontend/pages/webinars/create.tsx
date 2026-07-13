@@ -58,9 +58,9 @@ export default function CreateWebinar() {
         height: 120,
         filter: 'blur(0.5px)',
         opacity: 0.18,
-        background: 'radial-gradient(circle at 40% 60%, #2193b0 0%, #6dd5ed 80%, transparent 100%)',
+        background: 'radial-gradient(circle at 40% 60%, #0072ff 0%, #6dd5ed 80%, transparent 100%)',
         borderRadius: '50%',
-        boxShadow: '0 8px 32px 0 #2193b044',
+        boxShadow: '0 8px 32px 0 #0072ff44',
         animation: 'floatY 4s ease-in-out infinite alternate',
       }} />
       <Fade in timeout={700}>
@@ -79,9 +79,9 @@ export default function CreateWebinar() {
         }}>
           {/* MedInternia Logo */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <img src="/med-internia-logo.jpg" alt="MedInternia Logo" style={{ width: 64, height: 64, borderRadius: 16, boxShadow: '0 2px 12px #2193b044', background: '#e0eafc' }} />
+            <img src="/med-internia-logo.jpg" alt="MedInternia Logo" style={{ width: 64, height: 64, borderRadius: 16, boxShadow: '0 2px 12px #0072ff44', background: '#e0eafc' }} />
           </Box>
-          <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#1565c0', letterSpacing: 1, zIndex: 1, position: 'relative', textShadow: '0 2px 8px #2193b022' }}>Create Webinar</Typography>
+          <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: 900, color: '#0056cc', letterSpacing: 1, zIndex: 1, position: 'relative', textShadow: '0 2px 8px #0072ff22' }}>Create Webinar</Typography>
           {error && <Alert severity="error" sx={{ zIndex: 1, position: 'relative', mb: 1 }}>{error}</Alert>}
           {success && <Alert severity="success" sx={{ zIndex: 1, position: 'relative', mb: 1 }}>{success}</Alert>}
           <form onSubmit={handleSubmit} style={{ zIndex: 1, position: 'relative' }}>
@@ -94,7 +94,7 @@ export default function CreateWebinar() {
               value={form.title}
               onChange={handleChange}
               required
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2, boxShadow: '0 1px 6px #2193b022' }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2, boxShadow: '0 1px 6px #0072ff22' }}
             />
             <TextField
               label="Description"
@@ -106,7 +106,7 @@ export default function CreateWebinar() {
               required
               multiline
               rows={4}
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2, boxShadow: '0 1px 6px #2193b022' }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2, boxShadow: '0 1px 6px #0072ff22' }}
             />
             <TextField
               select
@@ -118,7 +118,7 @@ export default function CreateWebinar() {
               onChange={handleChange}
               SelectProps={{ native: true }}
               required
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2, boxShadow: '0 1px 6px #2193b022' }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2, boxShadow: '0 1px 6px #0072ff22' }}
             >
               <option value="webinar">Webinar</option>
               <option value="ama">AMA</option>
@@ -135,7 +135,7 @@ export default function CreateWebinar() {
               onChange={handleChange}
               SelectProps={{ native: true }}
               required
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2, boxShadow: '0 1px 6px #2193b022' }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2, boxShadow: '0 1px 6px #0072ff22' }}
             >
               <option value="general">General</option>
               <option value="cardiology">Cardiology</option>
@@ -158,7 +158,7 @@ export default function CreateWebinar() {
               onChange={handleChange}
               required
               InputLabelProps={{ shrink: true }}
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2, boxShadow: '0 1px 6px #2193b022' }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2, boxShadow: '0 1px 6px #0072ff22' }}
             />
             <TextField
                 label="Duration (minutes)"
@@ -170,7 +170,7 @@ export default function CreateWebinar() {
                 onChange={handleChange}
                 required
                 inputProps={{ min: 15, max: 480 }}
-                sx={{ bgcolor: '#f8fafd', borderRadius: 2, mt: 2, mb: 2, boxShadow: '0 1px 6px #2193b022' }}
+                sx={{ bgcolor: '#f8fbff', borderRadius: 2, mt: 2, mb: 2, boxShadow: '0 1px 6px #0072ff22' }}
             />
             <Button
               type="submit"
@@ -184,10 +184,10 @@ export default function CreateWebinar() {
                 fontSize: '1.1rem',
                 borderRadius: 3,
                 boxShadow: '0 4px 20px 0 rgba(31, 38, 135, 0.10)',
-                background: 'linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)',
+                background: 'linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)',
                 transition: 'all 0.2s',
                 '&:hover': {
-                  background: 'linear-gradient(90deg, #1565c0 0%, #2193b0 100%)',
+                  background: 'linear-gradient(90deg, #0056cc 0%, #0072ff 100%)',
                   transform: 'scale(1.03)',
                   boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)'
                 }

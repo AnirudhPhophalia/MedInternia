@@ -6,7 +6,7 @@ export default function BadgeCard({ badge }: { badge: any }) {
   // Color map for badge types
   // More varied colors for badges, alternating by index
   const colorList = [
-    'linear-gradient(135deg, #2193b0 60%, #6dd5ed 100%)',
+    'linear-gradient(135deg, #0072ff 60%, #6dd5ed 100%)',
     'linear-gradient(135deg, #ff9800 60%, #ffe082 100%)',
     'linear-gradient(135deg, #43a047 60%, #a5d6a7 100%)',
     'linear-gradient(135deg, #ffb300 60%, #fff176 100%)',
@@ -20,7 +20,7 @@ export default function BadgeCard({ badge }: { badge: any }) {
   const badgeIdx = badge._idx !== undefined ? badge._idx : Math.floor(Math.random() * colorList.length);
   const badgeBg = colorList[badgeIdx % colorList.length];
   return (
-    <Card sx={{ mb: 2, borderRadius: 4, boxShadow: '0 2px 8px #2193b022', p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 220 }}>
+    <Card sx={{ mb: 2, borderRadius: 4, boxShadow: '0 2px 8px #0072ff22', p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: 220 }}>
       <Box sx={{
         width: 128,
         height: 128,
@@ -29,7 +29,7 @@ export default function BadgeCard({ badge }: { badge: any }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: `0 0 18px 2px #2193b044`,
+        boxShadow: `0 0 18px 2px #0072ff44`,
         
         mb: 2,
         overflow: 'hidden',
@@ -41,7 +41,7 @@ export default function BadgeCard({ badge }: { badge: any }) {
           color="#fff"
           sx={{
             fontSize: 22,
-            textShadow: '0 1px 4px #2193b044',
+            textShadow: '0 1px 4px #0072ff44',
             textAlign: 'center',
             width: '90%',
             whiteSpace: 'normal',

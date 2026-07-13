@@ -15,6 +15,7 @@ export interface IJobOpportunity extends Document {
   requirements: {
     education: string;
     experience: string;
+    yearsOfExperience?: number; // Numerical years for filtering
     skills: string[];
     minimumPoints?: number; // Minimum platform points required
     requiredBadges?: mongoose.Types.ObjectId[]; // Required badges
@@ -28,8 +29,13 @@ export interface IJobOpportunity extends Document {
   contactEmail: string;
   externalUrl?: string;
   postedBy: mongoose.Types.ObjectId;
+  visaSponsorship: boolean;
   isActive: boolean;
   applications: number;
+  applicants: {
+    user: mongoose.Types.ObjectId;
+    appliedAt: Date;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +95,10 @@ const JobOpportunitySchema = new Schema({
       type: String,
       required: [true, 'Experience requirements are required']
     },
+    yearsOfExperience: {
+      type: Number,
+      default: 0
+    },
     skills: [{
       type: String
     }],
@@ -133,6 +143,10 @@ const JobOpportunitySchema = new Schema({
     ref: 'User',
     required: [true, 'Posted by reference is required']
   },
+  visaSponsorship: {
+    type: Boolean,
+    default: false
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -141,8 +155,19 @@ const JobOpportunitySchema = new Schema({
     type: Number,
     default: 0,
     min: [0, 'Applications count cannot be negative']
-  }
-}, {
+  },
+  applicants: [{
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    appliedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
+},{
   timestamps: true
 });
 

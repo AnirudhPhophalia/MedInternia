@@ -18,13 +18,13 @@ const router = Router();
 router.post('/', authenticate, requirePermission('job:manage'), createJobOpportunity);
 
 // Get all job opportunities
-router.get('/', getJobOpportunities);
+router.get('/', authenticate, getJobOpportunities);
 
 // Get my job opportunities
 router.get('/my', authenticate, requirePermission('job:manage'), getMyJobOpportunities);
 
 // Get job opportunity by ID
-router.get('/:id', getJobOpportunityById);
+router.get('/:id', authenticate, getJobOpportunityById);
 
 // Update job opportunity
 router.put('/:id', authenticate, requirePermission('job:manage'), updateJobOpportunity);

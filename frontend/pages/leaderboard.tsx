@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
-import { Box, CircularProgress, Container, Grid, Paper, Stack, Typography } from "@mui/material";
+import { Box, Chip, CircularProgress, Container, Grid, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter } from "next/router";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
 
-const contributors = [
-  { rank: 1, name: "Dr. Smith", points: 320, badge: "Case Champion" },
-  { rank: 2, name: "Dr. Lee", points: 290, badge: "Webinar Mentor" },
-  { rank: 3, name: "Dr. Patel", points: 270, badge: "Peer Reviewer" },
-];
+const upcomingRanks = [1, 2, 3];
 
 export default function LeaderboardPage() {
   const router = useRouter();
@@ -48,7 +44,7 @@ export default function LeaderboardPage() {
             }}
           >
             <Trophy size={54} color="#d97706" />
-            <Typography variant="h2" fontWeight={900} color="#2193b0" sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, mt: 2 }}>
+            <Typography variant="h2" fontWeight={900} color="#0072ff" sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, mt: 2 }}>
               Leaderboard
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1, lineHeight: 1.7 }}>
@@ -57,8 +53,8 @@ export default function LeaderboardPage() {
           </Paper>
 
           <Grid container spacing={3}>
-            {contributors.map((contributor) => (
-              <Grid size={{ xs: 12, md: 4 }} key={contributor.rank}>
+            {upcomingRanks.map((rank) => (
+              <Grid size={{ xs: 12, md: 4 }} key={rank}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -75,21 +71,20 @@ export default function LeaderboardPage() {
                         width: 70,
                         height: 70,
                         borderRadius: "50%",
-                        bgcolor: contributor.rank === 1 ? "#fffbeb" : "#eff6ff",
+                        bgcolor: rank === 1 ? "#fffbeb" : "#eff6ff",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      {contributor.rank === 1 ? <Medal size={34} color="#d97706" /> : <Award size={34} color="#2193b0" />}
+                      {rank === 1 ? <Medal size={34} color="#d97706" /> : <Award size={34} color="#0072ff" />}
                     </Box>
                     <Typography variant="h5" fontWeight={900}>
-                      #{contributor.rank} {contributor.name}
+                      Rank #{rank}
                     </Typography>
-                    <Typography color="text.secondary">{contributor.badge}</Typography>
-                    <Typography fontWeight={800} color="#2193b0">
-                      {contributor.points} pts
-                    </Typography>
+                    <Skeleton variant="text" width="70%" height={28} animation="wave" />
+                    <Skeleton variant="text" width="46%" height={22} animation="wave" />
+                    <Chip label="Coming Soon" color="primary" variant="outlined" />
                   </Stack>
                 </Paper>
               </Grid>

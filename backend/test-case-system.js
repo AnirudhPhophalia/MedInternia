@@ -21,12 +21,13 @@ let caseId = '';
 // Helper function to make API requests
 async function makeRequest(url, options = {}) {
   try {
+    const { headers, ...restOptions } = options;
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers
+        ...headers
       },
-      ...options
+      ...restOptions
     });
     
     const data = await response.json();

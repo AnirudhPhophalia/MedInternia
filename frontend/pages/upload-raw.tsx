@@ -190,7 +190,7 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
         sx={{
           fontWeight: 700,
           fontSize: 22,
-          background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+          background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
           color: "#fff",
           borderTopLeftRadius: 4,
           borderTopRightRadius: 4,
@@ -318,11 +318,11 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
           onClick={onClose}
           variant="outlined"
           sx={{
-            borderColor: "#2193b0",
-            color: "#2193b0",
+            borderColor: "#0072ff",
+            color: "#0072ff",
             fontWeight: 600,
             borderRadius: 2,
-            "&:hover": { background: "#e0f7fa", borderColor: "#1565c0", color: "#1565c0" },
+            "&:hover": { background: "#e0f7fa", borderColor: "#0056cc", color: "#0056cc" },
           }}
         >
           Close
@@ -473,7 +473,7 @@ export default function UploadRawPage() {
           fontWeight={900}
           mb={1}
           sx={{
-            background: "linear-gradient(90deg, #1565c0 0%, #2193b0 100%)",
+            background: "linear-gradient(90deg, #0056cc 0%, #0072ff 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
@@ -492,7 +492,7 @@ export default function UploadRawPage() {
           sx={{
             p: 4,
             borderRadius: 4,
-            boxShadow: "0 4px 24px #2193b033",
+            boxShadow: "0 4px 24px #0072ff33",
             border: "1px solid #e0eafc",
             background: "#fff",
             overflow: "hidden",
@@ -503,7 +503,7 @@ export default function UploadRawPage() {
             sx={{
               height: 6,
               borderRadius: 3,
-              background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+              background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
               mb: 3,
               mx: -4,
               mt: -4,
@@ -518,7 +518,7 @@ export default function UploadRawPage() {
             mb={3}
             fontSize={14}
             sx={{
-              color: "#2193b0",
+              color: "#0072ff",
               fontWeight: 600,
               background: "#e0f7fa",
               borderRadius: 2,
@@ -595,12 +595,12 @@ export default function UploadRawPage() {
                 sx={{
                   borderRadius: 2,
                   fontWeight: 700,
-                  background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+                  background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
                   color: "#fff",
-                  boxShadow: "0 2px 8px #2193b033",
+                  boxShadow: "0 2px 8px #0072ff33",
                   "&:hover": {
-                    background: "linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)",
-                    boxShadow: "0 4px 16px #2193b055",
+                    background: "linear-gradient(90deg, #6dd5ed 0%, #0072ff 100%)",
+                    boxShadow: "0 4px 16px #0072ff55",
                   },
                 }}
               >
@@ -618,12 +618,12 @@ export default function UploadRawPage() {
                 sx={{
                   borderRadius: 2,
                   fontWeight: 600,
-                  borderColor: "#2193b0",
-                  color: "#2193b0",
+                  borderColor: "#0072ff",
+                  color: "#0072ff",
                   "&:hover": {
                     background: "#e0f7fa",
-                    borderColor: "#1565c0",
-                    color: "#1565c0",
+                    borderColor: "#0056cc",
+                    color: "#0056cc",
                   },
                 }}
               >
@@ -645,7 +645,7 @@ export default function UploadRawPage() {
                     key={index}
                     label={file.name}
                     onDelete={() => handleRemoveFile(index, "medical")}
-                    sx={{ bgcolor: "#e3f2fd", color: "#1565c0" }}
+                    sx={{ bgcolor: "#e3f2fd", color: "#0056cc" }}
                   />
                 ))}
               </Box>
@@ -688,12 +688,12 @@ export default function UploadRawPage() {
                 fontSize: 16,
                 mt: 1,
                 px: 4,
-                background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+                background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
                 color: "#fff",
-                boxShadow: "0 2px 12px #2193b044",
+                boxShadow: "0 2px 12px #0072ff44",
                 "&:hover": {
-                  background: "linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%)",
-                  boxShadow: "0 4px 20px #2193b066",
+                  background: "linear-gradient(90deg, #6dd5ed 0%, #0072ff 100%)",
+                  boxShadow: "0 4px 20px #0072ff66",
                   transform: "scale(1.03)",
                 },
                 transition: "transform 0.2s",
@@ -707,7 +707,7 @@ export default function UploadRawPage() {
 
       {/* Grouped cases by doctor section */}
       <Box sx={{ maxWidth: 1100, mx: "auto" }}>
-        <Typography variant="h5" fontWeight={800} mb={3} color="#1565c0">
+        <Typography variant="h5" fontWeight={800} mb={3} color="#0056cc">
           Your Medical Cases
         </Typography>
         <Stack spacing={4}>
@@ -723,7 +723,7 @@ export default function UploadRawPage() {
                   borderRadius: 3,
                   px: 2,
                   py: 1.5,
-                  boxShadow: "0 1px 6px #2193b022",
+                  boxShadow: "0 1px 6px #0072ff22",
                 }}
               >
                 <Avatar
@@ -731,15 +731,15 @@ export default function UploadRawPage() {
                   sx={{
                     width: 44,
                     height: 44,
-                    border: "2px solid #2193b0",
-                    boxShadow: "0 2px 8px #2193b033",
+                    border: "2px solid #0072ff",
+                    boxShadow: "0 2px 8px #0072ff33",
                   }}
                 />
                 <Box>
-                  <Typography fontWeight={700} fontSize={17} color="#1565c0">
+                  <Typography fontWeight={700} fontSize={17} color="#0056cc">
                     {group.doctor}
                   </Typography>
-                  <Typography fontSize={13} color="#2193b0">
+                  <Typography fontSize={13} color="#0072ff">
                     {group.doctorSpecialization}
                   </Typography>
                 </Box>
@@ -753,15 +753,15 @@ export default function UploadRawPage() {
                       borderRadius: 3,
                       minWidth: 270,
                       flex: 1,
-                      boxShadow: "0 2px 12px #2193b022",
+                      boxShadow: "0 2px 12px #0072ff22",
                       border: "1px solid #e0eafc",
                       cursor: "pointer",
                       overflow: "hidden",
                       transition: "box-shadow 0.2s, transform 0.2s",
                       "&:hover": {
-                        boxShadow: "0 8px 32px #2193b044",
+                        boxShadow: "0 8px 32px #0072ff44",
                         transform: "translateY(-2px)",
-                        borderColor: "#2193b0",
+                        borderColor: "#0072ff",
                       },
                     }}
                     onClick={() => { setSelectedCase(c); setOpenDialog(true); }}
@@ -771,7 +771,7 @@ export default function UploadRawPage() {
                       sx={{
                         height: 4,
                         borderRadius: 2,
-                        background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+                        background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
                         mb: 2,
                         mx: -3,
                         mt: -3,
@@ -779,7 +779,7 @@ export default function UploadRawPage() {
                         borderTopRightRadius: 12,
                       }}
                     />
-                    <Typography fontWeight={700} fontSize={17} mb={1} color="#1565c0">
+                    <Typography fontWeight={700} fontSize={17} mb={1} color="#0056cc">
                       {c.title}
                     </Typography>
                     <Chip
@@ -803,17 +803,17 @@ export default function UploadRawPage() {
                     <Typography fontSize={13} color="#888" mb={0.5}>
                       {c.location}
                     </Typography>
-                    <Typography fontSize={13} color="#2193b0" mb={0.5} fontWeight={500}>
+                    <Typography fontSize={13} color="#0072ff" mb={0.5} fontWeight={500}>
                       {c.doctor}
                     </Typography>
                     <Typography fontSize={13} color="#888" mb={1.5}>
                       {c.description.slice(0, 60)}{c.description.length > 60 ? "..." : ""}
                     </Typography>
                     <Stack direction="row" spacing={2} alignItems="center">
-                      <Typography fontSize={12} color="#2193b0" fontWeight={600}>
+                      <Typography fontSize={12} color="#0072ff" fontWeight={600}>
                         {c.files.length} files
                       </Typography>
-                      <Typography fontSize={12} color="#2193b0" fontWeight={600}>
+                      <Typography fontSize={12} color="#0072ff" fontWeight={600}>
                         {c.bills.length} bills
                       </Typography>
                     </Stack>

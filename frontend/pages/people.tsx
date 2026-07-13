@@ -286,7 +286,7 @@ export default function PeoplePage() {
                     width: "85%",
                     height: "100%",
                     background:
-                      "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+                      "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
                     borderRadius: 4,
                   }}
                 ></div>

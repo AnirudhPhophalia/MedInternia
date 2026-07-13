@@ -96,7 +96,7 @@ export default function NotificationsPage() {
           mb: 2,
         }}
       >
-        <Typography variant="h4" fontWeight={800} color="#1565c0">
+        <Typography variant="h4" fontWeight={800} color="#0056cc">
           Notifications
         </Typography>
         <Button
@@ -104,7 +104,7 @@ export default function NotificationsPage() {
           sx={{
             borderRadius: 3,
             fontWeight: 600,
-            background: "linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%)",
+            background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
           }}
           onClick={async () => {
             setAllRead(true);
@@ -135,7 +135,7 @@ export default function NotificationsPage() {
           <Typography
             variant="subtitle1"
             fontWeight={700}
-            color="#2193b0"
+            color="#0072ff"
             sx={{ mb: 1 }}
           >
             {group.group}
@@ -148,7 +148,7 @@ export default function NotificationsPage() {
                 sx={{
                   p: 2,
                   borderRadius: 3,
-                  boxShadow: "0 2px 12px #2193b022",
+                  boxShadow: "0 2px 12px #0072ff22",
                   display: "flex",
                   alignItems: "center",
                   gap: 2,
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                   transition: "box-shadow 0.2s, transform 0.2s",
                   cursor: n.link ? "pointer" : "default",
                   "&:hover": n.link ? {
-                    boxShadow: "0 6px 24px #2193b044",
+                    boxShadow: "0 6px 24px #0072ff44",
                     transform: "scale(1.02)",
                   } : {},
                 }}

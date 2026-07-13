@@ -1,17 +1,17 @@
-﻿import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload, verifyRefreshToken, generateToken } from '../utils/jwt';
 import User, { IUser } from '../models/User';
+import BlacklistedToken from '../models/BlacklistedToken';
 import { getUserRole } from './permissions';
 import type { AppRole } from './permissions';
 
-const tokenBlacklist: Set<string> = new Set();
-
-export const blacklistToken = (token: string) => {
-  tokenBlacklist.add(token);
+export const blacklistToken = async (token: string, expiresAt: Date) => {
+  await BlacklistedToken.create({ token, expiresAt });
 };
 
-export const isTokenBlacklisted = (token: string): boolean => {
-  return tokenBlacklist.has(token);
+export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
+  const exists = await BlacklistedToken.findOne({ token });
+  return !!exists;
 };
 
 export interface AuthRequest extends Request {
@@ -20,18 +20,28 @@ export interface AuthRequest extends Request {
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeader = req.headers.authorization;
+    console.log("Authorization Header:", authHeader);
+    console.log("All Headers:", req.headers);
+
+    let token: string | undefined;
+
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies?.token) {
+      token = req.cookies.token;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: 'Access token is required'
       });
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    if (isTokenBlacklisted(token)) {
+    if (await isTokenBlacklisted(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token has been revoked'
@@ -47,9 +57,13 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
           message: 'Invalid or expired token'
         });
       }
+
+
+
       
-      const user = await User.findById(decoded.userId).select('-password');
+      const user = await User.findById(decoded.userId).select('-password +passwordChangedAt');
       
+
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -61,6 +75,17 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
         return res.status(401).json({
           success: false,
           message: 'Account is deactivated'
+        });
+      }
+
+      if (
+        user.passwordChangedAt &&
+        typeof decoded.iat === 'number' &&
+        decoded.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password was changed. Please log in again.'
         });
       }
 
@@ -78,6 +103,39 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       success: false,
       message: 'Internal server error'
     });
+  }
+};
+
+export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    let token: string | undefined;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies?.token) {
+      token = req.cookies.token;
+    }
+
+    if (!token) {
+      return next();
+    }
+
+    try {
+      const decoded = verifyToken(token);
+
+      if (decoded) {
+        const user = await User.findById(decoded.userId).select('-password');
+        if (user && user.isActive) {
+          req.user = user;
+        }
+      }
+    } catch (tokenError) {
+      // Silently fall through for optional auth
+    }
+    next();
+  } catch (error) {
+    next();
   }
 };
 
@@ -114,14 +172,14 @@ export const logger = (req: Request, res: Response, next: NextFunction) => {
 
 export const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
   const apiKey = req.headers['x-api-key'];
-  
+
   if (!apiKey) {
     return res.status(401).json({
       success: false,
       message: 'API key is required'
     });
   }
-  
+
   // Add your API key validation logic here
   next();
 };

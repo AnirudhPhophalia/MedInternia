@@ -1,3 +1,4 @@
+/* MedInternia Design System — global tokens & base styles */
 /* Disable text selection only on interactive UI elements, not on content */
 button, nav, .MuiButton-root, .MuiIconButton-root, .MuiMenuItem-root,
 .MuiTab-root, .MuiChip-root, .MuiBreadcrumbs-root {
@@ -58,288 +59,176 @@ body {
   font-family: "Segoe UI", "Roboto", "Arial", sans-serif;
   background: linear-gradient(120deg, #e0eafc 0%, #cfdef3 100%);
   color: #222;
-
-  font-family: "Montserrat", "Segoe UI", sans-serif;
-  color: #1565c0;
-  text-decoration: none;
-  transition: color 0.2s, border-bottom 0.2s;
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 0 0.5rem;
-}
-a:hover,
-.nav-active {
-  color: #2193b0;
-  border-bottom: 2px solid #2193b0;
 }
 
-/* Navbar button hover */
-.MuiButton-root:hover {
-  background: rgba(33, 147, 176, 0.08);
-  color: #2193b0;
+:root {
+  --brand-primary: #0072ff;
+  --brand-primary-dark: #0056cc;
+  --brand-secondary: #00c6ff;
+  --brand-teal: #0072ff;
+  --brand-dark: #0f172a;
+  --brand-accent: #10b981;
+  --brand-bg: #f8fbff;
+  --brand-text: #1a202c;
+  --brand-text-muted: #64748b;
+  --brand-border: #e2e8f0;
+  --brand-radius: 12px;
+  --brand-shadow: 0 1px 3px rgba(0, 114, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --brand-shadow-hover: 0 4px 24px rgba(0, 114, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.06);
 }
 
-/* Improve color contrast for buttons */
-.MuiButton-root {
-  color: #1565c0;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  border-radius: 8px;
-  margin: 0 0.25rem;
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
-/* Active page indicator for navbar */
-.nav-active {
-  color: #2193b0 !important;
-  border-bottom: 2px solid #2193b0;
+#__next {
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
-/* Consistent font size and spacing */
-body,
-.MuiTypography-root {
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-/* Responsive navbar spacing */
-.MuiToolbar-root {
-  min-height: 64px;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-a {
-  color: #2193b0;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-a:hover {
-  color: #6dd5ed;
-}
-
-.card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
-  padding: 2rem;
-  margin-bottom: 2rem;
-}
-
-.button-primary {
-  background: linear-gradient(90deg, #2193b0 0%, #6dd5ed 100%);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.button-primary:hover {
-  background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%);
-}
-
-.input-bar {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #b0c4de;
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-@media (max-width: 700px) {
-  .card {
-    padding: 1rem;
-  }
-  .button-primary {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-  }
-  .input-bar {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.95rem;
-  }
+/* Allow text selection in inputs; disable elsewhere for app-like feel */
+* {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* GSSoC: Smooth scroll */
-html {
-  scroll-behavior: smooth;
+input,
+textarea,
+[contenteditable='true'],
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
-/* GSSoC: Brand colour tokens */
-:root {
-  --brand-primary: #2193b0;
-  --brand-secondary: #6dd5ed;
-  --brand-dark: #1565c0;
-  --brand-accent: #1de9b6;
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  background-color: var(--brand-bg);
+  color: var(--brand-text);
+  font-size: 1rem;
+  line-height: 1.6;
+  overflow-x: hidden;
+  max-width: 100%;
+  position: relative;
 }
 
-/* GSSoC: Accessible focus ring for keyboard navigation */
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--brand-secondary);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  background: #eef2f7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(120deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(120deg, var(--brand-primary-dark) 0%, var(--brand-primary) 100%);
+}
+
+/* Accessible focus ring */
 *:focus-visible {
   outline: 2px solid var(--brand-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* GSSoC: Input & label design system polish */
-.input-bar:focus {
-  border-color: var(--brand-primary);
-  box-shadow: 0 0 0 3px rgba(33, 147, 176, 0.15);
-  outline: none;
+/* Legacy utility classes — kept for backward compatibility */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: var(--brand-shadow);
+  border: 1px solid var(--brand-border);
+  padding: 2rem;
+  margin-bottom: 2rem;
 }
 
-/* GSSoC: Card entrance animation */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(28px); }
-  to   { opacity: 1; transform: translateY(0); }
+.button-primary {
+  background: linear-gradient(90deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.button-primary:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.input-bar {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--brand-border);
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-bar:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(0, 114, 255, 0.12);
+  outline: none;
 }
 
 .card-enter {
   animation: fadeInUp 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-
-/* ==========================================
-   Responsive Design
-========================================== */
-
-/* Small Laptops (1024px and below) */
-@media screen and (max-width: 1024px) {
-  .card {
-    padding: 1.5rem;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
   }
-
-  .MuiToolbar-root {
-    padding: 0 1rem;
-  }
-
-  .MuiButton-root {
-    font-size: 0.95rem;
-  }
-
-  .youtube-search {
-    width: 100%;
-    max-width: 500px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Tablets (768px and below) */
-@media screen and (max-width: 768px) {
-  body,
-  .MuiTypography-root {
-    font-size: 0.95rem;
-  }
-
-  .card {
-    padding: 1.25rem;
-    border-radius: 12px;
-  }
-
-  .MuiToolbar-root {
-    min-height: 56px;
-    padding: 0 0.75rem;
-  }
-
-  .MuiButton-root {
-    font-size: 0.9rem;
-    margin: 0.15rem;
-  }
-
-  .youtube-search,
-  .input-bar {
-    width: 100%;
-    font-size: 0.95rem !important;
-  }
-
-  .button-primary {
-    width: 100%;
-    max-width: 320px;
-  }
-
-  h1 {
-    font-size: 2rem !important;
-  }
-
-  h2 {
-    font-size: 1.6rem !important;
-  }
+.nav-active {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Mobile Devices (600px and below) */
-@media screen and (max-width: 600px) {
-  body {
-    overflow-x: hidden;
-  }
-
-  .card {
-    padding: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .MuiToolbar-root {
-    padding: 0 0.5rem;
-    min-height: 52px;
-  }
-
-  .MuiButton-root {
-    width: 100%;
-    margin: 0.25rem 0;
-    justify-content: center;
-  }
-
-  .button-primary {
-    width: 100%;
-    padding: 0.75rem;
-  }
-
-  .youtube-search,
-  .input-bar {
-    width: 100%;
-    height: 44px !important;
-    font-size: 0.9rem !important;
-  }
-
-  h1 {
-    font-size: 1.8rem !important;
-  }
-
-  h2 {
-    font-size: 1.4rem !important;
-  }
-
-  h3 {
-    font-size: 1.2rem !important;
-  }
+.youtube-search {
+  border-radius: 24px !important;
+  border: 1px solid var(--brand-border) !important;
+  background: #fff !important;
+  height: 40px !important;
+  font-size: 1rem !important;
+  box-shadow: 0 2px 8px rgba(0, 114, 255, 0.08);
+  padding-left: 18px !important;
+  padding-right: 48px !important;
 }
 
-/* Very Small Phones (400px and below) */
-@media screen and (max-width: 400px) {
-  .card {
-    padding: 0.85rem;
-  }
-
-  h1 {
-    font-size: 1.6rem !important;
-  }
-
-  h2 {
-    font-size: 1.25rem !important;
-  }
-
-  .MuiTypography-root {
-    font-size: 0.9rem;
-  }
-
-  .button-primary {
-    font-size: 0.9rem;
-  }
-}
-
-/* Universal Media Responsiveness */
 img,
 video,
 iframe {
@@ -348,13 +237,21 @@ iframe {
   display: block;
 }
 
-/* Prevent Horizontal Scroll */
-html,
-body {
-  overflow-x: hidden;
+@media (max-width: 768px) {
+  .card {
+    padding: 1.25rem;
+    border-radius: 12px;
+  }
+
+  .button-primary {
+    width: 100%;
+    max-width: 320px;
+  }
 }
 
-* {
-  box-sizing: border-box;
+@media (max-width: 600px) {
+  .card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
 }
-

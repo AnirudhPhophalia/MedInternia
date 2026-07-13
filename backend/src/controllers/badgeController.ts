@@ -41,6 +41,14 @@ export const getAllBadges = async (req: Request, res: Response) => {
   try {
     const { category, isActive } = req.query;
     
+    // Strict typing to prevent NoSQL injection via object payloads (e.g. { $ne: null })
+    if ((category && typeof category !== 'string') || (isActive !== undefined && typeof isActive !== 'string')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid query parameter format'
+      });
+    }
+    
     const filter: any = {};
     if (category) filter.category = category;
     if (isActive !== undefined) filter.isActive = isActive === 'true';

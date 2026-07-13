@@ -3,6 +3,16 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IDiaryEntry {
   day: string;
   content: string;
+  time?: string;
+  location?: string;
+  diseaseDescription?: string;
+  symptoms?: string;
+  doctorReference?: string;
+  imageUrl?: string;
+  dataSource?: string;
+  gender?: string;
+  tags?: string[];
+  symptomsChecklist?: string[];
   createdAt?: Date;
 }
 
@@ -22,6 +32,16 @@ const DiaryEntrySchema = new Schema(
       type: String,
       required: true,
     },
+    time: { type: String },
+    location: { type: String },
+    diseaseDescription: { type: String },
+    symptoms: { type: String },
+    doctorReference: { type: String },
+    imageUrl: { type: String },
+    dataSource: { type: String },
+    gender: { type: String },
+    tags: [{ type: String }],
+    symptomsChecklist: [{ type: String }],
   },
   { timestamps: true }
 );

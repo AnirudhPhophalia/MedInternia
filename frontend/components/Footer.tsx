@@ -1,8 +1,7 @@
-// GSSoC: Redesigned Footer component to match MedInternia design
 import React from 'react';
 import Link from 'next/link';
 import { Linkedin, X, Instagram, Mail, Send } from 'lucide-react';
-import { Box, Typography, Stack, Divider, IconButton, InputBase, Paper } from '@mui/material';
+import { Box, Typography, Stack, Divider, IconButton, InputBase, Paper, useTheme } from '@mui/material';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
 
 const quickLinks = [
@@ -19,7 +18,53 @@ const resourcesLinks = [
   { label: 'Terms of Service', href: '/terms' },
 ];
 
+const socialLinks = [
+  { label: 'LinkedIn', href: 'https://linkedin.com/company/medinternia', icon: Linkedin },
+  { label: 'X', href: 'https://x.com/medinternia', icon: X },
+  { label: 'Instagram', href: 'https://instagram.com/medinternia', icon: Instagram },
+  { label: 'Email', href: 'mailto:medinternia@gmail.com', icon: Mail },
+];
+
+function FooterLinkColumn({
+  title,
+  links,
+  getHref,
+}: {
+  title: string;
+  links: { label: string; href: string }[];
+  getHref: (path: string) => string;
+}) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2.5, color: '#fff', letterSpacing: '0.02em' }}>
+        {title}
+      </Typography>
+      <Stack spacing={1.5}>
+        {links.map((link) => (
+          <Link key={link.href} href={getHref(link.href)} passHref legacyBehavior>
+            <Typography
+              component="a"
+              variant="body2"
+              sx={{
+                color: 'rgba(255,255,255,0.65)',
+                textDecoration: 'none',
+                display: 'block',
+                fontSize: '0.875rem',
+                transition: 'color 0.2s',
+                '&:hover': { color: '#fff', borderBottom: 'none' },
+              }}
+            >
+              {link.label}
+            </Typography>
+          </Link>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
 export default function Footer() {
+  const theme = useTheme();
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
 
   React.useEffect(() => {
@@ -36,176 +81,114 @@ export default function Footer() {
       role="contentinfo"
       aria-label="Site footer"
       sx={{
-        backgroundColor: '#0f172a', // Dark navy
+        backgroundColor: theme.custom.footerBg,
         color: '#fff',
         pt: { xs: 6, md: 8 },
-        pb: { xs: 4, md: 4 },
-        px: { xs: 3, md: 10 },
+        pb: { xs: 3, md: 4 },
+        px: { xs: 3, sm: 5, md: 10 },
         mt: 'auto',
       }}
     >
       <Stack
         direction={{ xs: 'column', md: 'row' }}
-        spacing={6}
+        spacing={{ xs: 5, md: 6 }}
         justifyContent="space-between"
         alignItems="flex-start"
       >
-        {/* Brand & Socials */}
-        <Box sx={{ maxWidth: 300 }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h5" fontWeight={900} sx={{ color: '#2193b0', letterSpacing: 0.5 }}>
-              MedInternia
-            </Typography>
-          </Box>
-          <Typography variant="body2" sx={{ opacity: 0.7, lineHeight: 1.8, mb: 3, fontSize: '0.9rem' }}>
+        <Box sx={{ maxWidth: 320 }}>
+          <Typography
+            variant="h5"
+            fontWeight={800}
+            sx={{
+              background: theme.custom.heroGradient,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              mb: 1.5,
+            }}
+          >
+            MedInternia
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.8, mb: 3 }}>
             Your gateway to medical learning, peer collaboration, career opportunities, and live webinars.
           </Typography>
 
-          <Stack direction="row" spacing={1.5}>
-            <IconButton
-              aria-label="LinkedIn"
-              component="a"
-              href="https://linkedin.com/company/medinternia"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ color: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { background: 'rgba(255,255,255,0.2)' }, p: 1 }}
-            >
-              <Linkedin size={18} />
-            </IconButton>
-            <IconButton
-              aria-label="X"
-              component="a"
-              href="https://x.com/medinternia"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ color: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { background: 'rgba(255,255,255,0.2)' }, p: 1 }}
-            >
-              <X size={18} />
-            </IconButton>
-            <IconButton
-              aria-label="Instagram"
-              component="a"
-              href="https://instagram.com/medinternia"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ color: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { background: 'rgba(255,255,255,0.2)' }, p: 1 }}
-            >
-              <Instagram size={18} />
-            </IconButton>
-            <IconButton
-              aria-label="Email"
-              component="a"
-              href="mailto:medinternia@gmail.com"
-              sx={{ color: '#fff', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { background: 'rgba(255,255,255,0.2)' }, p: 1 }}
-            >
-              <Mail size={18} />
-            </IconButton>
-          </Stack>
-        </Box>
-
-        {/* Quick Links */}
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            sx={{ mb: 3 }}
-          >
-            Quick Links
-          </Typography>
-          <Stack spacing={2}>
-            {quickLinks.map((link) => (
-              <Link key={link.href} href={getAuthAwareHref(link.href)} passHref legacyBehavior>
-                <Typography
-                  component="a"
-                  variant="body2"
-                  sx={{
-                    color: '#fff',
-                    opacity: 0.7,
-                    textDecoration: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontSize: '0.9rem',
-                    '&:hover': { opacity: 1, textDecoration: 'none', borderBottom: 'none !important' },
-                  }}
-                >
-                  {link.label}
-                </Typography>
-              </Link>
+          <Stack direction="row" spacing={1}>
+            {socialLinks.map(({ label, href, icon: Icon }) => (
+              <IconButton
+                key={label}
+                aria-label={label}
+                component="a"
+                href={href}
+                target={href.startsWith('mailto') ? undefined : '_blank'}
+                rel={href.startsWith('mailto') ? undefined : 'noopener noreferrer'}
+                sx={{
+                  color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                  width: 36,
+                  height: 36,
+                }}
+              >
+                <Icon size={16} />
+              </IconButton>
             ))}
           </Stack>
         </Box>
 
-        {/* Resources */}
-        <Box>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            sx={{ mb: 3 }}
-          >
-            Resources
-          </Typography>
-          <Stack spacing={2}>
-            {resourcesLinks.map((link) => (
-              <Link key={link.href} href={link.href} passHref legacyBehavior>
-                <Typography
-                  component="a"
-                  variant="body2"
-                  sx={{
-                    color: '#fff',
-                    opacity: 0.7,
-                    textDecoration: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontSize: '0.9rem',
-                    '&:hover': { opacity: 1, textDecoration: 'none', borderBottom: 'none !important' },
-                  }}
-                >
-                  {link.label}
-                </Typography>
-              </Link>
-            ))}
-          </Stack>
-        </Box>
+        <FooterLinkColumn title="Quick Links" links={quickLinks} getHref={getAuthAwareHref} />
+        <FooterLinkColumn title="Resources" links={resourcesLinks} getHref={(p) => p} />
 
-        {/* Stay Connected */}
-        <Box sx={{ maxWidth: 300 }}>
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            sx={{ mb: 3 }}
-          >
+        <Box sx={{ maxWidth: 300, width: '100%' }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2.5, color: '#fff' }}>
             Stay Connected
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.7, mb: 2, fontSize: '0.9rem' }}>
-            Subscribe to our newsletter
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', mb: 2, fontSize: '0.875rem' }}>
+            Subscribe to our newsletter for updates
           </Typography>
           <Paper
             component="form"
+            elevation={0}
             sx={{
-              p: '2px 4px',
+              p: '4px 4px 4px 12px',
               display: 'flex',
               alignItems: 'center',
-              width: '100%',
-              backgroundColor: '#1e293b',
+              bgcolor: 'rgba(255,255,255,0.06)',
               borderRadius: 2,
-              border: '1px solid #334155'
+              border: '1px solid rgba(255,255,255,0.12)',
             }}
           >
             <InputBase
-              sx={{ ml: 1, flex: 1, color: '#fff', fontSize: '0.9rem', '& input::placeholder': { color: '#94a3b8', opacity: 1 } }}
+              sx={{
+                flex: 1,
+                color: '#fff',
+                fontSize: '0.875rem',
+                '& input::placeholder': { color: 'rgba(255,255,255,0.4)', opacity: 1 },
+              }}
               placeholder="Enter your email"
-              inputProps={{ 'aria-label': 'enter your email' }}
+              inputProps={{ 'aria-label': 'Newsletter email address' }}
             />
-            <IconButton type="button" sx={{ p: '8px', color: '#fff', backgroundColor: '#3b82f6', borderRadius: 1, '&:hover': { backgroundColor: '#2563eb' } }} aria-label="subscribe">
-              <Send size={18} />
+            <IconButton
+              type="button"
+              aria-label="Subscribe to newsletter"
+              sx={{
+                p: 1,
+                color: '#fff',
+                background: theme.custom.heroGradient,
+                borderRadius: 1.5,
+                '&:hover': { opacity: 0.9 },
+              }}
+            >
+              <Send size={16} />
             </IconButton>
           </Paper>
         </Box>
       </Stack>
 
-      <Divider sx={{ mt: 8, mb: 4, borderColor: 'rgba(255,255,255,0.1)' }} />
+      <Divider sx={{ mt: { xs: 5, md: 7 }, mb: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
 
-      <Typography variant="body2" align="center" sx={{ opacity: 0.6, fontSize: '0.85rem' }}>
+      <Typography variant="caption" align="center" display="block" sx={{ color: 'rgba(255,255,255,0.45)' }}>
         © {new Date().getFullYear()} MedInternia. All rights reserved.
       </Typography>
     </Box>

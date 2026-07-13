@@ -24,7 +24,7 @@ const Chatbot = () => {
 >([
     {
       sender: "bot",
-      text: "👋 Welcome to MedInternia! How can I help you today?",
+      text: "Welcome to MedInternia! How can I help you today?",
     },
   ]);
 
@@ -52,6 +52,9 @@ const Chatbot = () => {
       <Fab
         color="primary"
         onClick={() => setOpen(!open)}
+        aria-label={open ? "Close MedInternia assistant" : "Open MedInternia assistant"}
+        aria-expanded={open}
+        aria-controls="medinternia-chatbot-panel"
         sx={{
           position: "fixed",
           bottom: 20,
@@ -65,6 +68,9 @@ const Chatbot = () => {
       {/* Chat Window */}
       {open && (
         <Paper
+          id="medinternia-chatbot-panel"
+          role="dialog"
+          aria-label="MedInternia assistant"
           elevation={5}
           sx={{
             position: "fixed",
@@ -109,7 +115,13 @@ const Chatbot = () => {
               size="small"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  sendMessage();
+                }
+              }}
               placeholder="Ask something..."
+              inputProps={{ "aria-label": "Ask the MedInternia assistant" }}
             />
             <Button variant="contained" onClick={sendMessage}>
               Send

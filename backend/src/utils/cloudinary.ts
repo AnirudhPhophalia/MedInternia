@@ -40,7 +40,7 @@ export const uploadProfileImage = async (
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: 'medinternia/profile-pictures',
-        public_id: `profile-${userId}-${Date.now()}`,
+        public_id: `profile-${userId}`,
         overwrite: true,
         resource_type: 'image',
         transformation: [
@@ -53,6 +53,32 @@ export const uploadProfileImage = async (
             fetch_format: 'auto'
           }
         ]
+      },
+      (error, result) => {
+        if (error || !result) {
+          reject(error ?? new Error('Cloudinary upload failed without a result'));
+          return;
+        }
+        resolve(result);
+      }
+    );
+
+    stream.end(file.buffer);
+  });
+};
+
+export const uploadCaseAttachment = async (
+  file: Express.Multer.File,
+  userId: string
+): Promise<UploadApiResponse> => {
+  ensureCloudinaryConfigured();
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'medinternia/cases',
+        public_id: `case-${userId}-${Date.now()}`,
+        resource_type: 'auto',
       },
       (error, result) => {
         if (error || !result) {

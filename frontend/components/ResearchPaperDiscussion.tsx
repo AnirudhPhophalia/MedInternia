@@ -102,7 +102,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
                   </Tooltip>
                   <Tooltip title="Like">
                     <IconButton size="small" sx={{ ml: 1, p: 0.5 }} onClick={() => handleLike(c._id)}>
-                      <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likedBy?.includes(userId) ? '#1976d2' : '#2193b0' }} />
+                      <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likedBy?.includes(userId) ? '#1976d2' : '#0072ff' }} />
                     </IconButton>
                   </Tooltip>
                   {c.replies && c.replies.length > 0 && (
@@ -148,7 +148,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
               placeholder={`Reply to ${replyTo.author?.firstName || 'user'}...`}
               size="small"
               fullWidth
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
             <Button variant="contained" onClick={handleDiscussion} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
             <Button variant="text" onClick={() => setReplyTo(null)} sx={{ color: '#888' }}>Cancel</Button>
@@ -161,7 +161,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
               placeholder="Type your discussion..."
               size="small"
               fullWidth
-              sx={{ bgcolor: '#f8fafd', borderRadius: 2 }}
+              sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
             <Button variant="contained" onClick={handleDiscussion} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
           </Stack>

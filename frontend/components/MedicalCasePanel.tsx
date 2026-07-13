@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { Stethoscope } from "lucide-react";
 
 const MedicalCasePanel = () => {
   const router = useRouter();
@@ -15,9 +16,13 @@ const MedicalCasePanel = () => {
           marginBottom: "20px",
           fontSize: "24px",
           fontWeight: 700,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        🩺 Medical Case
+        <Stethoscope size={24} aria-hidden />
+        Medical Case
       </h1>
 
       {/* BADGES */}
