@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { medicalColleges } from "../../utils/medicalColleges";
 import api from '../../utils/api';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -405,6 +406,50 @@ export default function Register() {
   };
 
   return (
+    <Box sx={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      py: 6
+    }}>
+      <Fade in timeout={900}>
+        {/* GSSoC: card-enter adds fade-in-up; mobile width improved */}
+        <Card elevation={8} className="card-enter" sx={{ p: { xs: 3, sm: 4 }, borderRadius: 5, minWidth: { xs: 0, sm: 370 }, maxWidth: 450, width: '100%', boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)' }}>
+          {/* Back to Home - accessible link */}
+          <Button
+            component={Link}
+            href="/"
+            aria-label="Back to Home"
+            variant="text"
+            sx={{
+              position: 'absolute',
+              left: 16,
+              top: 18,
+              color: '#1565c0',
+              textTransform: 'none',
+              fontWeight: 700,
+              zIndex: 2,
+              borderRadius: 2,
+              px: 1,
+              '&:hover': { backgroundColor: 'rgba(21, 101, 192, 0.06)' },
+              '&:focus': { boxShadow: '0 0 0 4px rgba(33,147,176,0.12)' }
+            }}
+          >
+            ← Back to Home
+          </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+            <Avatar sx={{ bgcolor: 'white', width: 80, height: 80, mb: 1, boxShadow: 3 }}>
+              <img src="/med-internia-logo.jpg" alt="MedInternia Logo" style={{ width: '100%', height: '100%' }} />
+            </Avatar>
+            <Typography variant="h4" fontWeight={700} color="primary.main" gutterBottom>
+              Join MedInternia
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary" align="center" sx={{ mb: 1 }}>
+              Create your account and start your journey in the medical community.
+            </Typography>
+          </Box>
     <AuthLayout
       wide
       title="Join MedInternia"
