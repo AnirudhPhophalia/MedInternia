@@ -1,8 +1,13 @@
 import axios from 'axios';
-import { getGlobalToken } from '../context/AuthContext';
+import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
 
 // Maintain backward compatibility for files importing getAuthToken
-export const getAuthToken = (): string | null => getGlobalToken();
+export const getAuthToken = (): string | null => {
+  const globalToken = getGlobalToken();
+  if (globalToken) return globalToken;
+  if (typeof window !== 'undefined') return localStorage.getItem('token');
+  return null;
+};
 
 const ensureApiPath = (baseUrl: string): string => {
   const normalized = baseUrl.replace(/\/+$/, '');
@@ -33,7 +38,34 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+let isRedirectingToLogin = false;
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const requestUrl: string = error.config?.url || '';
+
+    const isSessionBootstrapCheck = requestUrl.includes('/auth/validate-token');
+
+    if (
+      status === 401 &&
+      !isSessionBootstrapCheck &&
+      typeof window !== 'undefined'
+    ) {
+      setGlobalToken(null);
+
+      const alreadyOnLoginPage = window.location.pathname.startsWith('/auth/login');
+      if (!isRedirectingToLogin && !alreadyOnLoginPage) {
+        isRedirectingToLogin = true;
+        const redirectPath = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/auth/login?redirect=${encodeURIComponent(redirectPath)}`;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 // Fetch intern profile
 export const getInternProfile = async () => {
@@ -60,8 +92,10 @@ export const createDiary = async (title: string) => {
 };
 
 // Add a new entry to a diary
-export const addDiaryEntry = async (diaryId: string, day: string, content: string) => {
-  const res = await api.post(`/diaries/${diaryId}/entries`, { day, content });
+// Add a new entry to a diary
+// Add a new entry to a diary
+export const addDiaryEntry = async (diaryId: string, entry: Record<string, any>) => {
+  const res = await api.post(`/diaries/${diaryId}/entries`, entry);
   return res.data;
 };
 

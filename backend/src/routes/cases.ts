@@ -7,6 +7,7 @@ import {
   deleteCase,
   addComment,
   toggleLike,
+  getLikedCases,
   getMyCases,
   addFollowUp,
   getCaseFollowUps,
@@ -27,10 +28,30 @@ import {
   likeComment,
   rateComment,
   solveCase,
-  getRecommendedCases
+  getRecommendedCases,
+  getFlaggedComments,
+  moderateComment,
+  uploadAttachment
 } from '../controllers/caseController';
 import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
+import { checkPlagiarismAndAI } from '../middleware/plagiarismDetection';
+import multer from 'multer';
+import { isAllowedCaseAttachment } from '../utils/uploadValidation';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!isAllowedCaseAttachment(file.originalname, file.mimetype)) {
+      cb(new Error('Invalid file type for case attachment.'));
+      return;
+    }
+    cb(null, true);
+  }
+});
 
 const router = express.Router();
 
@@ -38,19 +59,25 @@ const router = express.Router();
 router.get('/recommended', authenticate, getRecommendedCases);
 router.get('/', optionalAuthenticate, getCases);
 router.get('/my/cases', authenticate, getMyCases);
+router.get('/liked', authenticate, getLikedCases);
 router.post('/:id/solve', authenticate, solveCase);
 router.get('/moderation/queue', authenticate, requirePermission('comment:moderate'), getCaseModerationQueue);
+router.get('/comments/moderation/queue', authenticate, requirePermission('comment:moderate'), getFlaggedComments);
 router.get('/ai-posts/my', authenticate, getMyAICaseSchedules);
 
+// Upload Case Attachment
+router.post('/attachments', authenticate, upload.single('attachment'), uploadAttachment);
+
 // Permission-guarded case management routes
-router.post('/', authenticate, requirePermission('case:create'), createCase);
+router.post('/', authenticate, requirePermission('case:create'), checkPlagiarismAndAI, createCase);
 router.post('/ai-posts/schedule', authenticate, requirePermission('case:create'), scheduleAICasePost);
 router.patch('/ai-posts/:scheduleId/review', authenticate, requirePermission('comment:moderate'), reviewAICasePost);
 router.post('/ai-posts/publish-due', authenticate, requirePermission('comment:moderate'), publishDueAICasePosts);
 router.get('/:id', optionalAuthenticate, getCaseById);
-router.put('/:id', authenticate, requirePermission('case:update'), updateCase);
+router.put('/:id', authenticate, requirePermission('case:update'), checkPlagiarismAndAI, updateCase);
 router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
 router.patch('/:id/moderation', authenticate, requirePermission('comment:moderate'), moderateCase);
+router.patch('/:caseId/comments/:commentId/moderation', authenticate, requirePermission('comment:moderate'), moderateComment);
 
 // Permission-guarded interactive routes
 router.post('/:id/comments', authenticate, requirePermission('comment:create'), addComment);
@@ -76,4 +103,5 @@ router.get('/:caseId/pinned-comments', authenticate, getPinnedComments);
 router.patch('/:id/repost-permission', authenticate, requirePermission('case:update'), toggleRepostPermission);
 // Repost a case (if allowed)
 router.post('/:id/repost', authenticate, requirePermission('case:repost'), repostCase);
+
 export default router;

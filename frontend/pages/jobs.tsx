@@ -21,13 +21,18 @@ import {
   TableRow,
   Paper,
   IconButton,
-  Divider
+  Divider,
+  TextField,
+  InputAdornment
 } from "@mui/material";
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import WorkIcon from '@mui/icons-material/Work';
 import BusinessIcon from '@mui/icons-material/Business';
 import RoomIcon from '@mui/icons-material/Room';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import { useRouter } from "next/router";
 import api from "../utils/api";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
@@ -37,6 +42,7 @@ import EmptyState from "../components/layout/EmptyState";
 import { Briefcase } from "lucide-react";
 import RecentlyViewedInternships from "../components/RecentlyViewedInternships";
 import DeadlineCountdown from "../components/DeadlineCountdown";
+import JobFilters from "../components/layout/JobFilters";
 
 interface JobApplication {
   id: string;
@@ -47,9 +53,54 @@ interface JobApplication {
   appliedDate: string;
 }
 
+const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
+  <Card sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+    <CardContent sx={{ p: 3 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <WorkIcon color="primary" />
+        <Typography variant="subtitle1" fontWeight={700}>
+          Recommended for You
+        </Typography>
+      </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Career matches based on your medical profile and interests:
+      </Typography>
+      {recommendedJobs.length === 0 ? (
+        <Typography variant="caption" color="text.secondary">No recommended positions available.</Typography>
+      ) : (
+        <Stack spacing={2.5}>
+          {recommendedJobs.map((j: any) => (
+            <Box key={j._id} sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0' }}>
+              <Typography variant="body2" fontWeight={700} color="primary" gutterBottom>
+                {j.title}
+              </Typography>
+              <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1.5 }}>
+                {j.location}
+              </Typography>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={() => setActiveTab(0)}
+                sx={{ borderRadius: 2, textTransform: 'none', fontSize: 11 }}
+              >
+                View Opportunity
+              </Button>
+            </Box>
+          ))}
+        </Stack>
+      )}
+    </CardContent>
+  </Card>
+);
+
 export default function Jobs() {
   const router = useRouter();
   const [jobs, setJobs] = useState<any[]>([]);
+  const [originalJobs, setOriginalJobs] = useState<any[]>([]);
+  const [smartQuery, setSmartQuery] = useState("");
+  const [isSmartSearching, setIsSmartSearching] = useState(false);
+  const [smartSearchError, setSmartSearchError] = useState("");
+  const [smartSearchActive, setSmartSearchActive] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
@@ -59,6 +110,41 @@ export default function Jobs() {
   // Saved / Applied states using localStorage
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
+
+  // Filter states
+  const [filterSpecialty, setFilterSpecialty] = useState<string[]>([]);
+  const [filterExperience, setFilterExperience] = useState<string>("");
+  const [filterRemote, setFilterRemote] = useState<boolean>(false);
+  const [filterVisa, setFilterVisa] = useState<boolean>(false);
+
+  const handleSmartSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smartQuery.trim()) return;
+
+    setIsSmartSearching(true);
+    setSmartSearchError("");
+
+    try {
+      const res = await api.get("/search/smart", {
+        params: { q: smartQuery, type: "jobs" }
+      });
+      const results = res.data?.data?.results || [];
+      setJobs(results);
+      setSmartSearchActive(true);
+    } catch (err: any) {
+      console.error(err);
+      setSmartSearchError(err.response?.data?.message || "AI smart search failed. Please try again.");
+    } finally {
+      setIsSmartSearching(false);
+    }
+  };
+
+  const handleClearSmartSearch = () => {
+    setJobs(originalJobs);
+    setSmartQuery("");
+    setSmartSearchActive(false);
+    setSmartSearchError("");
+  };
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -83,18 +169,6 @@ export default function Jobs() {
     const currentUserType = storedUser?.userType || getCurrentUserRole() || "";
     setUserType(String(currentUserType).toLowerCase());
 
-    // Fetch jobs
-    api
-      .get("/jobs")
-      .then((res) => {
-        setJobs(res.data.data.jobs || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to fetch jobs");
-        setLoading(false);
-      });
-
     // Load saved / applied jobs from localstorage
     try {
       const saved = JSON.parse(localStorage.getItem('savedJobs') || '[]');
@@ -105,6 +179,34 @@ export default function Jobs() {
       console.error(e);
     }
   }, [authChecked]);
+
+  useEffect(() => {
+    if (!authChecked || smartSearchActive) return;
+
+    setLoading(true);
+    const params: any = {};
+    if (filterSpecialty.length > 0) {
+      params.specialization = filterSpecialty;
+    }
+    if (filterExperience) params.maxExperience = filterExperience;
+    if (filterRemote) params.isRemote = true;
+    if (filterVisa) params.visaSponsorship = true;
+
+    api
+      .get("/jobs", { params })
+      .then((res) => {
+        const fetchedJobs = res.data.data.jobs || [];
+        setJobs(fetchedJobs);
+        if (!filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa) {
+          setOriginalJobs(fetchedJobs);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Failed to fetch jobs");
+        setLoading(false);
+      });
+  }, [authChecked, filterSpecialty, filterExperience, filterRemote, filterVisa, smartSearchActive]);
 
   const toggleSaveJob = (id: string) => {
     let updated;
@@ -195,11 +297,97 @@ export default function Jobs() {
             <Tab label={`Application Tracker (${applications.length})`} sx={{ fontWeight: 600 }} />
           </Tabs>
 
-          <Grid container spacing={4}>
-            {/* Main Tab Content */}
-            <Grid size={{ xs: 12, md: 8 }}>
-              {activeTab === 0 && (
+          {activeTab === 0 ? (
+            <Grid container spacing={4}>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <JobFilters
+                  specialties={filterSpecialty}
+                  onSpecialtiesChange={setFilterSpecialty}
+                  experience={filterExperience}
+                  onExperienceChange={setFilterExperience}
+                  isRemote={filterRemote}
+                  onRemoteChange={setFilterRemote}
+                  visaSponsorship={filterVisa}
+                  onVisaChange={setFilterVisa}
+                  onClear={() => {
+                    setFilterSpecialty([]);
+                    setFilterExperience('');
+                    setFilterRemote(false);
+                    setFilterVisa(false);
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Stack spacing={3}>
+                  <Card sx={{ p: 3, borderRadius: 4, background: 'linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)', border: '1px solid #cce3ff', boxShadow: '0 4px 15px rgba(0, 114, 255, 0.05)' }}>
+                    <form onSubmit={handleSmartSearch}>
+                      <Stack spacing={2}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <AutoAwesomeIcon color="primary" />
+                          <Typography variant="subtitle1" fontWeight={700} color="primary">
+                            AI-Powered Smart Search
+                          </Typography>
+                          <Chip label="Gemini AI" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }} />
+                        </Stack>
+                        
+                        <Typography variant="body2" color="text.secondary">
+                          Describe what you're looking for in plain English. We'll automatically filter by specialization, location, type, and more.
+                        </Typography>
+
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={smartQuery}
+                            onChange={(e) => setSmartQuery(e.target.value)}
+                            placeholder="e.g. show me cardiology internships in Gujarat or remote pediatrics fellowships"
+                            disabled={isSmartSearching}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <SearchIcon color="action" />
+                                </InputAdornment>
+                              ),
+                              endAdornment: smartQuery && (
+                                <InputAdornment position="end">
+                                  <IconButton size="small" onClick={handleClearSmartSearch} disabled={isSmartSearching}>
+                                    <CloseIcon fontSize="small" />
+                                  </IconButton>
+                                </InputAdornment>
+                              )
+                            }}
+                            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                          />
+                          <Button
+                            variant="contained"
+                            type="submit"
+                            disabled={isSmartSearching || !smartQuery.trim()}
+                            sx={{ minWidth: 120, textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                          >
+                            {isSmartSearching ? <CircularProgress size={20} color="inherit" /> : 'Search'}
+                          </Button>
+                        </Stack>
+
+                        {smartSearchError && (
+                          <Alert severity="error" sx={{ borderRadius: 2, py: 0.5 }}>
+                            {smartSearchError}
+                          </Alert>
+                        )}
+
+                        {smartSearchActive && (
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="caption" fontWeight={600} color="primary">
+                              Showing {jobs.length} smart search result{jobs.length !== 1 ? 's' : ''}
+                            </Typography>
+                            <Button size="small" onClick={handleClearSmartSearch} sx={{ textTransform: 'none', fontWeight: 600, p: 0 }}>
+                              Clear Search
+                            </Button>
+                          </Stack>
+                        )}
+                      </Stack>
+                    </form>
+                  </Card>
+
                   {jobs.length === 0 ? (
                     <Typography align="center" color="text.secondary">No job opportunities found.</Typography>
                   ) : (
@@ -265,9 +453,15 @@ export default function Jobs() {
                     })
                   )}
                 </Stack>
-              )}
-
-              {activeTab === 1 && (
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <RecommendationsWidget recommendedJobs={recommendedJobs} setActiveTab={setActiveTab} />
+              </Grid>
+            </Grid>
+          ) : (
+            <Grid container spacing={4}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                {activeTab === 1 && (
                 <Stack spacing={3}>
                   {savedJobs.length === 0 ? (
                     <Alert severity="info" sx={{ borderRadius: 3 }}>
@@ -366,47 +560,10 @@ export default function Jobs() {
 
             {/* Sidebar: Recommendations Widget */}
             <Grid size={{ xs: 12, md: 4 }}>
-              <Card sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                    <WorkIcon color="primary" />
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      Recommended for You
-                    </Typography>
-                  </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Career matches based on your medical profile and interests:
-                  </Typography>
-                  {recommendedJobs.length === 0 ? (
-                    <Typography variant="caption" color="text.secondary">No recommended positions available.</Typography>
-                  ) : (
-                    <Stack spacing={2.5}>
-                      {recommendedJobs.map((j) => (
-                        <Box key={j._id} sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0' }}>
-                          <Typography variant="body2" fontWeight={700} color="primary" gutterBottom>
-                            {j.title}
-                          </Typography>
-                          <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1.5 }}>
-                            {j.location}
-                          </Typography>
-                          <Button 
-                            variant="outlined" 
-                            size="small" 
-                            onClick={() => {
-                              setActiveTab(0);
-                            }}
-                            sx={{ borderRadius: 2, textTransform: 'none', fontSize: 11 }}
-                          >
-                            View Opportunity
-                          </Button>
-                        </Box>
-                      ))}
-                    </Stack>
-                  )}
-                </CardContent>
-              </Card>
+              <RecommendationsWidget recommendedJobs={recommendedJobs} setActiveTab={setActiveTab} />
             </Grid>
           </Grid>
+          )}
         </Box>
       )}
     </Container>

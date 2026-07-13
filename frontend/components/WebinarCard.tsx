@@ -1,5 +1,6 @@
 import { Card, CardContent, Typography, Button, Box } from "@mui/material";
 import Link from "next/link";
+import BookmarkButton from "./BookmarkButton";
 
 export default function WebinarCard({ webinar }: { webinar: any }) {
   // Status pill styling
@@ -61,6 +62,7 @@ export default function WebinarCard({ webinar }: { webinar: any }) {
             >
               {status}
             </Box>
+            <BookmarkButton itemType="webinar" itemId={webinar._id} />
             <Button
               variant="outlined"
               size="small"

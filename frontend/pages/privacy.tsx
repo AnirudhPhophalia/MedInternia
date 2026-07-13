@@ -1,6 +1,6 @@
-import { Box, Container, Paper, Stack, Typography } from "@mui/material";
-import { Lock, ShieldCheck } from "lucide-react";
-
+import { Box, Container, Paper, Stack, Typography,IconButton } from "@mui/material";
+import { Lock, ShieldCheck,X } from "lucide-react";
+import { useRouter } from "next/router";
 const sections = [
   {
     title: "Information We Collect",
@@ -21,6 +21,7 @@ const sections = [
 ];
 
 export default function PrivacyPage() {
+   const router = useRouter(); 
   return (
     <Box sx={{ flex: 1, background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)", py: { xs: 6, md: 10 } }}>
       <Container maxWidth="md">
@@ -31,8 +32,27 @@ export default function PrivacyPage() {
             borderRadius: 5,
             border: "1px solid rgba(33,147,176,0.12)",
             boxShadow: "0 12px 36px rgba(33,147,176,0.14)",
+            position:'relative'
           }}
         >
+          <IconButton
+            onClick={() => router.back()}
+            aria-label="close"
+            sx={{
+              position: "absolute",
+              top: { xs: 16, md: 24 },
+              right: { xs: 16, md: 24 },
+              color: "text.secondary",
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                color: "#0072ff",
+                 backgroundColor: "rgba(0, 114, 255, 0.08)",
+                transform: "scale(1.05)",
+              },
+            }}
+          >
+            <X size={22} />
+          </IconButton>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
             <ShieldCheck size={42} color="#0072ff" />
             <Typography variant="h2" fontWeight={900} color="#0072ff" sx={{ fontSize: { xs: "2.2rem", md: "3.5rem" } }}>

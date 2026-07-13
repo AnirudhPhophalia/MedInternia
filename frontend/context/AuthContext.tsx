@@ -48,6 +48,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userId', id);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
         }
       })
       .catch(() => {})
@@ -59,6 +63,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setGlobalToken(newToken);
     setUserId(newUserId);
     setUser(newUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('userId', newUserId);
+      localStorage.setItem('user', JSON.stringify(newUser));
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -73,8 +82,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
         if (userData) {
-          setUserId(String(userData._id || userData.id));
+          const id = String(userData._id || userData.id);
+          setUserId(id);
           setUser(userData);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userId', id);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
         }
       })
       .catch(() => {});

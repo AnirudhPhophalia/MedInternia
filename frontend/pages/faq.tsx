@@ -1,6 +1,6 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Container, Paper, Typography } from "@mui/material";
-import { ChevronDown } from "lucide-react";
-
+import { Accordion, AccordionDetails, AccordionSummary, Box, Container, Paper, Typography, IconButton } from "@mui/material";
+import { ChevronDown,X } from "lucide-react";
+import { useRouter } from "next/router";
 const faqs = [
   {
     question: "What is MedInternia?",
@@ -45,6 +45,7 @@ const faqs = [
 ];
 
 export default function FAQPage() {
+  const router = useRouter(); 
   return (
     <Box sx={{ flex: 1, background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)", py: { xs: 6, md: 10 } }}>
       <Container maxWidth="md">
@@ -55,8 +56,27 @@ export default function FAQPage() {
             borderRadius: 5,
             border: "1px solid rgba(33,147,176,0.12)",
             boxShadow: "0 12px 36px rgba(33,147,176,0.14)",
+            position: "relative",
           }}
         >
+         <IconButton
+            onClick={() => router.back()} // 3. Use router.back() to go to the previous page
+            aria-label="go back"
+            sx={{
+              position: "absolute",
+              top: { xs: 16, md: 24 },
+              right: { xs: 16, md: 24 },
+              color: "text.secondary",
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                 color: "#0072ff",
+                backgroundColor: "rgba(0, 114, 255, 0.08)",
+                transform: "scale(1.05)",
+              },
+            }}
+          >
+            <X size={22} />
+          </IconButton>
           <Typography variant="h2" fontWeight={900} color="#0072ff" sx={{ fontSize: { xs: "2.3rem", md: "3.5rem" }, mb: 2 }}>
             FAQs
           </Typography>

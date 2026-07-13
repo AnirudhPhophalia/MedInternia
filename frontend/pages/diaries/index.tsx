@@ -64,16 +64,31 @@ const DiariesPage: React.FC = () => {
     const [newEntrySymptomsChecklist, setNewEntrySymptomsChecklist] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loadDiaries = async () => {
+   const loadDiaries = async () => {
   try {
     const data = await getDiaries();
-
-    console.log("Fetched diaries:", data);
-
-    setDiaries(data);
+    const normalized = data.map((d: any) => ({
+      ...d,
+      id: d.id || d._id,
+      entries: (d.entries || []).map((e: any) => ({ ...e, id: e.id || e._id })),
+    }));
+    setDiaries(normalized);
   } catch (error) {
     console.error(error);
   }
+};
+const handleCreateDiary = async () => {
+    if (!newDiaryTitle) return;
+    try {
+        const diary: any = await createDiary(newDiaryTitle);
+        const normalizedDiary = { ...diary, id: diary.id || diary._id, entries: [] };
+        setDiaries([...diaries, normalizedDiary]);
+    } catch (error) {
+        console.error('Failed to create diary:', error);
+        return;
+    }
+    setShowCreateDiary(false);
+    setNewDiaryTitle('');
 };
     useEffect(() => {
         // Hardcoded sample data for frontend testing
@@ -89,50 +104,53 @@ const DiariesPage: React.FC = () => {
         
     loadDiaries();}, []);
 
-    const handleCreateDiary = async () => {
-        if (!newDiaryTitle) return;
-        const diary: Diary = await createDiary(newDiaryTitle);
-        setDiaries([...diaries, { ...diary, entries: [] }]);
-        setShowCreateDiary(false);
-        setNewDiaryTitle('');
-    };
-
     const handleAddEntry = async () => {
-        if (!selectedDiary || !newEntryDay || !newEntryTime || !newEntryLocation || !newEntryDiseaseDescription || !newEntrySymptoms || !newEntryDoctorReference || !newEntryDataSource || !newEntryGender || !newEntryContent) return;
-        const entry: DiaryEntry = {
-            day: newEntryDay,
-            time: newEntryTime,
-            location: newEntryLocation,
-            diseaseDescription: newEntryDiseaseDescription,
-            symptoms: newEntrySymptoms,
-            doctorReference: newEntryDoctorReference,
-            imageUrl: newEntryImageUrl,
-            dataSource: newEntryDataSource,
-            gender: newEntryGender,
-            content: newEntryContent,
-            tags: newEntryTags,
-            symptomsChecklist: newEntrySymptomsChecklist,
-        };
-        setDiaries(
-            diaries.map(d =>
-                d.id === selectedDiary.id
-                    ? { ...d, entries: [...d.entries, entry] }
-                    : d
-            )
-        );
-        setSelectedDiary({ ...selectedDiary, entries: [...selectedDiary.entries, entry] });
-        setNewEntryDay('');
-        setNewEntryTime('');
-        setNewEntryLocation('');
-        setNewEntryDiseaseDescription('');
-        setNewEntrySymptoms('');
-        setNewEntryDoctorReference('');
-        setNewEntryImageUrl('');
-        setNewEntryDataSource('');
-        setNewEntryGender('');
-        setNewEntryContent('');
+    if (!selectedDiary || !newEntryDay || !newEntryContent) {
+        alert('Please fill in at least Day and Notes/Content before saving.');
+        return;
+    }
+
+    const entryPayload = {
+        day: newEntryDay,
+        time: newEntryTime,
+        location: newEntryLocation,
+        diseaseDescription: newEntryDiseaseDescription,
+        symptoms: newEntrySymptoms,
+        doctorReference: newEntryDoctorReference,
+        imageUrl: newEntryImageUrl,
+        dataSource: newEntryDataSource,
+        gender: newEntryGender,
+        content: newEntryContent,
+        tags: newEntryTags,
+        symptomsChecklist: newEntrySymptomsChecklist,
     };
 
+    try {
+        const updatedDiary = await addDiaryEntry(selectedDiary.id, entryPayload);
+const normalizedDiary = {
+  ...updatedDiary,
+  id: updatedDiary.id || updatedDiary._id,
+  entries: (updatedDiary.entries || []).map((e: any) => ({ ...e, id: e.id || e._id })),
+};
+setDiaries(diaries.map(d => (d.id === selectedDiary.id ? normalizedDiary : d)));
+setSelectedDiary(normalizedDiary);
+    } catch (error) {
+        console.error('Failed to add diary entry:', error);
+        alert('Failed to save entry. Check the console for details.');
+        return;
+    }
+
+    setNewEntryDay('');
+    setNewEntryTime('');
+    setNewEntryLocation('');
+    setNewEntryDiseaseDescription('');
+    setNewEntrySymptoms('');
+    setNewEntryDoctorReference('');
+    setNewEntryImageUrl('');
+    setNewEntryDataSource('');
+    setNewEntryGender('');
+    setNewEntryContent('');
+};
 
     return (
         <>
@@ -292,7 +310,7 @@ const DiariesPage: React.FC = () => {
                             <button
                                 className="med-btn"
                                 style={{ marginTop: 4, padding: '8px 28px', alignSelf: 'flex-end', boxShadow: '0 1px 6px #e3eafe' }}
-                                onClick={() => setShowCreateEntry(true)}
+                               onClick={() => { setSelectedDiary(diary); setShowCreateEntry(true); }}
                             >
                                 + Add Entry
                             </button>

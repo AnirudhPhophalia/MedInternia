@@ -17,12 +17,14 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  CssBaseline,
 } from '@mui/material';
 import BookIcon from '@mui/icons-material/Book';
 import DatasetIcon from '@mui/icons-material/Dataset';
 import Image from 'next/image';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import TranscriptIcon from '@mui/icons-material/DescriptionOutlined';
 import WorkIcon from '@mui/icons-material/Work';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -32,10 +34,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import ProfileDropdown from './ProfileDropdown';
 import NotificationBell from './NotificationBell';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 import SearchIcon from '@mui/icons-material/Search';
 import ArticleIcon from '@mui/icons-material/Article';
 import HelpIcon from '@mui/icons-material/Help';
 import CloseIcon from '@mui/icons-material/Close';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { ThemeContext } from '../context/ThemeContext';
+import { useContext } from 'react';
 
 import { getCurrentUserRole } from '../utils/permissions';
 import { getAuthToken } from "../utils/api";
@@ -75,11 +83,11 @@ const NavButton: React.FC<NavButtonProps> = ({
             py: 1.25,
           }}
         >
-          <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>{icon}</ListItemIcon>
+          <ListItemIcon sx={{ color: 'text.primary', minWidth: 40 }}>{icon}</ListItemIcon>
           <ListItemText
             primary={label}
             primaryTypographyProps={{
-              color: 'white',
+              color: 'text.primary',
               fontWeight: isActive ? 700 : 500,
               fontSize: '0.95rem',
             }}
@@ -101,9 +109,9 @@ const NavButton: React.FC<NavButtonProps> = ({
           mx: 0.25,
           p: 1.2,
           borderRadius: 2,
-          backgroundColor: isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+          backgroundColor: isActive ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
           transition: 'background-color 0.2s ease',
-          '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.15)' },
+          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
         }}
       >
         {icon}
@@ -113,15 +121,18 @@ const NavButton: React.FC<NavButtonProps> = ({
 };
 
 export default function Navbar({ route }: { route?: string }) {
+  const { t } = useTranslation('common');
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
+
   const showThemeToggle = router.pathname === '/';
+
+
 
   const handleHomeNav = () => {
     if (typeof window !== 'undefined') {
       const token = getAuthToken();
-      const role = getCurrentUserRole() || "";
       if (token) {
         router.push('/dashboard');
         return;
@@ -150,7 +161,14 @@ export default function Navbar({ route }: { route?: string }) {
   const [firstName, setFirstName] = React.useState<string>('');
   const [lastName, setLastName] = React.useState<string>('');
   const [userType, setUserType] = React.useState<string>('');
-  const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      return !!(token && userId);
+    }
+    return false;
+  });
 
   React.useEffect(() => {
     const token = getAuthToken();
@@ -161,13 +179,26 @@ export default function Navbar({ route }: { route?: string }) {
     }
     setIsLoggedIn(true);
 
+    try {
+      const storedUserStr = localStorage.getItem('user');
+      if (storedUserStr) {
+        const storedUser = JSON.parse(storedUserStr);
+        setProfileImageUrl(storedUser.profilePicture || undefined);
+        setFirstName(storedUser.firstName || storedUser.name || '');
+        setLastName(storedUser.lastName || '');
+        setUserType(storedUser.userType || storedUser.role || '');
+      }
+    } catch (e) {
+      console.error("Failed to parse user from localStorage", e);
+    }
+
     import('../utils/api').then((apiModule) => {
       apiModule.default
         .get(`/users/${userId}/profile`)
         .then((res) => {
           const userData = res.data?.data?.user || res.data?.user || res.data;
           setProfileImageUrl(userData.profilePicture || undefined);
-          setFirstName(userData.firstName || '');
+          setFirstName(userData.firstName || userData.name || '');
           setLastName(userData.lastName || '');
           setUserType(userData.userType || '');
         })
@@ -192,22 +223,34 @@ export default function Navbar({ route }: { route?: string }) {
 
   const navItems = [
     ...(isLoggedIn
-      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: 'Cases' }]
+      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases', 'Cases') }]
       : []),
+    { href: '/webinar-demo', icon: <TranscriptIcon />, label: 'Webinar Transcripts' },
+    { href: '/learning-paths', icon: <BookIcon />, label: t('navbar.learningPaths') },
+    { href: '/patients', icon: <DatasetIcon />, label: t('navbar.patients') },
+    { href: '/doctors', icon: <WorkIcon />, label: t('navbar.doctors') },
     { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
     { href: '/upload-raw', icon: <DatasetIcon />, label: 'Upload Raw' },
     { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
-    { href: '/webinars', icon: <VideocamIcon />, label: 'Webinars' },
+    { href: '/webinars', icon: <VideocamIcon />, label: t('navbar.webinars') },
+    { href: '/flashcards', icon: <BookIcon />, label: 'Flashcards' },
+    { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
     { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
     { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
   ];
 
   const mobileNavItems = [
     ...(isLoggedIn
-      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: 'Cases' }]
+      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases', 'Cases') }]
       : []),
+    { href: '/webinar-demo', icon: <TranscriptIcon />, label: 'Webinar Transcripts' },
+    { href: '/learning-paths', icon: <BookIcon />, label: t('navbar.learningPaths') },
+    { href: '/patients', icon: <DatasetIcon />, label: t('navbar.patients') },
+    { href: '/doctors', icon: <WorkIcon />, label: t('navbar.doctors') },
     { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
-    { href: '/webinars', icon: <VideocamIcon />, label: 'Webinars' },
+    { href: '/webinars', icon: <VideocamIcon />, label: t('navbar.webinars') },
+    { href: '/flashcards', icon: <BookIcon />, label: 'Flashcards' },
+    { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
     { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
     { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
     { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
@@ -252,7 +295,7 @@ export default function Navbar({ route }: { route?: string }) {
             setIsFocused(false);
             setTimeout(() => setShowSuggestions(false), 150);
           }}
-          placeholder={!showHint ? 'Search medical cases, jobs, or webinars…' : ''}
+          placeholder={!showHint ? t('navbar.searchPlaceholder') : ''}
           aria-label="Search medical content"
           style={{
             border: 'none',
@@ -329,11 +372,15 @@ export default function Navbar({ route }: { route?: string }) {
 
   return (
     <>
+      <CssBaseline />
       <AppBar
         position="fixed"
         sx={{
+
           background: isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : theme.custom.navbarGradient,
+
           zIndex: theme.zIndex.drawer + 1,
+          color: 'text.primary',
         }}
       >
         <Toolbar
@@ -343,7 +390,7 @@ export default function Navbar({ route }: { route?: string }) {
             gap: 1,
           }}
         >
-          {isMobile && (
+          {isMobile && isLoggedIn && (
             <IconButton
               color="inherit"
               aria-label="Open navigation menu"
@@ -372,24 +419,25 @@ export default function Navbar({ route }: { route?: string }) {
             />
             <Typography
               variant="h6"
+              suppressHydrationWarning
               sx={{
                 fontWeight: 700,
                 letterSpacing: 0.5,
                 display: { xs: 'none', sm: 'block' },
-                color: 'white',
+                color: 'text.primary',
               }}
             >
-              MedInternia
+              {t('navbar.brand', 'MedInternia')}
             </Typography>
           </Box>
 
-          {!isMobile && (
+          {!isMobile && isLoggedIn && (
             <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', maxWidth: 420, mx: 'auto' }}>
               {searchBar}
             </Box>
           )}
 
-          {!isMobile && (
+          {!isMobile && isLoggedIn && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               {navItems.map((item) => (
                 <NavButton
@@ -403,6 +451,7 @@ export default function Navbar({ route }: { route?: string }) {
               <NotificationBell />
             </Box>
           )}
+
 
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
             {showThemeToggle && (
@@ -433,6 +482,7 @@ export default function Navbar({ route }: { route?: string }) {
                 </Button>
               </Tooltip>
             )}
+
             <ProfileDropdown
               onNavigate={router.push}
               profileImageUrl={profileImageUrl}
@@ -444,6 +494,13 @@ export default function Navbar({ route }: { route?: string }) {
         </Toolbar>
       </AppBar>
 
+      <Toolbar
+        sx={{
+          minHeight: theme.custom.navbarHeight,
+          visibility: 'hidden',
+        }}
+      />
+
       <Drawer
         anchor="left"
         open={drawerOpen}
@@ -451,8 +508,10 @@ export default function Navbar({ route }: { route?: string }) {
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
+
             background: isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : theme.custom.navbarGradient,
             color: 'white',
+
             width: 280,
           },
         }}
@@ -465,7 +524,8 @@ export default function Navbar({ route }: { route?: string }) {
               justifyContent: 'space-between',
               px: 2,
               py: 2,
-              borderBottom: '1px solid rgba(255,255,255,0.15)',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -476,7 +536,7 @@ export default function Navbar({ route }: { route?: string }) {
                 height={1}
                 style={{ borderRadius: '50%' }}
               />
-              <Typography variant="subtitle1" fontWeight={700} color="white">
+              <Typography variant="subtitle1" fontWeight={700} color="text.primary">
                 MedInternia
               </Typography>
             </Box>
@@ -500,13 +560,12 @@ export default function Navbar({ route }: { route?: string }) {
             ))}
           </List>
 
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.15)' }} />
+          <Divider />
           <Box sx={{ p: 2 }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Medical learning & collaboration
             </Typography>
           </Box>
-
         </Box>
       </Drawer>
     </>

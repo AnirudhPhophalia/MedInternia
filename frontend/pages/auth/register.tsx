@@ -1,7 +1,26 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from '@mui/material';
-import { Typography, TextField, Button, Box, Alert, MenuItem, Fade, Grow, Stack, LinearProgress, IconButton, InputAdornment } from '@mui/material';
+import {
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Alert,
+  MenuItem,
+  Fade,
+  Grow,
+  Stack,
+  LinearProgress,
+  CircularProgress,
+  IconButton,
+  InputAdornment,
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import { medicalColleges } from "../../utils/medicalColleges";
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
 import Visibility from '@mui/icons-material/Visibility';
@@ -73,6 +92,7 @@ export default function Register() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
 
   // For progress bar
   const requiredFieldsStep1: (keyof typeof form)[] = ['firstName', 'lastName', 'email', 'password', 'userType'];
@@ -185,42 +205,46 @@ export default function Register() {
     }
   };
 
-  // Email change triggers OTP send
-  // const handleEmailChange = async (e: any) => {
-  //   handleChange(e);
-  //   setEmailVerified(false);
-  //   setOtp('');
-  //   setOtpError('');
-  //   if (e.target.value && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e.target.value)) {
-  //     setSendingOtp(true);
-  //     try {
-  //       const res = await fetch('http://localhost:3000/api/auth/send-otp', {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({ email: e.target.value })
-  //       });
-  //       const data = await res.json();
-  //       if (data.success) {
-  //         setOtpModalOpen(true);
-  //       } else {
-  //         setOtpError(data.message || 'Failed to send OTP');
-  //       }
-  //     } catch (err) {
-  //       setOtpError('Failed to send OTP');
-  //     }
-  //     setSendingOtp(false);
-  //   }
-  // };
   const handleEmailChange = (e: any) => {
     handleChange(e);
-    // Email verification logic skipped
+    if (emailVerified) {
+      setEmailVerified(false);
+      setVerificationToken('');
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!form.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) {
+      setError('Please enter a valid email address before verifying.');
+      return;
+    }
+    setSendingOtp(true);
+    setError('');
+    setOtpError('');
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${backendUrl}/api/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOtpModalOpen(true);
+      } else {
+        setError(data.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      setError('Failed to send OTP');
+    }
+    setSendingOtp(false);
   };
 
   const handleVerifyOtp = async () => {
     setVerifyingOtp(true);
     setOtpError('');
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const res = await fetch(`${backendUrl}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -229,6 +253,7 @@ export default function Register() {
       const data = await res.json();
       if (data.success) {
         setEmailVerified(true);
+        setVerificationToken(data.verificationToken);
         setOtpModalOpen(false);
       } else {
         setOtpError('Invalid OTP');
@@ -247,6 +272,10 @@ export default function Register() {
     const missing = requiredFieldsStep1.filter(f => !form[f]);
     if (missing.length > 0) {
       setError('Please fill all required fields.');
+      return;
+    }
+    if (!emailVerified) {
+      setError('Please verify your email address to proceed.');
       return;
     }
     if (confirmPassword !== form.password) {
@@ -288,9 +317,13 @@ export default function Register() {
         return;
       }
     }
-    if (form.userType === 'intern') {
-      if (!/^[A-Za-z\s.,'-]{3,100}$/.test(form.medicalSchool)) {
-        setError('Enter a valid Medical School name');
+    if (form.userType === "intern") {
+      const isValidCollege = medicalColleges.some(
+        (college) => college.name === form.medicalSchool
+      );
+
+      if (!isValidCollege) {
+        setError("Please select a valid medical school from the list.");
         return;
       }
     }
@@ -325,6 +358,7 @@ export default function Register() {
       // Build payload — omit empty optional fields
       const payload: Record<string, any> = {
         ...form,
+        verificationToken,
         medicalHistory:
           form.medicalHistory === 'Other'
             ? otherMedicalHistoryValue
@@ -408,7 +442,33 @@ export default function Register() {
                     >
                       <TextField label="First Name" name="firstName" fullWidth margin="normal" value={form.firstName} onChange={handleChange} required autoFocus sx={authFieldSx} />
                       <TextField label="Last Name" name="lastName" fullWidth margin="normal" value={form.lastName} onChange={handleChange} required sx={authFieldSx} />
-                      <TextField label="Email" name="email" type="email" fullWidth margin="normal" value={form.email} onChange={handleChange} required sx={{ ...authFieldSx, gridColumn: '1 / -1' }} />
+                      <TextField 
+                        label="Email" 
+                        name="email" 
+                        type="email" 
+                        fullWidth 
+                        margin="normal" 
+                        value={form.email} 
+                        onChange={handleEmailChange} 
+                        required 
+                        sx={{ ...authFieldSx, gridColumn: '1 / -1' }} 
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Button 
+                                variant="contained" 
+                                size="small" 
+                                onClick={handleSendOtp}
+                                disabled={sendingOtp || emailVerified || !form.email}
+                                color={emailVerified ? "success" : "primary"}
+                                sx={{ textTransform: 'none', borderRadius: 2 }}
+                              >
+                                {emailVerified ? "Verified" : sendingOtp ? "Sending..." : "Verify"}
+                              </Button>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
                       <TextField
                         label="Password"
                         name="password"
@@ -618,7 +678,38 @@ export default function Register() {
                     {form.userType === 'intern' && (
                       <Fade in timeout={600}>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, columnGap: 2 }}>
-                          <TextField label="Medical School" name="medicalSchool" fullWidth margin="normal" value={form.medicalSchool} onChange={handleChange} required sx={authFieldSx} />
+                          <Autocomplete
+                            sx={{ width: "100%" }}
+                            options={medicalColleges}
+                            clearOnBlur={false}
+                            selectOnFocus
+                            getOptionLabel={(option) =>
+                              `${option.name} (${option.state})`
+                            }
+                            isOptionEqualToValue={(option, value) =>
+                              option.id === value.id}
+                            value={
+                              medicalColleges.find(
+                                (college) => college.name === form.medicalSchool
+                              ) || null
+                            }
+                            onChange={(_, value) =>
+                              setForm({
+                                ...form,
+                                medicalSchool: value?.name || "",
+                              })
+                            }
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Medical School"
+                                required
+                                margin="normal"
+                                fullWidth
+                                sx={authFieldSx}
+                              />
+                            )}
+                          />
                           <TextField
                             select
                             label="Year of Study"
@@ -806,6 +897,31 @@ export default function Register() {
           </form>
         </AuthCard>
       </Box>
+      <Dialog open={otpModalOpen} onClose={() => setOtpModalOpen(false)}>
+        <DialogTitle>Verify Email</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            An OTP has been sent to {form.email}. Please enter it below.
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="OTP Code"
+            type="text"
+            fullWidth
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            error={!!otpError}
+            helperText={otpError}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOtpModalOpen(false)}>Cancel</Button>
+          <Button onClick={handleVerifyOtp} variant="contained" disabled={!otp || verifyingOtp}>
+            {verifyingOtp ? <CircularProgress size={20} /> : 'Verify'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AuthLayout>
   );
 }

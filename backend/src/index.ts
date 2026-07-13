@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Application, Request, Response } from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -6,14 +9,12 @@ import { verifyToken } from './utils/jwt';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
 import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
-
-dotenv.config();
 
 // Process-level handlers to prevent crash-induced state loss
 process.on('unhandledRejection', (reason: unknown) => {
@@ -25,26 +26,19 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 const app: Application = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Initialize application
 const initializeApp = async () => {
-  try {
-    // Connect to database
-    await connectDB();
-    
-    // Create default badges if they don't exist
-    await createDefaultBadges();
-    
-    console.log('Application initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize application:', error);
-    process.exit(1);
-  }
-};
+  // Connect to database
+  await connectDB();
 
-// Initialize the app
-initializeApp();
+  // Create default badges if they don't exist
+  await createDefaultBadges();
+
+  console.log('Application initialized successfully');
+};
 
 // Middleware
 app.use(helmet());
@@ -127,6 +121,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Sanitize request data to prevent NoSQL injection attacks
+// Removes prohibited characters from keys and values (e.g., $ and .)
+app.use(mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    console.warn(`Sanitized suspicious key in ${req.method} ${req.path}: ${key}`);
+  }
+}));
+
 // Routes
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
@@ -202,18 +205,38 @@ io.on('connection', (socket) => {
   socket.join(`user:${userId}`);
   console.log(`Socket connected: user ${userId} joined room user:${userId}`);
 
+  socket.on('join_webinar', (webinarId: string) => {
+    socket.join(`webinar:${webinarId}`);
+    console.log(`User ${userId} joined webinar room: webinar:${webinarId}`);
+  });
+
+  socket.on('leave_webinar', (webinarId: string) => {
+    socket.leave(`webinar:${webinarId}`);
+    console.log(`User ${userId} left webinar room: webinar:${webinarId}`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Socket disconnected: user ${userId}`);
   });
 });
 
-// Start server (httpServer instead of app.listen)
-httpServer.listen(PORT, () => {
-  console.log(`Doctor-Intern Collaboration Platform running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`API docs: http://localhost:${PORT}/api`);
-  console.log(`Socket.io ready`);
-});
+const startServer = async () => {
+  try {
+    await initializeApp();
+
+    httpServer.listen(PORT, () => {
+      console.log(`Doctor-Intern Collaboration Platform running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`API docs: http://localhost:${PORT}/api`);
+      console.log(`Socket.io ready`);
+    });
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    process.exit(1);
+  }
+};
+
+void startServer();
 
 export { io };
 export default app;

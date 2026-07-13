@@ -20,9 +20,14 @@ export interface AuthRequest extends Request {
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    let token: string | undefined;
 
     const authHeader = req.headers.authorization;
+    console.log("Authorization Header:", authHeader);
+    console.log("All Headers:", req.headers);
+
+    let token: string | undefined;
+
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     } else if (req.cookies?.token) {
@@ -52,9 +57,13 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
           message: 'Invalid or expired token'
         });
       }
+
+
+
       
-      const user = await User.findById(decoded.userId).select('-password');
+      const user = await User.findById(decoded.userId).select('-password +passwordChangedAt');
       
+
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -66,6 +75,17 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
         return res.status(401).json({
           success: false,
           message: 'Account is deactivated'
+        });
+      }
+
+      if (
+        user.passwordChangedAt &&
+        typeof decoded.iat === 'number' &&
+        decoded.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password was changed. Please log in again.'
         });
       }
 
@@ -88,13 +108,18 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
 export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
+    let token: string | undefined;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next();
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies?.token) {
+      token = req.cookies.token;
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    if (!token) {
+      return next();
+    }
 
     try {
       const decoded = verifyToken(token);
@@ -147,14 +172,14 @@ export const logger = (req: Request, res: Response, next: NextFunction) => {
 
 export const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
   const apiKey = req.headers['x-api-key'];
-  
+
   if (!apiKey) {
     return res.status(401).json({
       success: false,
       message: 'API key is required'
     });
   }
-  
+
   // Add your API key validation logic here
   next();
 };

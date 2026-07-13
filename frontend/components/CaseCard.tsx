@@ -5,7 +5,9 @@ import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import LockIcon from '@mui/icons-material/Lock';
 import {getCurrentUserRole} from "../utils/permissions";
+import BookmarkButton from './BookmarkButton';
 
 // Helper to get owner name from doctor field
 function getOwnerName(caseData: any) {
@@ -136,6 +138,11 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
               border: '1.5px solid #90caf9',
             }}
           >
+            {caseData.verifiedDoctorsOnly && (
+              <Tooltip title="Restricted: Verified Doctors Only">
+                <LockIcon sx={{ fontSize: 18, color: 'error.main', mr: -1 }} />
+              </Tooltip>
+            )}
             {status}
             {/* Interactive Star and Pin icons with tooltips and color scheme */}
             <Tooltip title={starred ? 'Unstar' : 'Star'}>
@@ -156,6 +163,7 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
                 {starred ? <StarRoundedIcon fontSize="inherit" /> : <StarBorderRoundedIcon fontSize="inherit" />}
               </IconButton>
             </Tooltip>
+            <BookmarkButton itemType="case" itemId={caseData._id} />
           </Box>
         </Box>
 

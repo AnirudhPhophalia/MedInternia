@@ -13,9 +13,9 @@
  *   // result.entities, result.entity_counts, result.processing_time_ms
  */
 
-const NER_SERVICE_URL =
-  process.env.NER_SERVICE_URL ?? "http://localhost:8001";
 
+const NER_SERVICE_URL =
+  process.env.NLP_SERVICE_URL ?? "http://localhost:8001";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -116,4 +116,36 @@ export async function isNERServiceHealthy(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Compliance check service (PHI Redaction & Discrepancies)
+// ---------------------------------------------------------------------------
+
+export interface ComplianceCheckResult {
+  original_text: string;
+  redacted_text: string;
+  is_flagged: boolean;
+  flag_reasons: string[];
+}
+
+export async function checkCompliance(
+  text: string,
+  patientAge?: number
+): Promise<ComplianceCheckResult> {
+  const res = await fetch(`${NER_SERVICE_URL}/compliance/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, patient_age: patientAge ?? null }),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(no body)");
+    throw new Error(
+      `Compliance service returned ${res.status}: ${body}`
+    );
+  }
+
+  return res.json() as Promise<ComplianceCheckResult>;
 }
