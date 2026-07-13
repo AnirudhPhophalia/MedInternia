@@ -75,6 +75,28 @@ export default function Login() {
   >
     <CloseIcon />
   </IconButton>
+      {/* Back to Home - accessible, keyboard focusable */}
+      <Button
+        component={Link}
+        href="/"
+        aria-label="Back to Home"
+        sx={{
+          position: 'absolute',
+          left: 12,
+          top: 12,
+          color: '#1565c0',
+          textTransform: 'none',
+          fontWeight: 700,
+          zIndex: 2,
+          borderRadius: 2,
+          px: 1,
+          '&:hover': { backgroundColor: 'rgba(21, 101, 192, 0.06)' },
+          '&:focus': { boxShadow: '0 0 0 4px rgba(33,147,176,0.12)' }
+        }}
+        variant="text"
+      >
+        ← Back to Home
+      </Button>
        <Box
   sx={{
     display: 'flex',
