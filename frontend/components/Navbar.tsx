@@ -4,6 +4,7 @@ import {
   Toolbar,
   Typography,
   Box,
+  Button,
   IconButton,
   Paper,
   Divider,
@@ -25,6 +26,8 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import WorkIcon from '@mui/icons-material/Work';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import MenuIcon from '@mui/icons-material/Menu';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import ProfileDropdown from './ProfileDropdown';
@@ -113,6 +116,7 @@ export default function Navbar({ route }: { route?: string }) {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
+  const showThemeToggle = router.pathname === '/';
 
   const handleHomeNav = () => {
     if (typeof window !== 'undefined') {
@@ -131,6 +135,7 @@ export default function Navbar({ route }: { route?: string }) {
   const toggleDrawer = (open: boolean) => () => setDrawerOpen(open);
 
   const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [isDarkMode, setIsDarkMode] = React.useState(false);
   const [recentSearches] = React.useState<string[]>([
     'Cardiology',
     'Internships',
@@ -220,9 +225,9 @@ export default function Navbar({ route }: { route?: string }) {
           alignItems: 'center',
           width: '100%',
           borderRadius: 24,
-          bgcolor: 'background.paper',
+          bgcolor: isDarkMode ? 'rgba(255,255,255,0.10)' : 'background.paper',
           border: '1px solid',
-          borderColor: 'divider',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.16)' : 'divider',
           transition: 'box-shadow 0.2s',
           '&:focus-within': {
             boxShadow: '0 0 0 3px rgba(0, 114, 255, 0.15)',
@@ -230,7 +235,7 @@ export default function Navbar({ route }: { route?: string }) {
           },
         }}
       >
-        <SearchIcon sx={{ color: 'text.secondary', ml: 1, mr: 0.5 }} fontSize="small" />
+        <SearchIcon sx={{ color: isDarkMode ? 'rgba(255,255,255,0.85)' : 'text.secondary', ml: 1, mr: 0.5 }} fontSize="small" />
         <input
           ref={searchInputRef}
           type="text"
@@ -256,19 +261,19 @@ export default function Navbar({ route }: { route?: string }) {
             height: 36,
             fontSize: '0.9rem',
             background: 'transparent',
-            color: theme.palette.text.primary,
+            color: isDarkMode ? '#ffffff' : theme.palette.text.primary,
             fontFamily: 'inherit',
           }}
         />
         {showHint && !isMobile && (
-          <Typography variant="caption" sx={{ color: 'text.disabled', pr: 1, whiteSpace: 'nowrap' }}>
+          <Typography variant="caption" sx={{ color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'text.disabled', pr: 1, whiteSpace: 'nowrap' }}>
             Press <kbd style={{ fontFamily: 'monospace', fontWeight: 600, padding: '1px 4px', borderRadius: 4, border: '1px solid #e2e8f0' }}>/</kbd> to search
           </Typography>
         )}
         {search && (
           <IconButton
             onClick={() => setSearch('')}
-            sx={{ p: 0.5, color: 'text.secondary' }}
+            sx={{ p: 0.5, color: isDarkMode ? 'rgba(255,255,255,0.85)' : 'text.secondary' }}
             aria-label="Clear search"
             size="small"
           >
@@ -327,7 +332,7 @@ export default function Navbar({ route }: { route?: string }) {
       <AppBar
         position="fixed"
         sx={{
-          background: theme.custom.navbarGradient,
+          background: isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : theme.custom.navbarGradient,
           zIndex: theme.zIndex.drawer + 1,
         }}
       >
@@ -361,8 +366,8 @@ export default function Navbar({ route }: { route?: string }) {
             <Image
               src="/med-internia-logo.jpg"
               alt="MedInternia logo"
-              width={32}
-              height={32}
+              width={22}
+              height={22}
               style={{ marginRight: 8, borderRadius: '50%' }}
             />
             <Typography
@@ -400,6 +405,34 @@ export default function Navbar({ route }: { route?: string }) {
           )}
 
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+            {showThemeToggle && (
+              <Tooltip title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'} placement="bottom" arrow>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setIsDarkMode((prev) => !prev)}
+                  aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                  sx={{
+                    mr: 1,
+                    borderRadius: 999,
+                    color: 'white',
+                    borderColor: 'rgba(255,255,255,0.28)',
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    px: 1.25,
+                    py: 0.6,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      borderColor: 'rgba(255,255,255,0.4)',
+                    },
+                  }}
+                >
+                  {isDarkMode ? <Brightness7Icon sx={{ mr: 0.6, fontSize: 18 }} /> : <Brightness4Icon sx={{ mr: 0.6, fontSize: 18 }} />}
+                  {isDarkMode ? 'Light' : 'Dark'}
+                </Button>
+              </Tooltip>
+            )}
             <ProfileDropdown
               onNavigate={router.push}
               profileImageUrl={profileImageUrl}
@@ -418,7 +451,7 @@ export default function Navbar({ route }: { route?: string }) {
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
-            background: theme.custom.navbarGradient,
+            background: isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : theme.custom.navbarGradient,
             color: 'white',
             width: 280,
           },
@@ -439,8 +472,8 @@ export default function Navbar({ route }: { route?: string }) {
               <Image
                 src="/med-internia-logo.jpg"
                 alt="MedInternia logo"
-                width={28}
-                height={28}
+                width={1}
+                height={1}
                 style={{ borderRadius: '50%' }}
               />
               <Typography variant="subtitle1" fontWeight={700} color="white">

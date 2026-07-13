@@ -25,6 +25,8 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import {
   FolderOpen,
   Briefcase,
@@ -44,6 +46,7 @@ export default function HomePage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [isDarkMode, setIsDarkMode] = React.useState(false);
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
 
@@ -84,19 +87,27 @@ export default function HomePage() {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    bgcolor: '#fff',
-    border: '1px solid #e2e8f0',
+    bgcolor: isDarkMode ? '#0f172a' : '#fff',
+    border: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0',
     transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
     '&:hover': {
       transform: 'translateY(-2px)',
       borderColor: '#0072ff',
-      boxShadow: '0 12px 32px rgba(0, 114, 255, 0.1)',
+      boxShadow: isDarkMode ? '0 12px 32px rgba(15, 23, 42, 0.3)' : '0 12px 32px rgba(0, 114, 255, 0.1)',
       '& .explore-underline': { width: '100%' },
     },
   };
 
+  const pageBg = isDarkMode ? '#07111f' : '#f8fbff';
+  const surfaceBg = isDarkMode ? '#0f172a' : '#fff';
+  const surfaceAltBg = isDarkMode ? '#111827' : '#fafbfc';
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+  const textPrimary = isDarkMode ? '#f8fafc' : '#1a202c';
+  const textSecondary = isDarkMode ? '#cbd5e1' : '#4a5568';
+  const mutedText = isDarkMode ? '#94a3b8' : '#64748b';
+
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f8fbff', overflowX: 'hidden', maxWidth: '100%' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: pageBg, color: textPrimary, overflowX: 'hidden', maxWidth: '100%' }}>
       <Head>
         <title>MedInternia - Your Gateway to Medical Learning</title>
       </Head>
@@ -110,8 +121,8 @@ export default function HomePage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: '#fff',
-          borderBottom: '1px solid rgba(0,0,0,0.04)',
+          bgcolor: surfaceBg,
+          borderBottom: `1px solid ${borderColor}`,
         }}
       >
         <Box
@@ -123,7 +134,7 @@ export default function HomePage() {
           onKeyDown={(e) => e.key === 'Enter' && router.push('/')}
         >
           <Image src="/med-internia-logo.jpg" alt="MedInternia Logo" width={36} height={36} style={{ borderRadius: '50%' }} />
-          <Typography variant="h6" fontWeight={800} color="#1a202c" ml={1}>
+          <Typography variant="h6" fontWeight={800} color={textPrimary} ml={1}>
             MedInternia
           </Typography>
         </Box>
@@ -134,7 +145,7 @@ export default function HomePage() {
               <Typography
                 component="a"
                 fontWeight={600}
-                color="#4a5568"
+                color={textSecondary}
                 sx={{
                   textDecoration: 'none',
                   transition: 'color 0.2s',
@@ -149,12 +160,13 @@ export default function HomePage() {
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
           <IconButton
-            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: '#1a202c' }}
+            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: textPrimary }}
             aria-label="Open navigation menu"
             onClick={() => setMobileNavOpen(true)}
           >
             <MenuIcon />
           </IconButton>
+
           <Button
             variant="text"
             sx={{
@@ -184,6 +196,20 @@ export default function HomePage() {
           >
             Sign Up
           </Button>
+                    <IconButton
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            sx={{
+              color: '#0072ff',
+              border: '1px solid rgba(0,114,255,0.2)',
+              bgcolor: isDarkMode ? 'rgba(0,114,255,0.08)' : 'transparent',
+              borderRadius: '999px',
+              '&:hover': { bgcolor: 'rgba(0,114,255,0.12)' },
+            }}
+          >
+            {isDarkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
+
         </Box>
       </Box>
 
@@ -194,8 +220,8 @@ export default function HomePage() {
         onClose={() => setMobileNavOpen(false)}
         PaperProps={{ sx: { width: 280 } }}
       >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
-          <Typography fontWeight={700} color="#1a202c">
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}` }}>
+          <Typography fontWeight={700} color={textPrimary}>
             Menu
           </Typography>
           <IconButton aria-label="Close navigation menu" onClick={() => setMobileNavOpen(false)}>
@@ -232,7 +258,7 @@ export default function HomePage() {
                 fontWeight={800}
                 sx={{
                   fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4rem' },
-                  color: '#1a202c',
+                  color: textPrimary,
                   lineHeight: 1.15,
                   mb: 3,
                 }}
@@ -249,7 +275,7 @@ export default function HomePage() {
                   Medical Learning, Jobs & Opportunities
                 </Box>
               </Typography>
-              <Typography variant="body1" sx={{ color: '#4a5568', fontSize: '1.15rem', mb: 4, maxWidth: 500, lineHeight: 1.6 }}>
+              <Typography variant="body1" sx={{ color: textSecondary, fontSize: '1.15rem', mb: 4, maxWidth: 500, lineHeight: 1.6 }}>
                 Join a community of learners and professionals collaborating to shape the future of healthcare.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 5 }}>
@@ -320,7 +346,7 @@ export default function HomePage() {
                 <Box>
                   <Stack direction="row" alignItems="center" spacing={0.5}>
                     <Users size={16} color="#0072ff" aria-hidden />
-                    <Typography fontWeight={700} color="#1a202c" fontSize="0.95rem">
+                    <Typography fontWeight={700} color={textPrimary} fontSize="0.95rem">
                       Growing community
                     </Typography>
                   </Stack>
@@ -347,7 +373,7 @@ export default function HomePage() {
                     right: -40,
                     width: '100%',
                     height: '100%',
-                    bgcolor: '#e0f2fe',
+                    bgcolor: isDarkMode ? 'rgba(14,165,233,0.16)' : '#e0f2fe',
                     borderRadius: '50%',
                     zIndex: 0,
                     filter: 'blur(60px)',
@@ -390,8 +416,8 @@ export default function HomePage() {
                       display: { xs: 'none', sm: 'flex' },
                       alignItems: 'center',
                       gap: 1.5,
-                      bgcolor: '#fff',
-                      border: '1px solid #e2e8f0',
+                      bgcolor: surfaceBg,
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
                     }}
                   >
                     <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#48bb78', boxShadow: '0 0 0 3px #c6f6d5' }} />
@@ -399,7 +425,7 @@ export default function HomePage() {
                       <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
                         Live Webinars
                       </Typography>
-                      <Typography variant="body2" fontWeight={700} color="#1a202c">
+                      <Typography variant="body2" fontWeight={700} color={textPrimary}>
                         Expert AMA sessions
                       </Typography>
                     </Box>
@@ -419,8 +445,8 @@ export default function HomePage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1.5,
-                      bgcolor: '#fff',
-                      border: '1px solid #e2e8f0',
+                      bgcolor: surfaceBg,
+                      border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
                     }}
                   >
                     <Box sx={{ bgcolor: '#eff6ff', p: 1, borderRadius: '12px' }}>
@@ -430,7 +456,7 @@ export default function HomePage() {
                       <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
                         Case Library
                       </Typography>
-                      <Typography variant="body2" fontWeight={700} color="#1a202c">
+                      <Typography variant="body2" fontWeight={700} color={textPrimary}>
                         Peer-reviewed cases
                       </Typography>
                     </Box>
@@ -460,10 +486,10 @@ export default function HomePage() {
                       <Box sx={{ bgcolor: item.color, width: 64, height: 64, borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
                         {item.icon}
                       </Box>
-                      <Typography variant="h5" fontWeight={800} color="#1a202c" mb={1.5}>
+                      <Typography variant="h5" fontWeight={800} color={textPrimary} mb={1.5}>
                         {item.title}
                       </Typography>
-                      <Typography variant="body1" color="#64748b" mb={4} flexGrow={1} lineHeight={1.6}>
+                      <Typography variant="body1" color={mutedText} mb={4} flexGrow={1} lineHeight={1.6}>
                         {item.desc}
                       </Typography>
                       <Link
@@ -507,7 +533,7 @@ export default function HomePage() {
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
             <Box>
-              <Typography variant="h4" fontWeight={800} color="#1a202c">
+              <Typography variant="h4" fontWeight={800} color={textPrimary}>
                 Top Contributors
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -527,7 +553,7 @@ export default function HomePage() {
                     p: 3,
                     borderRadius: '20px',
                     border: '1px dashed #cbd5e1',
-                    bgcolor: '#fafbfc',
+                    bgcolor: surfaceAltBg,
                   }}
                 >
                   <Stack direction="row" alignItems="center" spacing={2.5}>
@@ -629,7 +655,7 @@ export default function HomePage() {
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, alignItems: 'center', gap: { xs: 6, lg: 8 } }}>
             <Box sx={{ flex: 1, width: '100%' }}>
               <Box sx={{ width: 40, height: 4, bgcolor: '#0072ff', mb: 3, borderRadius: 2 }} />
-              <Typography variant="h3" fontWeight={800} color="#0f172a" mb={1} sx={{ fontSize: { xs: '2.2rem', md: '2.8rem' } }}>
+              <Typography variant="h3" fontWeight={800} color={textPrimary} mb={1} sx={{ fontSize: { xs: '2.2rem', md: '2.8rem' } }}>
                 Why MedInternia?
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 520 }}>
@@ -670,8 +696,8 @@ export default function HomePage() {
                         p: 2.5,
                         height: '100%',
                         borderRadius: 3,
-                        border: '1px solid #e2e8f0',
-                        bgcolor: '#fff',
+                        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                        bgcolor: surfaceBg,
                       }}
                     >
                       <Typography
@@ -686,7 +712,7 @@ export default function HomePage() {
                         {group.items.map((text) => (
                           <Box key={text} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                             <CheckCircle2 size={18} color="#fff" fill="#0072ff" style={{ flexShrink: 0, marginTop: 2 }} />
-                            <Typography variant="body2" fontWeight={600} color="#1e293b" sx={{ lineHeight: 1.5 }}>
+                            <Typography variant="body2" fontWeight={600} color={textSecondary} sx={{ lineHeight: 1.5 }}>
                               {text}
                             </Typography>
                           </Box>
@@ -707,7 +733,7 @@ export default function HomePage() {
       {/* How It Works */}
       <Container maxWidth="xl" sx={{ mb: { xs: 8, md: 14 } }}>
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
-          <Typography variant="h3" fontWeight={800} color="#0f172a" mb={{ xs: 6, md: 10 }} sx={{ fontSize: { xs: '2.2rem', md: '2.8rem' }, textAlign: 'center' }}>
+          <Typography variant="h3" fontWeight={800} color={textPrimary} mb={{ xs: 6, md: 10 }} sx={{ fontSize: { xs: '2.2rem', md: '2.8rem' }, textAlign: 'center' }}>
             How It Works
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'center', md: 'flex-start' }, justifyContent: 'space-between', gap: { xs: 6, md: 0 } }}>
@@ -742,10 +768,10 @@ export default function HomePage() {
                     <Typography fontWeight={800} color="primary.main" mb={0.5} fontSize="0.95rem">
                       {step.num}
                     </Typography>
-                    <Typography variant="h6" fontWeight={800} color="#0f172a" mb={1}>
+                    <Typography variant="h6" fontWeight={800} color={textPrimary} mb={1}>
                       {step.title}
                     </Typography>
-                    <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                    <Typography variant="body2" color={textSecondary} sx={{ lineHeight: 1.6 }}>
                       {step.desc}
                     </Typography>
                   </Box>
@@ -773,13 +799,13 @@ export default function HomePage() {
             sx={{
               p: { xs: 4, md: 5 },
               borderRadius: '24px',
-              background: 'linear-gradient(to right, #f0fdf4, #f8fafc)',
+              background: isDarkMode ? 'linear-gradient(to right, rgba(6,95,70,0.28), rgba(2,6,23,0.95))' : 'linear-gradient(to right, #f0fdf4, #f8fafc)',
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' },
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 4,
-              border: '1px solid #e2e8f0',
+              border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexDirection: { xs: 'column', sm: 'row' }, textAlign: { xs: 'center', sm: 'left' } }}>
@@ -798,10 +824,10 @@ export default function HomePage() {
                 <HeadphonesIcon size={36} color="#fff" />
               </Box>
               <Box>
-                <Typography variant="h5" fontWeight={800} color="#0f172a" mb={1}>
+                <Typography variant="h5" fontWeight={800} color={textPrimary} mb={1}>
                   Need Help or Have Questions?
                 </Typography>
-                <Typography color="#475569">Reach out to the MedInternia team for support and inquiries.</Typography>
+                <Typography color={textSecondary}>Reach out to the MedInternia team for support and inquiries.</Typography>
               </Box>
             </Box>
             <Button
