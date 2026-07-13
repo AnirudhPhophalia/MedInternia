@@ -22,6 +22,9 @@ jest.mock("../../utils/asyncHandler", () => ({
 jest.mock("../../models/User");
 jest.mock("../../models/Otp");
 jest.mock("bcryptjs");
+jest.mock("jsonwebtoken", () => ({
+  verify: jest.fn().mockImplementation((token: string) => ({ email: token, purpose: 'signup' }))
+}));
 jest.mock("../../utils/mailer", () => ({
   sendMail: jest.fn(),
 }));
@@ -64,6 +67,7 @@ describe("Auth Controller", () => {
       const req = mockRequest({
         email: "test@test.com",
         userType: "patient",
+        verificationToken: "test@test.com",
       });
       const res = mockResponse();
       const next = jest.fn();
@@ -78,6 +82,7 @@ describe("Auth Controller", () => {
         email: "new@test.com",
         userType: "patient",
         firstName: "Test",
+        verificationToken: "new@test.com",
       });
       const res = mockResponse();
       const next = jest.fn();

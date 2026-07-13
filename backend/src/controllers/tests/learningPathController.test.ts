@@ -8,6 +8,10 @@ import Badge from "../../models/Badge";
 import { createAndEmitNotification } from "../notificationController";
 import { AppError } from "../../utils/AppError";
 
+jest.mock("../../utils/asyncHandler", () => ({
+  asyncHandler: (fn: any) => fn,
+}));
+
 jest.mock("../../models/LearningPath");
 jest.mock("../../models/UserLearningPath");
 jest.mock("../../models/UserBadge");
