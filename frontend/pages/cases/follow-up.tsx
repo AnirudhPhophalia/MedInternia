@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Container, Typography, TextField, Button, Box, Alert } from '@mui/material';
 import api from '../../utils/api';
+import { withAuth } from '../../components/withAuth';
 
-export default function CaseFollowUp() {
+function CaseFollowUp() {
   const [caseId, setCaseId] = useState('');
   const [followUp, setFollowUp] = useState('');
   const [error, setError] = useState('');
@@ -41,3 +42,4 @@ export default function CaseFollowUp() {
     </Container>
   );
 }
+export default withAuth(CaseFollowUp);  

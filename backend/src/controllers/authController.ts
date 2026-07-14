@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
+import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken } from '../utils/jwt';
 import { AuthRequest, blacklistToken } from '../middleware/auth';
 import { uploadProfileImage } from '../utils/cloudinary';
@@ -14,7 +15,7 @@ import { AppError } from "../utils/AppError";
 const OTP_TTL_MS = 10 * 60 * 1000; // OTP valid for 10 minutes
 const OTP_MAX_ATTEMPTS = 5; // after 5 wrong tries the OTP is invalidated
 
-const generateOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
+const generateOtpCode = () => crypto.randomInt(100000, 999999).toString();
 
 const issueOtp = async (email: string, purpose: 'signup' | 'reset') => {
   const otp = generateOtpCode();
@@ -128,10 +129,29 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     emergencyContact,
     medicalHistory,
     allergies,
+    verificationToken,
   } = req.body;
 
+  if (!verificationToken) {
+    throw new AppError('Email verification token is required', 400);
+  }
+
+  if (typeof email !== 'string') {
+    throw new AppError("Invalid email format", 400);
+  }
+
+  try {
+    const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET as string) as any;
+    if (decoded.email !== email || decoded.purpose !== 'signup') {
+      throw new AppError('Invalid email verification token', 400);
+    }
+  } catch (err) {
+    throw new AppError('Email verification token is invalid or expired', 400);
+  }
+
   // Check if user already exists
-  const existingUser = await User.findOne({ email });
+  const normalizedEmail = email.toLowerCase().trim();
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
     throw new AppError("User with this email already exists", 400);
   }
@@ -145,8 +165,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       );
     }
 
+    if (typeof licenseNumber !== 'string') {
+      throw new AppError("Invalid license number format", 400);
+    }
+
     // Check if license number already exists
-    const existingLicense = await User.findOne({ licenseNumber });
+    const existingLicense = await User.findOne({ licenseNumber: licenseNumber.trim() });
     if (existingLicense) {
       throw new AppError("Doctor with this license number already exists", 409);
     }
@@ -165,13 +189,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const userData: Partial<IUser> = {
     firstName,
     lastName,
-    email,
+    email: normalizedEmail,
     password,
     userType,
     phone,
     dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
     gender,
     address,
+    isVerified: true,
   };
 
   // Add doctor-specific fields
@@ -240,14 +265,6 @@ export const sendOtp = async (req: Request, res: Response) => {
   if (!email) return res.status(400).json({ success: false, message: 'Email required' });
   const otp = await issueOtp(email, 'signup');
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
-      port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
@@ -256,7 +273,8 @@ export const sendOtp = async (req: Request, res: Response) => {
     });
     return res.json({ success: true });
   } catch (err) {
-    console.error('Send OTP email error:', err);
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Send OTP email error:', errorMsg);
     return res.status(500).json({ success: false, message: 'Failed to send OTP' });
   }
 };
@@ -266,12 +284,18 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   if (!email || !otp) {
     throw new AppError('Email and OTP required', 400);
   }
+    const result = await consumeOtp(email, 'signup', otp);
+    if (!result.valid) {
+      throw new AppError(result.message || 'Invalid OTP', 400);
+    }
 
-  const result = await consumeOtp(email, 'signup', otp);
-  if (!result.valid) {
-    throw new AppError(result.message || 'Invalid OTP', 400);
-  }
-  res.json({ success: true });
+    const verificationToken = jwt.sign(
+      { email, purpose: 'signup' },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '30m' }
+    );
+
+    res.json({ success: true, verificationToken });
 });
 
 // Login user
@@ -283,8 +307,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Email and password are required", 400);
   }
 
+  if (typeof email !== 'string') {
+    throw new AppError("Invalid email format", 400);
+  }
+
   // Find user and include password for comparison
-  const user = await User.findOne({ email }).select("+password +loginAttempts +lockoutUntil");
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password +loginAttempts +lockoutUntil");
 
   if (!user) {
     throw new AppError("Invalid email or password", 401);
@@ -374,11 +402,11 @@ export const getProfile = asyncHandler(
 
 const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
-  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile',
+  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile', 'orcidId',
   'specialization', 'experience', 'qualifications',
   'medicalSchool', 'yearOfStudy', 'interests', 'mentorDoctor',
   'academicAchievements', 'careerGoals',
-  'emergencyContact', 'medicalHistory', 'allergies'
+  'emergencyContact', 'medicalHistory', 'allergies', 'messagePrivacy'
 ];
 
 // Update user profile
@@ -454,6 +482,7 @@ export const changePassword = asyncHandler(
 
     // Update password
     userWithPassword.password = newPassword;
+    userWithPassword.passwordChangedAt = new Date();
     await userWithPassword.save();
 
     res.json({
@@ -470,7 +499,10 @@ export const forgotPassword = asyncHandler(
     if (!email) {
       throw new AppError("Email required", 400);
     }
-    const user = await User.findOne({ email });
+    if (typeof email !== 'string') {
+      throw new AppError("Invalid email format", 400);
+    }
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
 if (!user) {
     return res.json({
@@ -482,15 +514,7 @@ if (!user) {
     // Generate OTP
     const otp = await issueOtp(email, 'reset');
 
-    // Send OTP via email
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.ethereal.email",
-      port: Number(process.env.EMAIL_PORT) || 587,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    
 
     try {
       await transporter.sendMail({
@@ -514,6 +538,9 @@ export const resetPassword = asyncHandler(
     if (!email || !otp || !newPassword) {
       throw new AppError("All fields required", 400);
     }
+    if (typeof email !== 'string') {
+      throw new AppError("Invalid email format", 400);
+    }
     if (newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters", 400);
     }
@@ -521,11 +548,12 @@ export const resetPassword = asyncHandler(
     if (!result.valid) {
       throw new AppError(result.message || "Invalid OTP", 400);
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       throw new AppError("User not found", 404);
     }
     user.password = newPassword;
+    user.passwordChangedAt = new Date();
     await user.save();
     return res.json({ success: true, message: 'Password reset successfully' });
   },
@@ -557,4 +585,58 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   res.clearCookie('token');
   res.clearCookie('auth_status');
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+export const syncOrcidPublications = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+  if (!user) {
+    throw new AppError("User not authenticated", 401);
+  }
+
+  if (!user.orcidId) {
+    throw new AppError("No ORCID iD provided in your profile", 400);
+  }
+
+  try {
+    const response = await fetch(`https://pub.orcid.org/v3.0/${user.orcidId}/works`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch from ORCID API');
+    }
+
+    const data = await response.json();
+    const works = data?.group || [];
+
+    const publications = works.map((workGroup: any) => {
+      const workSummary = workGroup['work-summary']?.[0];
+      if (!workSummary) return null;
+
+      return {
+        title: workSummary.title?.title?.value || 'Untitled',
+        year: workSummary['publication-date']?.year?.value || 'Unknown',
+        journal: workSummary['journal-title']?.value || 'Unknown Journal',
+        url: workSummary.url?.value || ''
+      };
+    }).filter(Boolean);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { publications },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    res.json({
+      success: true,
+      message: "ORCID publications synced successfully",
+      data: {
+        user: updatedUser
+      }
+    });
+  } catch (error) {
+    throw new AppError("Failed to sync ORCID publications. Please check your ORCID iD.", 500);
+  }
 });

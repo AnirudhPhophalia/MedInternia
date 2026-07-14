@@ -40,7 +40,7 @@ export default function LearningProgress() {
         const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
         if (!token || !userId) {
-          router.replace('/auth/login');
+          window.location.href = '/auth/login?clear=1';
           return;
         }
 

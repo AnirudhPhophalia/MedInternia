@@ -6,7 +6,13 @@ const AUTH_ROUTES = ['/auth/login', '/auth/register'];
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value || '';
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  if (searchParams.get('clear') === '1') {
+    const response = NextResponse.next();
+    response.cookies.delete('token');
+    return response;
+  }
 
   if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
     if (token) {

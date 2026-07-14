@@ -19,7 +19,8 @@ export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
       salary,
       applicationDeadline,
       contactEmail,
-      externalUrl
+      externalUrl,
+      visaSponsorship
     } = req.body;
 
     // Job managers can post after route-level permission checks.
@@ -42,7 +43,8 @@ export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
       applicationDeadline,
       contactEmail,
       externalUrl,
-      postedBy: req.user!._id
+      postedBy: req.user!._id,
+      visaSponsorship: visaSponsorship === true
     });
 
     await jobOpportunity.save();
@@ -62,6 +64,50 @@ export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Match percentage scoring helper
+export const calculateMatchScore = (user: any, job: any): number => {
+  // 1. Skills Match (60% weight)
+  const userSkillsList = [
+    ...(user.skills || []),
+    ...(user.interests || [])
+  ].map((s: string) => s.trim().toLowerCase());
+  
+  const userSkills = Array.from(new Set(userSkillsList));
+  const jobSkills = (job.requirements?.skills || []).map((s: string) => s.trim().toLowerCase());
+  
+  let skillsScore = 100;
+  if (jobSkills.length > 0) {
+    const matchingSkills = jobSkills.filter((s: string) => userSkills.includes(s));
+    skillsScore = (matchingSkills.length / jobSkills.length) * 100;
+  }
+  
+  // 2. Experience Match (20% weight)
+  const userExp = user.experience || 0;
+  const jobExp = job.requirements?.yearsOfExperience || 0;
+  let experienceScore = 100;
+  if (jobExp > 0) {
+    experienceScore = Math.min((userExp / jobExp) * 100, 100);
+  }
+  
+  // 3. Education Match (20% weight)
+  const userSchool = (user.medicalSchool || '').trim().toLowerCase();
+  const jobEduReq = (job.requirements?.education || '').trim().toLowerCase();
+  
+  let educationScore = 100;
+  if (jobEduReq) {
+    if (userSchool) {
+      const commonMedicalTerms = ['medical', 'school', 'md', 'mbbs', 'do', 'resident', 'intern', 'university'];
+      const hasTermOverlap = commonMedicalTerms.some(term => userSchool.includes(term) && jobEduReq.includes(term))
+        || jobEduReq.split(/\s+/).some((word: string) => word.length > 3 && userSchool.includes(word));
+      educationScore = hasTermOverlap ? 100 : 50;
+    } else {
+      educationScore = 0;
+    }
+  }
+  
+  return Math.round((skillsScore * 0.6) + (experienceScore * 0.2) + (educationScore * 0.2));
+};
+
 // Get all job opportunities with filtering
 export const getJobOpportunities = async (req: Request, res: Response) => {
   try {
@@ -71,6 +117,8 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
       location,
       isRemote,
       isActive,
+      visaSponsorship,
+      maxExperience,
       page = 1,
       limit = 10,
       sortBy = 'createdAt',
@@ -79,7 +127,13 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
 
     const filter: any = {};
     if (type) filter.type = type;
-    if (specialization) filter.specialization = { $in: [specialization] };
+    if (specialization) {
+      if (Array.isArray(specialization)) {
+        filter.specialization = { $in: specialization };
+      } else {
+        filter.specialization = { $in: [specialization] };
+      }
+    }
     if (location) {
       filter.$or = [
         { 'location.city': new RegExp(location as string, 'i') },
@@ -89,6 +143,8 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
     }
     if (isRemote !== undefined) filter['location.isRemote'] = isRemote === 'true';
     if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (visaSponsorship === 'true') filter.visaSponsorship = true;
+    if (maxExperience) filter['requirements.yearsOfExperience'] = { $lte: Number(maxExperience) };
 
     // Filter out expired opportunities
     filter.applicationDeadline = { $gte: new Date() };
@@ -106,9 +162,22 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
 
     const total = await JobOpportunity.countDocuments(filter);
 
+    const user = (req as AuthRequest).user;
+    let enrichedJobs: any[] = jobOpportunities.map(job => job.toObject());
+    
+    if (user) {
+      const fullUser = await User.findById(user._id);
+      if (fullUser) {
+        enrichedJobs = enrichedJobs.map(job => ({
+          ...job,
+          matchPercentage: calculateMatchScore(fullUser, job)
+        }));
+      }
+    }
+
     res.json({
       success: true,
-      data: { jobOpportunities, total, page, totalPages: Math.ceil(total / Number(limit)) }
+      data: { jobOpportunities: enrichedJobs, jobs: enrichedJobs, total, page, totalPages: Math.ceil(total / Number(limit)) }
     });
   } catch (error) {
     console.error('Get job opportunities error:', error);
@@ -135,9 +204,18 @@ export const getJobOpportunityById = async (req: Request, res: Response) => {
       });
     }
 
+    const user = (req as AuthRequest).user;
+    const jobObj = jobOpportunity.toObject();
+    if (user) {
+      const fullUser = await User.findById(user._id);
+      if (fullUser) {
+        (jobObj as any).matchPercentage = calculateMatchScore(fullUser, jobObj);
+      }
+    }
+
     res.json({
       success: true,
-      data: { jobOpportunity }
+      data: { jobOpportunity: jobObj }
     });
   } catch (error) {
     console.error('Get job opportunity error:', error);

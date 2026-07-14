@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import ChatMessage from "./ChatMessage";
+import api from "../utils/api";
 const DiscussionChat = () => {
   const [messages, setMessages] = useState<{ user: string; text: string }[]>([
     {
@@ -31,14 +32,7 @@ const DiscussionChat = () => {
     setLoading(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
-      const response = await fetch(`${backendUrl}/api/chatbot`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      const data = await response.json();
+      const { data } = await api.post('/chatbot', { message: userMessage });
 
       setMessages((prev) => [
         ...prev,

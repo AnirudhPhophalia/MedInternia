@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 import { createAndEmitNotification } from "./notificationController";
 import { Response } from "express";
@@ -14,6 +15,12 @@ import {
 import { analyzeCase } from "../services/aiTaggerService";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
+
+import { extractEntities } from "../services/nerService";
+import { extractSymptoms } from "../services/symptomExtractionService";
+
+import { uploadCaseAttachment } from "../utils/cloudinary";
+
 
 const canModerateComments = (userType?: string) =>
   ["admin", "doctor", "moderator"].includes(userType ?? "");
@@ -201,7 +208,7 @@ export const replyToComment = asyncHandler(
           c.author.toString() === user._id.toString() &&
           c.content === content.trim() &&
           c.replyTo?.toString() ===
-            (parentComment._id as string | { toString(): string }).toString(),
+          (parentComment._id as string | { toString(): string }).toString(),
       )
     ) {
       throw new AppError("Duplicate reply detected", 409);
@@ -316,6 +323,8 @@ export const rateComment = asyncHandler(
       commentId: commentIdObj,
     });
 
+
+
     let rated = false;
     if (existingRating) {
       // Unrate: remove the Rating document and denormalized reference
@@ -340,10 +349,12 @@ export const rateComment = asyncHandler(
         }
         throw err;
       }
+
       await Case.updateOne(
         { _id: caseId, "comments._id": commentId },
         { $addToSet: { "comments.$.ratedBy": userIdObj } },
       );
+
       rated = true;
     }
 
@@ -375,6 +386,40 @@ export const rateComment = asyncHandler(
   },
 );
 
+// Upload a case attachment
+export const uploadAttachment = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError("User not authenticated", 401);
+    }
+    if (!req.file) {
+      throw new AppError("No file uploaded", 400);
+    }
+
+    const uploadResult = await uploadCaseAttachment(req.file, String(req.user._id));
+
+    // Determine attachment type from resource_type or mimetype
+    let type = 'image';
+    if (uploadResult.resource_type === 'video') {
+      if (req.file.mimetype.startsWith('audio/')) {
+        type = 'audio';
+      } else {
+        type = 'video';
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Attachment uploaded successfully",
+      data: {
+        url: uploadResult.secure_url,
+        type,
+        publicId: uploadResult.public_id,
+      },
+    });
+  }
+);
+
 // Create a new case (Doctor only)
 export const createCase = asyncHandler(
   async (req: AuthRequest, res: Response) => {
@@ -397,8 +442,34 @@ export const createCase = asyncHandler(
       description,
       patientInfo,
       images,
+      attachments,
       specialization,
+      isRareDisease,
+      verifiedDoctorsOnly,
+      tags,
+      difficulty,
     } = req.body;
+    let entities;
+
+    try {
+      entities = await extractEntities(description);
+    }
+    catch (error) {
+      console.error("NER service failed:", error);
+
+      const symptoms = extractSymptoms(description);
+
+      entities = {
+        entities: symptoms.map((symptom) => ({
+          text: symptom,
+          label: "SYMPTOM",
+          score: 1,
+          start: 0,
+          end: 0,
+        })),
+      };
+    }
+
 
     const spec = specialization || user.specialization || "General Medicine";
 
@@ -407,28 +478,39 @@ export const createCase = asyncHandler(
 
     // Restrict patient case creation
     if (user.userType === "patient") {
+
+
+      // Patients can't set diagnosis, treatment, or difficulty
+      // These will be limited or undefined
       const newCase = new Case({
         title,
         description,
-        symptoms: aiAnalysis.symptoms,
+        symptoms: req.body.symptoms?.length ? req.body.symptoms : aiAnalysis.symptoms,
         patientInfo: patientInfo || {},
         diagnosis: aiAnalysis.diagnosis,
         treatment: aiAnalysis.treatment,
         images: images || [],
-        tags: aiAnalysis.tags,
-        difficulty: aiAnalysis.difficulty,
-        specialization: aiAnalysis.specialty || spec,
+        attachments: attachments || [],
+
+        tags: tags || [],
+        entities: entities.entities,
+        difficulty: "beginner", // Default for patient cases
+        specialization: "General Medicine", // Default for patients
+
         doctor: user._id as any,
         isPatientCase: true,
-        moderationStatus: "pending",
+        isRareDisease: isRareDisease === true,
+        verifiedDoctorsOnly: verifiedDoctorsOnly === true,
+        moderationStatus: req.body.isFlaggedForReview ? "pending" : "pending",
         moderationAuditTrail: [
           {
             status: "pending",
-            reason: "Patient-submitted case awaiting review",
+            reason: req.body.reviewReason || "Patient-submitted case awaiting review",
             reviewedAt: new Date(),
           },
         ],
       });
+
 
       await newCase.save();
       await newCase.populate("doctor", "firstName lastName");
@@ -451,24 +533,32 @@ export const createCase = asyncHandler(
 
     // Doctor case creation (full features)
     const newCase = new Case({
+
       title,
       description,
-      symptoms: aiAnalysis.symptoms,
+      symptoms: req.body.symptoms?.length ? req.body.symptoms : aiAnalysis.symptoms,
       patientInfo: patientInfo || {},
       diagnosis: aiAnalysis.diagnosis,
       treatment: aiAnalysis.treatment,
       images: images || [],
-      tags: aiAnalysis.tags,
-      difficulty: aiAnalysis.difficulty,
-      specialization: aiAnalysis.specialty || spec,
+
+      tags: tags || [],
+      entities: entities.entities,
+      difficulty,
+      specialization: specialization || user.specialization,
+
+
+      attachments: attachments || [],
       doctor: user._id as any,
       isPatientCase: false,
-      moderationStatus: "approved",
+      isRareDisease: isRareDisease === true,
+      verifiedDoctorsOnly: verifiedDoctorsOnly === true,
+      moderationStatus: req.body.isFlaggedForReview ? "pending" : "approved",
       moderationAuditTrail: [
         {
-          status: "approved",
-          reason: "Doctor-authored case published automatically",
-          reviewedBy: user._id as any,
+          status: req.body.isFlaggedForReview ? "pending" : "approved",
+          reason: req.body.reviewReason || "Doctor-authored case published automatically",
+          reviewedBy: req.body.isFlaggedForReview ? undefined : user._id as any,
           reviewedAt: new Date(),
         },
       ],
@@ -482,6 +572,36 @@ export const createCase = asyncHandler(
     await User.findByIdAndUpdate(user._id, { $inc: { points: pointsForCase } });
 
     await Case.findByIdAndUpdate(newCase._id, { pointsAwarded: pointsForCase });
+
+    // Trigger Automated Peer-Review Matching
+    (async () => {
+      try {
+        const targetSpec = aiAnalysis.specialty || spec;
+        const userObjId = mongoose.Types.ObjectId.isValid(user._id) ? new mongoose.Types.ObjectId(user._id) : user._id;
+        const matchedSpecialists = await User.aggregate([
+          {
+            $match: {
+              isVerifiedDoctor: true,
+              specialization: targetSpec,
+              _id: { $ne: userObjId }
+            }
+          },
+          { $sample: { size: 5 } }
+        ]);
+
+        const specialistsList = Array.isArray(matchedSpecialists) ? matchedSpecialists : [];
+        for (const specialist of specialistsList) {
+          await createAndEmitNotification({
+            recipientId: specialist._id.toString(),
+            type: 'peer_review',
+            message: `A new ${targetSpec} case requires peer review. Your expertise is requested!`,
+            link: `/cases/${newCase._id}`
+          });
+        }
+      } catch (err) {
+        console.error("Failed to execute peer-review matching:", err);
+      }
+    })();
 
     res.status(201).json({
       success: true,
@@ -502,13 +622,33 @@ export const getCases = asyncHandler(
       difficulty,
       tags,
       doctor,
+      isRareDisease,
       page = 1,
       limit = 10,
       search,
       sortBy = "newest",
     } = req.query;
 
-    const filter: any = { isActive: true, $and: [publicCaseFilter] };
+    const user = req.user as any;
+    const isVerifiedDoctor = user && (user.isVerifiedDoctor || user.userType === "admin");
+
+    const filter: any = {
+      isActive: true,
+      $and: [
+        {
+          $or: [
+            publicCaseFilter,
+            { doctor: user?._id },
+            { collaborators: user?._id },
+          ],
+        },
+      ],
+    };
+
+    // Apply RBAC for verified doctors only cases
+    if (!isVerifiedDoctor) {
+      filter.verifiedDoctorsOnly = { $ne: true };
+    }
 
     if (specialization) {
       filter.specialization = { $regex: specialization, $options: "i" };
@@ -516,6 +656,12 @@ export const getCases = asyncHandler(
 
     if (difficulty) {
       filter.difficulty = difficulty;
+    }
+
+    if (isRareDisease === "true") {
+      filter.isRareDisease = true;
+    } else if (isRareDisease === "false") {
+      filter.isRareDisease = false;
     }
 
     if (tags) {
@@ -599,20 +745,37 @@ export const getCaseById = asyncHandler(
     if (!caseData.isActive) {
       throw new AppError("Case is no longer available", 404);
     }
+    const user = req.user as { _id?: string; userType?: string; isVerifiedDoctor?: boolean } | undefined;
 
-    const user = req.user as { _id?: string; userType?: string } | undefined;
+    // RBAC check for restricted cases
+    if (caseData.verifiedDoctorsOnly) {
+      const isVerifiedDoctor = user && (user.isVerifiedDoctor || user.userType === "admin");
+      const isOwner = user?._id && caseData.doctor._id.toString() === user._id.toString();
+
+      if (!isVerifiedDoctor && !isOwner) {
+        throw new AppError("Access Denied: This case is restricted to Verified Doctors only", 403);
+      }
+    }
+
     const isOwner =
-      user?._id && caseData.doctor.toString() === user._id.toString();
+      user?._id && (caseData.doctor._id ? caseData.doctor._id.toString() : caseData.doctor.toString()) === user._id.toString();
     const isApproved =
       !caseData.moderationStatus || caseData.moderationStatus === "approved";
     if (!isApproved && !isOwner && !canModerateCases(user?.userType)) {
       throw new AppError("Case is awaiting moderation", 404);
     }
 
+    const caseObj = caseData.toObject();
+    if (!user || !canModerateComments(user.userType)) {
+      caseObj.comments = caseObj.comments.filter(
+        (c: any) => c.moderationStatus !== 'pending'
+      );
+    }
+
     res.json({
       success: true,
       data: {
-        case: caseData,
+        case: caseObj,
       },
     });
   },
@@ -639,6 +802,14 @@ export const updateCase = asyncHandler(
     }
 
     const updates = req.body;
+    if (updates.description) {
+      try {
+        const result = await extractEntities(updates.description);
+        updates.entities = result.entities;
+      } catch (error) {
+        console.error("NER service failed:", error);
+      }
+    }
     delete updates.doctor; // Prevent changing the doctor
     delete updates.comments; // Comments are handled separately
     delete updates.likes; // Likes are handled separately
@@ -740,10 +911,10 @@ export const addComment = asyncHandler(
     const addedComment = caseData.comments[caseData.comments.length - 1];
 
     // Notify case owner if commenter is a different user
-    const caseAuthorId = (caseData as any).author?.toString();
-    if (caseAuthorId && caseAuthorId !== user._id.toString()) {
+    const caseOwnerId = caseData.doctor?.toString();
+    if (caseOwnerId && caseOwnerId !== user._id.toString()) {
       await createAndEmitNotification({
-        recipientId: caseAuthorId,
+        recipientId: caseOwnerId,
         type: "comment",
         message: `Someone commented on your case: "${(caseData as any).title}"`,
         link: `/cases/${id}`,
@@ -860,13 +1031,31 @@ export const repostCase = asyncHandler(
     if (!caseDoc || !caseDoc.canRepost) {
       throw new AppError("Repost not allowed", 403);
     }
-    // Duplicate case logic (simplified)
     const newCase = new Case({
-      ...caseDoc.toObject(),
-      _id: undefined,
+      title: caseDoc.title,
+      description: caseDoc.description,
+      symptoms: caseDoc.symptoms,
+      patientInfo: caseDoc.patientInfo,
+      diagnosis: caseDoc.diagnosis,
+      treatment: caseDoc.treatment,
+      images: caseDoc.images,
+      tags: caseDoc.tags,
+      difficulty: caseDoc.difficulty,
+      specialization: caseDoc.specialization,
       doctor: user?._id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      likes: [],
+      comments: [],
+      followUps: [],
+      pointsAwarded: 0,
+      moderationStatus: "approved",
+      moderationReason: undefined,
+      reviewedBy: undefined,
+      reviewedAt: undefined,
+      moderationAuditTrail: [],
+      aiSuggestions: undefined,
+      isPatientCase: false,
+      isActive: true,
+      canRepost: caseDoc.canRepost,
     });
     await newCase.save();
     res.json({ success: true, case: newCase });
@@ -924,8 +1113,100 @@ export const toggleLike = asyncHandler(
     });
   },
 );
+// Toggle Star / Unstar
+export const toggleStar = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user;
 
-// Get cases by current doctor
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    const { id } = req.params;
+
+    const caseData = await Case.findById(id);
+
+    if (!caseData) {
+      throw new AppError("Case not found", 404);
+    }
+
+   const userId = user._id?.toString();
+
+if (!userId) {
+  throw new AppError("User not authenticated", 401);
+}
+
+    const index = caseData.starredBy.findIndex(
+      (u) => u.toString() === userId
+    );
+
+    let isStarred = false;
+
+    if (index >= 0) {
+      caseData.starredBy.splice(index, 1);
+      isStarred = false;
+    } else {
+      caseData.starredBy.push(user._id as any);
+      isStarred = true;
+    }
+
+    await caseData.save();
+
+    res.json({
+      success: true,
+      message: isStarred ? "Case starred" : "Case unstarred",
+      data: {
+        isStarred,
+        totalStars: caseData.starredBy.length,
+      },
+    });
+  }
+);
+
+// Get all starred cases
+export const getStarredCases = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user;
+
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    const cases = await Case.find({
+      starredBy: user._id,
+      isActive: true,
+    })
+      .populate("doctor", "firstName lastName specialization")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: {
+        cases,
+      },
+    });
+  }
+);
+// Get cases liked by the current user (for profile "Liked Items" section)
+export const getLikedCases = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { _id: string } | undefined;
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+
+    const cases = await Case.find({ likes: user._id, isActive: true })
+      .populate("doctor", "firstName lastName specialization")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: { cases },
+    });
+  },
+);
+
+// Get cases created by the current case owner
 export const getMyCases = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const user = req.user;
@@ -934,8 +1215,8 @@ export const getMyCases = asyncHandler(
       throw new AppError("User not authenticated", 401);
     }
 
-    if (user.userType !== "doctor") {
-      throw new AppError("Only doctors can view their cases", 403);
+    if (user.userType !== "doctor" && user.userType !== "patient") {
+      throw new AppError("Only doctors and patients can view their cases", 403);
     }
 
     const { page = 1, limit = 10 } = req.query;
@@ -1309,7 +1590,7 @@ export const solveCase = asyncHandler(
     // Update user history
     userDoc.solvedCases = [...solvedList, caseData._id as any];
     userDoc.casesAnalyzed = (userDoc.casesAnalyzed || 0) + 1;
-    
+
     // Award 5 points for solving
     const pointsAwarded = 5;
     userDoc.points = (userDoc.points || 0) + pointsAwarded;
@@ -1401,4 +1682,94 @@ export const getRecommendedCases = asyncHandler(
       }
     });
   }
+);
+
+// Get comment moderation queue (flagged comments)
+export const getFlaggedComments = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { userType?: string };
+    if (!canModerateComments(user?.userType)) {
+      throw new AppError(
+        "Only moderators, admins, and doctors can view the comment moderation queue",
+        403,
+      );
+    }
+
+    // Find cases that have comments with isFlagged: true
+    const casesWithFlaggedComments = await Case.find({
+      "comments.isFlagged": true,
+      isActive: true,
+    })
+      .populate("comments.author", "firstName lastName userType")
+      .populate("doctor", "firstName lastName");
+
+    // Extract all flagged comments with case details
+    const flaggedComments: any[] = [];
+    for (const c of casesWithFlaggedComments) {
+      for (const comment of c.comments) {
+        if (comment.isFlagged && comment.moderationStatus === "pending") {
+          flaggedComments.push({
+            caseId: c._id,
+            caseTitle: c.title,
+            comment: comment,
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        comments: flaggedComments,
+      },
+    });
+  },
+);
+
+// Moderate a flagged comment
+export const moderateComment = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user as { userType?: string };
+    if (!canModerateComments(user?.userType)) {
+      throw new AppError(
+        "Only moderators, admins, and doctors can moderate comments",
+        403,
+      );
+    }
+
+    const { caseId, commentId } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+
+    if (!["approved", "rejected"].includes(status)) {
+      throw new AppError("Status must be approved or rejected", 400);
+    }
+
+    const caseDoc = await Case.findById(caseId);
+    if (!caseDoc) {
+      throw new AppError("Case not found", 404);
+    }
+
+    const comment = caseDoc.comments.find(
+      (c: any) => c._id?.toString() === commentId,
+    );
+    if (!comment) {
+      throw new AppError("Comment not found", 404);
+    }
+
+    comment.moderationStatus = status;
+    if (status === "approved") {
+      comment.isFlagged = false;
+    } else {
+      comment.content = "[Removed by moderator]";
+      comment.isFlagged = false;
+    }
+
+    await caseDoc.save();
+
+    res.json({
+      success: true,
+      message: `Comment successfully ${status}`,
+      data: { comment },
+    });
+  },
 );

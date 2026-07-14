@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Container, Typography, Box, CircularProgress, Alert } from '@mui/material';
 import api from '../../utils/api';
 import PatientCard from '../../components/PatientCard';
+import { withAuth } from '../../components/withAuth';   // 1. add this import
 
-export default function Patients() {
+function Patients() {                                     // 2. remove "export default"
   const [patients, setPatients] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -42,3 +43,5 @@ export default function Patients() {
     </Container>
   );
 }
+
+export default withAuth(Patients);                         // 3. add this at the bottom

@@ -1,8 +1,9 @@
 import type { AppProps } from 'next/app';
-import { ThemeProvider } from '@mui/material/styles';
+import { ReactNode, useEffect } from 'react';
 import { CssBaseline, Snackbar, Alert, Typography } from '@mui/material';
 import { useNotifications } from '../hooks/useNotifications';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import { CustomThemeProvider } from '../context/ThemeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -10,7 +11,47 @@ import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import Head from 'next/head';
 import Chatbot from '../components/Chatbot';
-import medInterniaTheme from '../theme/medInterniaTheme';
+import '../i18n';
+
+const PUBLIC_ROUTES = [
+  '/',
+  '/landing',
+  '/about',
+  '/contact',
+  '/faq',
+  '/privacy',
+  '/terms',
+  '/jobs',
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/change-password',
+  '/404',
+];
+
+function isPublicRoute(pathname: string) {
+  return PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
+function AuthGate({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+  const publicRoute = isPublicRoute(router.pathname);
+
+  useEffect(() => {
+    if (publicRoute || isLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/auth/login?redirect=${encodeURIComponent(router.asPath)}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicRoute, isLoading, isAuthenticated, router.pathname]);
+
+  if (publicRoute) return <>{children}</>;
+  if (isLoading || !isAuthenticated) return null; // blank while validating / before redirect fires
+  return <>{children}</>;
+}
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -24,12 +65,11 @@ function MyApp({ Component, pageProps }: AppProps) {
     '/auth/forgot-password',
   ];
   const showFooter = !hideFooterRoutes.includes(router.pathname);
-  const navbarHeight = medInterniaTheme.custom.navbarHeight;
 
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <ThemeProvider theme={medInterniaTheme}>
+        <CustomThemeProvider>
           <Head>
             <title>MedInternia</title>
             <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -40,6 +80,15 @@ function MyApp({ Component, pageProps }: AppProps) {
               href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
               rel="stylesheet"
             />
+
+            {/* --- PWA META TAGS --- */}
+            <link rel="manifest" href="/manifest.json" />
+            <meta name="theme-color" content="#000000" />
+            <meta name="apple-mobile-web-app-capable" content="yes" />
+            <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+            <meta name="apple-mobile-web-app-title" content="MedInternia" />
+            <link rel="apple-touch-icon" href="/icon-192x192.png" />
+            {/* -------------------------------- */}
           </Head>
 
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflowX: 'hidden', maxWidth: '100%' }}>
@@ -47,13 +96,14 @@ function MyApp({ Component, pageProps }: AppProps) {
             {showNavbar && <Navbar route={router.pathname} />}
             <div
               style={{
-                marginTop: showNavbar ? navbarHeight : 0,
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
               }}
             >
-              <Component {...pageProps} />
+              <AuthGate>
+                <Component {...pageProps} />
+              </AuthGate>
             </div>
             {showFooter && <Footer />}
             <Chatbot />
@@ -74,7 +124,7 @@ function MyApp({ Component, pageProps }: AppProps) {
                 }}
                 sx={{
                   cursor: newToast?.link ? 'pointer' : 'default',
-                  background: (theme) => theme.custom.navbarGradient,
+                  background: (theme: any) => theme.custom.navbarGradient,
                   color: 'white',
                   minWidth: 280,
                   '& .MuiAlert-icon': { color: 'white' },
@@ -87,7 +137,7 @@ function MyApp({ Component, pageProps }: AppProps) {
               </Alert>
             </Snackbar>
           </div>
-        </ThemeProvider>
+        </CustomThemeProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { checkCompliance } from '../services/nerService';
 
 export interface IComment extends Document {
   author: mongoose.Types.ObjectId;
@@ -9,6 +10,9 @@ export interface IComment extends Document {
   ratedBy: mongoose.Types.ObjectId[]; // Array of users who rated
   rating?: number; // Average rating (optional)
   pinned?: boolean; // Indicates if the comment is pinned
+  isFlagged?: boolean;
+  flagReasons?: string[];
+  moderationStatus?: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,13 +30,20 @@ export interface ICase extends Document {
   diagnosis?: string;
   treatment?: string;
   images?: string[];
+  attachments?: {
+    url: string;
+    type: 'image' | 'video' | 'audio';
+    publicId?: string;
+  }[];
   tags: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   specialization: string;
   doctor: mongoose.Types.ObjectId;
   comments: IComment[];
   likes: mongoose.Types.ObjectId[];
+  starredBy: mongoose.Types.ObjectId[];
   isActive: boolean;
+  isRareDisease?: boolean;
   isPatientCase: boolean; // True if posted by patient
   moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested';
   moderationReason?: string;
@@ -46,6 +57,7 @@ export interface ICase extends Document {
   }[];
   pointsAwarded: number; // Points given to doctor for posting
   canRepost: boolean; // Indicates if the case can be reposted
+  verifiedDoctorsOnly: boolean; // Restrict visibility to Verified Doctors
   followUps: {
     author: mongoose.Types.ObjectId;
     content: string;
@@ -53,6 +65,15 @@ export interface ICase extends Document {
     images?: string[];
     createdAt: Date;
   }[];
+
+  entities?: {
+  text: string;
+  label: string;
+  score: number;
+  start: number;
+  end: number;
+}[];
+
   aiSuggestions?: {
     suggestedCases: mongoose.Types.ObjectId[];
     relevanceScore: number;
@@ -98,6 +119,18 @@ const CommentSchema = new Schema<IComment>({
   pinned: {
     type: Boolean,
     default: false
+  },
+  isFlagged: {
+    type: Boolean,
+    default: false
+  },
+  flagReasons: [{
+    type: String
+  }],
+  moderationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved'
   }
 }, {
   timestamps: true
@@ -153,6 +186,11 @@ const CaseSchema = new Schema<ICase>({
     type: String,
     trim: true
   }],
+  attachments: [{
+    url: { type: String, required: true },
+    type: { type: String, enum: ['image', 'video', 'audio'], required: true },
+    publicId: { type: String }
+  }],
   tags: [{
     type: String,
     trim: true,
@@ -178,9 +216,17 @@ const CaseSchema = new Schema<ICase>({
     type: Schema.Types.ObjectId,
     ref: 'User'
   }],
+  starredBy: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   isActive: {
     type: Boolean,
     default: true
+  },
+  isRareDisease: {
+    type: Boolean,
+    default: false
   },
   isPatientCase: {
     type: Boolean,
@@ -228,10 +274,14 @@ const CaseSchema = new Schema<ICase>({
     default: 0,
     min: [0, 'Points awarded cannot be negative']
   },
-    canRepost: {
-      type: Boolean,
-      default: false
-    },
+  canRepost: {
+    type: Boolean,
+    default: false
+  },
+  verifiedDoctorsOnly: {
+    type: Boolean,
+    default: false
+  },
   followUps: [{
     author: {
       type: Schema.Types.ObjectId,
@@ -258,6 +308,23 @@ const CaseSchema = new Schema<ICase>({
       default: Date.now
     }
   }],
+  entities: [{
+  text: {
+    type: String
+  },
+  label: {
+    type: String
+  },
+  score: {
+    type: Number
+  },
+  start: {
+    type: Number
+  },
+  end: {
+    type: Number
+  }
+}],
   aiSuggestions: {
     suggestedCases: [{
       type: Schema.Types.ObjectId,
@@ -275,6 +342,48 @@ const CaseSchema = new Schema<ICase>({
   }
 }, {
   timestamps: true
+});
+
+// Pre-save hook to audit title, description, and comments
+CaseSchema.pre('save', async function(next) {
+  const caseDoc = this;
+
+  // 1. Audit case title or description if modified
+  try {
+    if (caseDoc.isModified('title') && caseDoc.title) {
+      const res = await checkCompliance(caseDoc.title, caseDoc.patientInfo?.age);
+      caseDoc.title = res.redacted_text;
+    }
+    if (caseDoc.isModified('description') && caseDoc.description) {
+      const res = await checkCompliance(caseDoc.description, caseDoc.patientInfo?.age);
+      caseDoc.description = res.redacted_text;
+    }
+  } catch (err) {
+    console.error('Compliance check failed for Case title/description:', err);
+  }
+
+  // 2. Audit new or modified comments
+  for (const comment of caseDoc.comments) {
+    if (comment.isNew || comment.isModified('content')) {
+      try {
+        const res = await checkCompliance(comment.content, caseDoc.patientInfo?.age);
+        comment.content = res.redacted_text;
+        if (res.is_flagged) {
+          comment.isFlagged = true;
+          comment.flagReasons = res.flag_reasons;
+          comment.moderationStatus = 'pending';
+        } else {
+          comment.isFlagged = false;
+          comment.flagReasons = [];
+          comment.moderationStatus = 'approved';
+        }
+      } catch (err) {
+        console.error('Compliance check failed for Comment:', err);
+      }
+    }
+  }
+
+  next();
 });
 
 // Indexes for better performance

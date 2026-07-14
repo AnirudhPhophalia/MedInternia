@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Typography, Stack } from '@mui/material';
+import { Box, Typography, Stack, Button } from '@mui/material';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Stethoscope, Users, Briefcase } from 'lucide-react';
 
 const highlights = [
@@ -153,6 +154,39 @@ export default function AuthLayout({ title, subtitle, children, wide = false }: 
         </Box>
       </Box>
     </Box>
+  );
+}
+
+export function AuthBackLink() {
+  return (
+    <Button
+      component={Link}
+      href="/"
+      variant="text"
+      size="small"
+      aria-label="Back to Home"
+      sx={{
+        mb: 3,
+        px: 0,
+        minWidth: 0,
+        justifyContent: 'flex-start',
+        color: 'primary.main',
+        fontWeight: 700,
+        textTransform: 'none',
+        letterSpacing: 0.2,
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          bgcolor: 'rgba(25, 118, 210, 0.08)',
+          transform: 'translateX(-2px)',
+        },
+        '&:focus-visible': {
+          outline: '3px solid rgba(25, 118, 210, 0.24)',
+          outlineOffset: '3px',
+        },
+      }}
+    >
+      ← Back to Home
+    </Button>
   );
 }
 

@@ -22,6 +22,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ImageIcon from "@mui/icons-material/Image";
+import { withAuth } from "../components/withAuth"; 
 
 
 // Grouped dummy data: 3 doctors, each with 2-3 visits (cases)
@@ -331,8 +332,7 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
     </Dialog>
   );
 }
-
-export default function UploadRawPage() {
+ function UploadRawPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedCase, setSelectedCase] = useState<any>(null);
 
@@ -845,3 +845,4 @@ export default function UploadRawPage() {
     </Box>
   );
 }
+export default UploadRawPage;

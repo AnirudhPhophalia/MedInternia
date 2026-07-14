@@ -53,6 +53,7 @@ interface ProfileFormData {
   medicalSchool: string;
   graduationYear: number | string;
   specialtiesOfInterest: string;
+  skills: string;
   // Doctor-specific fields
   medicalLicenseNumber: string;
   specialtyExpertise: string;
@@ -60,6 +61,7 @@ interface ProfileFormData {
   yearsOfExperience: number | string;
   // Shared fields
   linkedInUrl: string;
+  messagePrivacy: 'anyone' | 'verified_only' | 'none';
 }
 
 // Custom theme for a cohesive look and feel
@@ -169,11 +171,13 @@ const initialFormState: ProfileFormData = {
   medicalSchool: "",
   graduationYear: "",
   specialtiesOfInterest: "",
+  skills: "",
   linkedInUrl: "",
   medicalLicenseNumber: "",
   specialtyExpertise: "",
   hospitalAffiliation: "",
   yearsOfExperience: "",
+  messagePrivacy: 'anyone',
 };
 
 const resolveProfileUser = (payload: any) =>
@@ -183,6 +187,8 @@ export default function EditProfilePage() {
 
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [resumeParsing, setResumeParsing] = useState<boolean>(false);
 
   // State to manage form data, initialized with placeholder values
   const [form, setForm] = useState<ProfileFormData>(initialFormState);
@@ -201,6 +207,45 @@ export default function EditProfilePage() {
     phone: '',
     zip: '',
   });
+
+  const handleResumeUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      setResumeParsing(true);
+      setMessage("");
+      
+      const formData = new FormData();
+      formData.append('resume', file);
+      
+      try {
+        const res = await api.post('/users/profile/parse-resume', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        if (res.data?.success) {
+          const { user } = res.data.data;
+          setMessage("Resume parsed successfully! Profile details updated.");
+          
+          setForm(prevForm => ({
+            ...prevForm,
+            skills: user.skills ? (Array.isArray(user.skills) ? user.skills.join(', ') : user.skills) : "",
+            medicalSchool: user.medicalSchool || prevForm.medicalSchool,
+            graduationYear: user.yearOfStudy || prevForm.graduationYear,
+            bio: user.bio || prevForm.bio
+          }));
+        } else {
+          setMessage(res.data?.message || "Failed to parse resume.");
+        }
+      } catch (err: any) {
+        console.error("Resume parsing error:", err);
+        setMessage(err.response?.data?.message || "An error occurred during resume parsing.");
+      } finally {
+        setResumeParsing(false);
+      }
+    }
+  };
 
   // Use useEffect to change the avatar whenever the role changes
   useEffect(() => {
@@ -258,11 +303,13 @@ export default function EditProfilePage() {
               medicalSchool: user.medicalSchool || "",
               graduationYear: user.yearOfStudy || user.graduationYear || "",
               specialtiesOfInterest: user.interests ? Array.isArray(user.interests) ? user.interests.join(', ') : user.interests : "",
+              skills: user.skills ? Array.isArray(user.skills) ? user.skills.join(', ') : user.skills : "",
               linkedInUrl: user.linkedInProfile || user.linkedInUrl || "",
               medicalLicenseNumber: user.licenseNumber || user.medicalLicenseNumber || "",
               specialtyExpertise: user.specialization || user.specialtyExpertise || "",
               hospitalAffiliation: user.hospitalAffiliation || user.hospital || "",
               yearsOfExperience: user.experience || user.yearsOfExperience || "",
+              messagePrivacy: user.messagePrivacy || 'anyone',
             }));
         }
       } catch (err) {
@@ -295,6 +342,11 @@ export default function EditProfilePage() {
   const handleRoleChange = (event: SelectChangeEvent<"Intern" | "Doctor" | "Patient">) => {
     const role = event.target.value as "Intern" | "Doctor" | "Patient";
     setForm({ ...form, role });
+  };
+
+  const handleMessagePrivacyChange = (event: SelectChangeEvent<"anyone" | "verified_only" | "none">) => {
+    const messagePrivacy = event.target.value as "anyone" | "verified_only" | "none";
+    setForm({ ...form, messagePrivacy });
   };
 
   // Handles the change in profile picture from file input (store file in state, don't upload yet)
@@ -373,11 +425,15 @@ export default function EditProfilePage() {
           : (typeof form.specialtiesOfInterest === 'string' && form.specialtiesOfInterest.length > 0
               ? form.specialtiesOfInterest.split(',').map(s => s.trim()).filter(Boolean)
               : []),
+        skills: typeof form.skills === 'string' && form.skills.length > 0
+          ? form.skills.split(',').map(s => s.trim()).filter(Boolean)
+          : [],
         licenseNumber: form.medicalLicenseNumber,
         specialization: form.specialtyExpertise,
         hospitalAffiliation: form.hospitalAffiliation,
         experience: form.yearsOfExperience ? Number(form.yearsOfExperience) : undefined,
         linkedInProfile: form.linkedInUrl,
+        messagePrivacy: form.messagePrivacy,
       };
       const res = await api.put(`/users/${userId}/profile`, payload);
       const data = res.data;
@@ -620,6 +676,41 @@ export default function EditProfilePage() {
             
               {form.role === "Intern" && (
                 <Stack spacing={2}>
+                  {/* Resume Upload Dropzone */}
+                  <Box sx={{ 
+                    p: 3, 
+                    border: '2px dashed #0072ff', 
+                    borderRadius: 3, 
+                    bgcolor: 'rgba(0, 114, 255, 0.02)', 
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    mb: 1,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: 'rgba(0, 114, 255, 0.05)',
+                      borderColor: '#005ed6'
+                    }
+                  }}
+                  onClick={() => resumeInputRef.current?.click()}
+                  >
+                    <input
+                      ref={resumeInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      style={{ display: 'none' }}
+                      onChange={handleResumeUpload}
+                    />
+                    <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                      {resumeParsing && <CircularProgress size={20} />}
+                      <Typography variant="body2" fontWeight={600} color="primary">
+                        {resumeParsing ? 'Extracting Resume Details...' : 'Click to Upload Resume (PDF, DOCX, TXT)'}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      We'll automatically extract your skills, medical school, and profile bio!
+                    </Typography>
+                  </Box>
+
                   <TextField
                     label="Medical School/University"
                     name="medicalSchool"
@@ -641,6 +732,15 @@ export default function EditProfilePage() {
                     fullWidth
                     value={form.specialtiesOfInterest}
                     onChange={handleInputChange}
+                  />
+                  <TextField
+                    label="Extracted Skills (comma-separated)"
+                    name="skills"
+                    fullWidth
+                    value={form.skills}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Surgery, Patient Care, CPR"
+                    helperText="Upload your resume above to automatically extract and populate these details."
                   />
                 </Stack>
               )}
@@ -697,6 +797,21 @@ export default function EditProfilePage() {
               <KeyIcon /> Password & Privacy
             </Typography>
             <Stack spacing={2} mb={4}>
+              <FormControl fullWidth>
+                <InputLabel id="message-privacy-label">Who can direct message you?</InputLabel>
+                <Select
+                  labelId="message-privacy-label"
+                  id="messagePrivacy"
+                  value={form.messagePrivacy}
+                  label="Who can direct message you?"
+                  onChange={handleMessagePrivacyChange}
+                >
+                  <MenuItem value="anyone">Anyone</MenuItem>
+                  <MenuItem value="verified_only">Connections / Verified Users Only</MenuItem>
+                  <MenuItem value="none">No one (Disable DMs)</MenuItem>
+                </Select>
+              </FormControl>
+
               <Button
                   variant="outlined"
                   color="primary"

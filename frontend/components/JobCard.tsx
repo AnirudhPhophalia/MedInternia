@@ -1,6 +1,7 @@
 import { Card, CardContent, Typography, Button, Box } from "@mui/material";
 import Link from "next/link";
 import DeadlineCountdown from "./DeadlineCountdown";
+import BookmarkButton from "./BookmarkButton";
 
 export default function JobCard({ job }: { job: any }) {
   return (
@@ -22,20 +23,23 @@ export default function JobCard({ job }: { job: any }) {
       }}
     >
       <CardContent sx={{ p: 0 }}>
-        <Typography
-          variant="h6"
-          fontWeight={700}
-          color="#0056cc"
-          gutterBottom
-          component={Link}
-          href={`/jobs/${job._id}`}
-          sx={{
-            textDecoration: "none",
-            "&:hover": { textDecoration: "underline" },
-          }}
-        >
-          {job.title}
-        </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Typography
+                variant="h6"
+                fontWeight={700}
+                color="#0056cc"
+                gutterBottom
+                component={Link}
+                href={`/jobs/${job._id}`}
+                sx={{
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              >
+                {job.title}
+              </Typography>
+              <BookmarkButton itemType="job" itemId={job._id} />
+            </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           {job.description}
         </Typography>
