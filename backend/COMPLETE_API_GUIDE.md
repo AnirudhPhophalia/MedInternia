@@ -27,6 +27,8 @@ POST http://localhost:3000/api/auth/logout
 GET  http://localhost:3000/api/auth/validate-token
 ```
 
+Protected routes above require authentication. For browser sessions, the backend sets a token cookie on login/register; for API clients, use `Authorization: Bearer <token>`.
+
 ### User Management Endpoints
 ```text
 GET  http://localhost:3000/api/patients
@@ -140,5 +142,5 @@ Protected auth routes currently include:
 
 ## Notes
 
-- The backend supports more than just patient and doctor roles.
+- The documented and actively used user model currently centers on patient, doctor, intern, and admin accounts.
 - Some parts of the codebase are still under active development, so avoid describing this guide as production-ready.
