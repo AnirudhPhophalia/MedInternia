@@ -1643,6 +1643,13 @@ const RecommendedConnections = () => {
 };
 
 const Landing = () => {
+  React.useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      window.location.href = '/auth/login?clear=1';
+    }
+  }, []);
+
   const [activeCategory, setActiveCategory] = useState("All");
   const notificationCategories = [
     { label: "All", count: 8 },

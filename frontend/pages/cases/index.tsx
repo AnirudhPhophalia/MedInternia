@@ -76,20 +76,23 @@ export default function Cases() {
   // Check login state and permissions
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      setIsLoggedIn(true);
-
-      // Fetch recommended cases
-      api
-        .get("/cases/recommended")
-        .then((res) => {
-          setRecommendedCases(res.data?.data?.cases || []);
-          setRecMessage(res.data?.message || "");
-        })
-        .catch((err) => {
-          console.warn("Failed to fetch recommended cases", err);
-        });
+    if (!token) {
+      window.location.href = '/auth/login?clear=1';
+      return;
     }
+    
+    setIsLoggedIn(true);
+
+    // Fetch recommended cases
+    api
+      .get("/cases/recommended")
+      .then((res) => {
+        setRecommendedCases(res.data?.data?.cases || []);
+        setRecMessage(res.data?.message || "");
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch recommended cases", err);
+      });
     // Remove the standalone fetch here so we don't double fetch, fetchCases handles it
   }, []);
 

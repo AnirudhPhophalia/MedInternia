@@ -59,7 +59,7 @@ const router = express.Router();
 
 // Authenticated case browsing routes
 router.get('/recommended', authenticate, getRecommendedCases);
-router.get('/', optionalAuthenticate, getCases);
+router.get('/', authenticate, getCases);
 router.get('/my/cases', authenticate, getMyCases);
 router.get('/liked', authenticate, getLikedCases);
 router.get('/starred', authenticate, getStarredCases);
@@ -76,7 +76,7 @@ router.post('/', authenticate, requirePermission('case:create'), checkPlagiarism
 router.post('/ai-posts/schedule', authenticate, requirePermission('case:create'), scheduleAICasePost);
 router.patch('/ai-posts/:scheduleId/review', authenticate, requirePermission('comment:moderate'), reviewAICasePost);
 router.post('/ai-posts/publish-due', authenticate, requirePermission('comment:moderate'), publishDueAICasePosts);
-router.get('/:id', optionalAuthenticate, getCaseById);
+router.get('/:id', authenticate, getCaseById);
 router.put('/:id', authenticate, requirePermission('case:update'), checkPlagiarismAndAI, updateCase);
 router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
 router.patch('/:id/moderation', authenticate, requirePermission('comment:moderate'), moderateCase);

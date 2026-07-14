@@ -72,21 +72,23 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   useEffect(() => {
     if (!id) return;
     const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/auth/login?clear=1';
+      return;
+    }
     
     // Fetch profile to check solved list
-    if (token) {
-      api.get('/auth/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => {
-        const user = res.data.data.user;
-        setCurrentUser(user);
-        if (user.solvedCases) {
-          setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
-        }
-      })
-      .catch(err => console.warn('Failed to fetch profile', err));
-    }
+    api.get('/auth/profile', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => {
+      const user = res.data.data.user;
+      setCurrentUser(user);
+      if (user.solvedCases) {
+        setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
+      }
+    })
+    .catch(err => console.warn('Failed to fetch profile', err));
 
     api.get(`/cases/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
