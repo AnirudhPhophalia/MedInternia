@@ -48,6 +48,14 @@ const syncExpiredWebinars = async () => {
   }
 };
 
+const manageableWebinarQuery = (id: string, user: NonNullable<AuthRequest['user']>) => {
+  if (user.userType === 'admin') {
+    return { _id: id };
+  }
+
+  return { _id: id, host: user._id };
+};
+
 // Create webinar
 export const createWebinar = async (req: AuthRequest, res: Response) => {
   try {
@@ -378,9 +386,8 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-    const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findOne(manageableWebinarQuery(id, req.user!));
     if (!webinar) {
       return res.status(404).json({
         success: false,
@@ -411,9 +418,8 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { userId, attended } = req.body;
-    const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findOne(manageableWebinarQuery(id, req.user!));
     if (!webinar) {
       return res.status(404).json({
         success: false,
@@ -547,9 +553,8 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
     await syncExpiredWebinars();
 
     const { id } = req.params;
-    const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findOne(manageableWebinarQuery(id, req.user!));
     if (!webinar) {
       return res.status(404).json({
         success: false,
