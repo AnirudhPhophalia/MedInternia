@@ -53,6 +53,23 @@ interface JobApplication {
   appliedDate: string;
 }
 
+const formatJobLocation = (location: any): string => {
+  if (!location) return 'Location not specified';
+  if (typeof location === 'string') return location;
+  if (location.isRemote) return 'Remote';
+  return [location.city, location.state, location.country].filter(Boolean).join(', ') || 'Location not specified';
+};
+
+const formatJobSalary = (salary: any): string => {
+  if (!salary) return '';
+  if (typeof salary === 'string') return salary;
+  const currency = salary.currency || 'USD';
+  if (salary.min != null && salary.max != null) return `${currency} ${salary.min}-${salary.max}`;
+  if (salary.min != null) return `${currency} ${salary.min}+`;
+  if (salary.max != null) return `Up to ${currency} ${salary.max}`;
+  return '';
+};
+
 const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
   <Card sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
     <CardContent sx={{ p: 3 }}>
@@ -75,7 +92,7 @@ const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
                 {j.title}
               </Typography>
               <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1.5 }}>
-                {j.location}
+                {formatJobLocation(j.location)}
               </Typography>
               <Button 
                 variant="outlined" 
@@ -237,7 +254,7 @@ export default function Jobs() {
       id: job._id,
       title: job.title,
       company: job.company || 'MedInternia Hospital Group',
-      location: job.location,
+      location: formatJobLocation(job.location),
       status: 'Applied',
       appliedDate: new Date().toLocaleDateString()
     };
@@ -419,7 +436,7 @@ export default function Jobs() {
                                   </Stack>
                                   <Stack direction="row" spacing={0.5} alignItems="center">
                                     <RoomIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="caption">{j.location}</Typography>
+                                    <Typography variant="caption">{formatJobLocation(j.location)}</Typography>
                                   </Stack>
                                 </Stack>
                               </Box>
@@ -451,7 +468,7 @@ export default function Jobs() {
                                   }}
                                 />
                               )}
-                              {j.salary && <Chip label={j.salary} size="small" variant="outlined" />}
+                              {formatJobSalary(j.salary) && <Chip label={formatJobSalary(j.salary)} size="small" variant="outlined" />}
                               <DeadlineCountdown deadline={j.applicationDeadline} />
                             </Box>
 
@@ -520,7 +537,7 @@ export default function Jobs() {
                                 <Typography variant="h6" fontWeight={700} color="primary">
                                   {j.title}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary">{j.location}</Typography>
+                                <Typography variant="body2" color="text.secondary">{formatJobLocation(j.location)}</Typography>
                               </Box>
                               <IconButton onClick={() => toggleSaveJob(j._id)} color="primary">
                                 <BookmarkIcon />
