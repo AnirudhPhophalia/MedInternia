@@ -16,10 +16,29 @@ npm run build
 npm start
 ```
 
+PowerShell:
+```powershell
+cd backend
+Copy-Item .env.example .env
+# fill values in .env
+npm install
+npm run build
+npm start
+```
+
 Frontend:
 ```
 cd frontend
 cp .env.example .env
+# fill values in .env
+npm install
+npm run dev
+```
+
+PowerShell:
+```powershell
+cd frontend
+Copy-Item .env.example .env
 # fill values in .env
 npm install
 npm run dev
