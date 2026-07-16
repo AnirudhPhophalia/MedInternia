@@ -89,7 +89,12 @@ export const getMentorshipById = async (req: Request, res: Response): Promise<an
 export const updateMentorshipStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status } = req.body;
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
+    const userId = user.id;
+
+    if (!['pending', 'active', 'rejected', 'completed'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid mentorship status' });
+    }
 
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
@@ -99,8 +104,17 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
       });
     }
 
-    // Only mentor can accept/reject
-    if (mentorship.mentor.toString() !== userId && status !== 'completed') {
+    const isMentor = mentorship.mentor.toString() === userId;
+    const isMentee = mentorship.mentee.toString() === userId;
+    const isAdmin = user.userType === 'admin';
+
+    if (!isMentor && !isMentee && !isAdmin) {
+      res.status(403).json({ success: false, message: 'Not authorized to update this mentorship' });
+      return;
+    }
+
+    // Only mentors and admins can accept or reject requests.
+    if ((status === 'active' || status === 'rejected') && !isMentor && !isAdmin) {
       res.status(403).json({ success: false, message: 'Only the mentor can update this status' });
       return;
     }
