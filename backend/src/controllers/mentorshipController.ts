@@ -117,12 +117,23 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
 export const addGoal = async (req: Request, res: Response): Promise<any> => {
   try {
     const { title, description } = req.body;
+    const user = (req as any).user;
+    const userId = user.id;
+
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
       return res.status(404).json({
         success: false,
         message: "Mentorship not found",
       });
+    }
+
+    const isParticipant =
+      mentorship.mentor.toString() === userId ||
+      mentorship.mentee.toString() === userId;
+
+    if (!isParticipant && user.userType !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this mentorship' });
     }
 
     mentorship.goals.push({ title, description, isCompleted: false } as any);
