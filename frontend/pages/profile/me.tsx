@@ -19,6 +19,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SchoolIcon from '@mui/icons-material/School';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import Link from 'next/link';
 import api from '../../utils/api';
@@ -238,6 +239,9 @@ export default function MeProfilePage() {
               </Button>
               <Button fullWidth variant="outlined" component={Link} href="/profile/cases" sx={{ borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }} startIcon={<LibraryBooksIcon />}>
                 My Cases
+              </Button>
+              <Button fullWidth variant="outlined" component={Link} href="/profile/saved" sx={{ borderRadius: 2, justifyContent: 'flex-start', textTransform: 'none' }} startIcon={<BookmarkIcon />}>
+                Saved Items
               </Button>
             </Stack>
           </Card>

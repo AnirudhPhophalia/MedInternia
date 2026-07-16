@@ -6,8 +6,9 @@ import {
 import api from '../../utils/api';
 import { BookOpen, Award, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/router';
+import { withAuth } from '../../components/withAuth';
 
-export default function LearningPathsDashboard() {
+function LearningPathsDashboard() {
   const [paths, setPaths] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -19,9 +20,11 @@ export default function LearningPathsDashboard() {
   const fetchPaths = async () => {
     try {
       const response = await api.get('/learning-paths');
-      setPaths(response.data.data.learningPaths);
+      const fetchedPaths = response.data.data.learningPaths || [];
+      setPaths(fetchedPaths);
     } catch (error) {
       console.error('Failed to fetch learning paths', error);
+      setPaths([]);
     } finally {
       setLoading(false);
     }
@@ -169,3 +172,4 @@ export default function LearningPathsDashboard() {
     </>
   );
 }
+export default withAuth(LearningPathsDashboard);

@@ -43,17 +43,73 @@ export const getMessages = asyncHandler(async (req: AuthRequest, res: Response) 
     .populate('sender', 'firstName lastName profilePicture')
     .sort({ createdAt: 1 });
 
-  // Mark messages as read
-  await Message.updateMany(
-    { conversationId, sender: { $ne: userId }, readAt: null },
-    { readAt: new Date() }
-  );
+  // Check if there are unread messages to mark as read
+  const unreadCount = await Message.countDocuments({
+    conversationId,
+    sender: { $ne: userId },
+    readAt: null
+  });
+
+  if (unreadCount > 0) {
+    await Message.updateMany(
+      { conversationId, sender: { $ne: userId }, readAt: null },
+      { readAt: new Date() }
+    );
+
+    // Notify the sender that messages have been read
+    const otherParticipant = conversation.participants.find(
+      (p) => p.toString() !== userId?.toString()
+    );
+    if (otherParticipant) {
+      emitToUser(otherParticipant.toString(), 'messages_read', {
+        conversationId,
+        readBy: userId
+      });
+    }
+  }
 
   res.json({
     success: true,
     data: {
       messages
     }
+  });
+});
+
+// Mark messages as read manually/in real-time
+export const markAsRead = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { conversationId } = req.params;
+  const userId = req.user?._id;
+
+  const conversation = await Conversation.findOne({
+    _id: conversationId,
+    participants: userId
+  });
+
+  if (!conversation) {
+    throw new AppError("Conversation not found", 404);
+  }
+
+  const result = await Message.updateMany(
+    { conversationId, sender: { $ne: userId }, readAt: null },
+    { readAt: new Date() }
+  );
+
+  if (result.modifiedCount > 0) {
+    const otherParticipant = conversation.participants.find(
+      (p) => p.toString() !== userId?.toString()
+    );
+    if (otherParticipant) {
+      emitToUser(otherParticipant.toString(), 'messages_read', {
+        conversationId,
+        readBy: userId
+      });
+    }
+  }
+
+  res.json({
+    success: true,
+    message: "Messages marked as read"
   });
 });
 

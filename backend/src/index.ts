@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { setSocketIO } from './utils/socket';
@@ -15,6 +15,27 @@ import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
 
+function sanitizeObject(obj: any, path = ''): void {
+  if (!obj || typeof obj !== 'object') return;
+  for (const key of Object.keys(obj)) {
+    if (key.startsWith('$') || key.includes('.')) {
+      console.warn(`Sanitized suspicious key: ${path}${key}`);
+      delete obj[key];
+    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+      sanitizeObject(obj[key], `${path}${key}.`);
+    }
+  }
+}
+
+function mongoSanitizeMiddleware(req: Request, _res: Response, next: NextFunction) {
+  sanitizeObject(req.body);
+  sanitizeObject(req.params);
+  sanitizeObject(req.query);
+  next();
+}
+
+
+
 // Process-level handlers to prevent crash-induced state loss
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('Unhandled Rejection:', reason);
@@ -25,6 +46,7 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 const app: Application = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Initialize application
@@ -43,7 +65,7 @@ app.use(helmet());
 const defaultAllowedOrigins = [
   'https://medinternia.vercel.app',
   'https://med-internia.vercel.app',
-  'http://localhost:3000',
+  'http://localhost:3005',
   'http://localhost:3001',
   'http://localhost:5173',
   'http://127.0.0.1:3000',
@@ -118,6 +140,10 @@ app.use('/uploads', (req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Sanitize request data to prevent NoSQL injection attacks
+// Removes prohibited characters from keys and values (e.g., $ and .)
+app.use(mongoSanitizeMiddleware);
 
 // Routes
 app.get('/health', (req: Request, res: Response) => {
@@ -202,6 +228,14 @@ io.on('connection', (socket) => {
   socket.on('leave_webinar', (webinarId: string) => {
     socket.leave(`webinar:${webinarId}`);
     console.log(`User ${userId} left webinar room: webinar:${webinarId}`);
+  });
+
+  socket.on('typing', ({ conversationId, receiverId, isTyping }: { conversationId: string; receiverId: string; isTyping: boolean }) => {
+    io.to(`user:${receiverId}`).emit('typing_status', {
+      conversationId,
+      senderId: userId,
+      isTyping
+    });
   });
 
   socket.on('disconnect', () => {

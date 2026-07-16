@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Typography, Stack } from '@mui/material';
+import { Box, Typography, Stack, Button } from '@mui/material';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Stethoscope, Users, Briefcase } from 'lucide-react';
 
 const highlights = [
@@ -69,8 +70,8 @@ export default function AuthLayout({ title, subtitle, children, wide = false }: 
             <Image
               src="/med-internia-logo.jpg"
               alt="MedInternia logo"
-              width={48}
-              height={48}
+              width={60}
+              height={60}
               style={{ borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)' }}
             />
             <Typography variant="h5" fontWeight={800} color="#fff" letterSpacing={0.5}>
@@ -140,9 +141,10 @@ export default function AuthLayout({ title, subtitle, children, wide = false }: 
             <Image
               src="/med-internia-logo.jpg"
               alt="MedInternia logo"
-              width={36}
-              height={36}
-              style={{ borderRadius: '50%' }}
+              width={48}
+              height={48}
+              style={{ borderRadius: '50%' 
+              }}
             />
             <Typography variant="h6" fontWeight={800} color="primary.main">
               MedInternia
@@ -153,6 +155,39 @@ export default function AuthLayout({ title, subtitle, children, wide = false }: 
         </Box>
       </Box>
     </Box>
+  );
+}
+
+export function AuthBackLink() {
+  return (
+    <Button
+      component={Link}
+      href="/"
+      variant="text"
+      size="small"
+      aria-label="Back to Home"
+      sx={{
+        mb: 3,
+        px: 0,
+        minWidth: 0,
+        justifyContent: 'flex-start',
+        color: 'primary.main',
+        fontWeight: 700,
+        textTransform: 'none',
+        letterSpacing: 0.2,
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          bgcolor: 'rgba(25, 118, 210, 0.08)',
+          transform: 'translateX(-2px)',
+        },
+        '&:focus-visible': {
+          outline: '3px solid rgba(25, 118, 210, 0.24)',
+          outlineOffset: '3px',
+        },
+      }}
+    >
+      ← Back to Home
+    </Button>
   );
 }
 

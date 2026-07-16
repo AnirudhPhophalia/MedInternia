@@ -1,6 +1,14 @@
 import jwt from 'jsonwebtoken';
 import type { AppRole } from '../middleware/permissions';
 
+function getJWTSecret(): string {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "fallback_secret") {
+    throw new Error("CRITICAL: JWT_SECRET must be set.");
+  }
+
+  return process.env.JWT_SECRET;
+}
+
 const MIN_SECRET_LENGTH = 32;
 
 /**
@@ -19,16 +27,6 @@ export function assertValidSecret(name: string, value: string | undefined): asse
   }
 }
 
-try {
-  assertValidSecret('JWT_SECRET', process.env.JWT_SECRET);
-  if (process.env.JWT_REFRESH_SECRET) {
-    assertValidSecret('JWT_REFRESH_SECRET', process.env.JWT_REFRESH_SECRET);
-  }
-} catch (err) {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-}
-
 export interface JwtPayload {
   userId: string;
   email: string;
@@ -37,33 +35,25 @@ export interface JwtPayload {
 }
 
 export const generateToken = (payload: JwtPayload, rememberMe: boolean = false): string => {
-  const secret = process.env.JWT_SECRET;
+  const secret = getJWTSecret();
   const expiresIn = rememberMe ? '7d' : '15m';
-
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-  }
 
   return jwt.sign(payload, secret, { expiresIn });
 };
 
 export const generateRefreshToken = (payload: JwtPayload): string => {
-  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-  }
+  const secret = process.env.JWT_REFRESH_SECRET || getJWTSecret();
+
   return jwt.sign(payload, secret, { expiresIn: '7d' });
 };
 
 export const verifyToken = (token: string): JwtPayload | null => {
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined in environment variables');
-  }
+  const secret = getJWTSecret()
 
   try {
-    const decoded = jwt.verify(token, secret) as JwtPayload;
+    const decoded = jwt.verify(token, secret, {
+      ignoreExpiration: false,
+    }) as JwtPayload;
     return decoded;
   } catch (error) {
     return null;
@@ -71,12 +61,12 @@ export const verifyToken = (token: string): JwtPayload | null => {
 };
 
 export const verifyRefreshToken = (token: string): JwtPayload | null => {
-  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_REFRESH_SECRET is not defined in environment variables');
-  }
+  const secret = process.env.JWT_REFRESH_SECRET || getJWTSecret();
+
   try {
-    const decoded = jwt.verify(token, secret) as JwtPayload;
+    const decoded = jwt.verify(token, secret, {
+      ignoreExpiration: false,
+    }) as JwtPayload;
     return decoded;
   } catch (error) {
     return null;

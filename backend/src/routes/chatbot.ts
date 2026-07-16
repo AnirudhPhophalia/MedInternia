@@ -1,13 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { getChatbotResponse } from '../services/chatbotService';
+import { optionalAuthenticate } from '../middleware/auth';
+import { chatbotLimiter } from '../middleware/otpRateLimiter';
 
 const router = Router();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', optionalAuthenticate, chatbotLimiter, async (req: Request, res: Response) => {
   const { message } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim() === '') {
     return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  if (message.length > 500) {
+    return res.status(400).json({ error: 'Message is too long. Maximum 500 characters allowed.' });
   }
 
   try {

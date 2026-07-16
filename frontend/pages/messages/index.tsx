@@ -4,8 +4,10 @@ import {
   Container, Box, Typography, Grid, List, ListItem, ListItemButton, ListItemText, ListItemAvatar,
   Avatar, TextField, Button, Paper, Divider, CircularProgress, Alert
 } from '@mui/material';
-import api from '../../utils/api';
+import api, { getSocketUrl } from '../../utils/api';
 import { io, Socket } from 'socket.io-client';
+import DoneIcon from '@mui/icons-material/Done';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 
 interface User {
   _id: string;
@@ -24,8 +26,9 @@ interface Conversation {
 
 interface Message {
   _id: string;
-  sender: User;
+  sender: User | string;
   content: string;
+  readAt?: string;
   createdAt: string;
 }
 
@@ -40,9 +43,20 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [error, setError] = useState('');
-  
+
+  // New states for cache, typing indicator, and new chat recipient info
+  const [messagesCache, setMessagesCache] = useState<Record<string, Message[]>>({});
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
+  const [newChatUser, setNewChatUser] = useState<User | null>(null);
+
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentUserRef = useRef<User | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -63,24 +77,83 @@ export default function MessagesPage() {
         // Connect socket
         const token = localStorage.getItem('token');
         if (token) {
-          socketRef.current = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001', {
+          const socketUrl = getSocketUrl();
+          socketRef.current = io(socketUrl, {
             auth: { token }
           });
 
           socketRef.current.on('new_message', (data: { message: Message, conversationId: string }) => {
+            // Update conversation lastMessage
             setConversations(prev => {
               const updated = [...prev];
               const idx = updated.findIndex(c => c._id === data.conversationId);
               if (idx !== -1) {
                 updated[idx].lastMessage = data.message.content;
                 updated[idx].updatedAt = new Date().toISOString();
+              } else {
+                // Fetch conversations list again if it's a new one not in list
+                api.get('/messages/conversations').then(res => {
+                  setConversations(res.data.data.conversations);
+                }).catch(console.error);
               }
               return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
             });
 
+            // Update messages if conversation is active
             setActiveConversationId(currentActive => {
               if (currentActive === data.conversationId) {
-                setMessages(prev => [...prev, data.message]);
+                setMessages(prev => {
+                  const updated = [...prev, data.message];
+                  setMessagesCache(cache => ({
+                    ...cache,
+                    [data.conversationId]: updated
+                  }));
+                  // Call API to mark as read immediately since we are viewing it
+                  api.patch(`/messages/${data.conversationId}/read`).catch(console.error);
+                  return updated;
+                });
+              } else {
+                // Update messages in cache for background conversation
+                setMessagesCache(cache => {
+                  if (cache[data.conversationId]) {
+                    return {
+                      ...cache,
+                      [data.conversationId]: [...cache[data.conversationId], data.message]
+                    };
+                  }
+                  return cache;
+                });
+              }
+              return currentActive;
+            });
+          });
+
+          socketRef.current.on('typing_status', (data: { conversationId: string, senderId: string, isTyping: boolean }) => {
+            setActiveConversationId(currentActive => {
+              if (currentActive === data.conversationId) {
+                setIsOtherUserTyping(data.isTyping);
+              }
+              return currentActive;
+            });
+          });
+
+          socketRef.current.on('messages_read', (data: { conversationId: string, readBy: string }) => {
+            setActiveConversationId(currentActive => {
+              if (currentActive === data.conversationId) {
+                setMessages(prev => {
+                  const updated = prev.map(m => {
+                    const senderId = typeof m.sender === 'string' ? m.sender : m.sender?._id;
+                    if (senderId === currentUserRef.current?._id && !m.readAt) {
+                      return { ...m, readAt: new Date().toISOString() };
+                    }
+                    return m;
+                  });
+                  setMessagesCache(cache => ({
+                    ...cache,
+                    [data.conversationId]: updated
+                  }));
+                  return updated;
+                });
               }
               return currentActive;
             });
@@ -95,6 +168,7 @@ export default function MessagesPage() {
 
     return () => {
       socketRef.current?.disconnect();
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, []);
 
@@ -104,6 +178,22 @@ export default function MessagesPage() {
       handleStartChat(userId as string);
     }
   }, [userId, currentUser]);
+
+  useEffect(() => {
+    if (activeConversationId?.startsWith('new-')) {
+      const targetUserId = activeConversationId.replace('new-', '');
+      api.get(`/users/${targetUserId}/public`)
+        .then(res => {
+          setNewChatUser(res.data.data.user);
+        })
+        .catch(err => {
+          console.error('Failed to load user info', err);
+        });
+    } else {
+      setNewChatUser(null);
+    }
+    setIsOtherUserTyping(false);
+  }, [activeConversationId]);
 
   const handleStartChat = async (targetUserId: string) => {
     if (targetUserId === currentUser?._id) return;
@@ -116,6 +206,7 @@ export default function MessagesPage() {
     if (existing) {
       setActiveConversationId(existing._id);
       fetchMessages(existing._id);
+      api.patch(`/messages/${existing._id}/read`).catch(console.error);
     } else {
       // Set a temporary state so we can send the first message
       // Real conversation will be created on first message send
@@ -128,9 +219,20 @@ export default function MessagesPage() {
       setMessages([]);
       return;
     }
+
+    // Load from cache first
+    if (messagesCache[convId]) {
+      setMessages(messagesCache[convId]);
+    }
+
     try {
       const res = await api.get(`/messages/${convId}`);
-      setMessages(res.data.data.messages);
+      const fetchedMessages = res.data.data.messages;
+      setMessages(fetchedMessages);
+      setMessagesCache(prev => ({
+        ...prev,
+        [convId]: fetchedMessages
+      }));
     } catch (err) {
       console.error(err);
     }
@@ -139,6 +241,37 @@ export default function MessagesPage() {
   const handleSelectConversation = (convId: string) => {
     setActiveConversationId(convId);
     fetchMessages(convId);
+    api.patch(`/messages/${convId}/read`).catch(console.error);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+
+    if (!socketRef.current || !activeConversationId || activeConversationId.startsWith('new-')) return;
+
+    const activeConv = conversations.find(c => c._id === activeConversationId);
+    if (!activeConv) return;
+    const otherParticipant = activeConv.participants.find(p => p._id !== currentUserRef.current?._id);
+    if (!otherParticipant) return;
+
+    if (!typingTimeoutRef.current) {
+      socketRef.current.emit('typing', {
+        conversationId: activeConversationId,
+        receiverId: otherParticipant._id,
+        isTyping: true
+      });
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit('typing', {
+        conversationId: activeConversationId,
+        receiverId: otherParticipant._id,
+        isTyping: false
+      });
+      typingTimeoutRef.current = null;
+    }, 2000);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -158,6 +291,19 @@ export default function MessagesPage() {
 
     if (!targetUserId) return;
 
+    // Reset typing status on send
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (socketRef.current && !activeConversationId.startsWith('new-')) {
+      socketRef.current.emit('typing', {
+        conversationId: activeConversationId,
+        receiverId: targetUserId,
+        isTyping: false
+      });
+    }
+
     try {
       const res = await api.post('/messages', {
         receiverId: targetUserId,
@@ -174,11 +320,22 @@ export default function MessagesPage() {
         setConversations(convRes.data.data.conversations);
         setActiveConversationId(conversationId);
         setMessages([message]);
+        setMessagesCache(prev => ({
+          ...prev,
+          [conversationId]: [message]
+        }));
         
         // Remove userId query param so we don't restart logic
         router.replace('/messages', undefined, { shallow: true });
       } else {
-        setMessages(prev => [...prev, message]);
+        setMessages(prev => {
+          const updated = [...prev, message];
+          setMessagesCache(cache => ({
+            ...cache,
+            [conversationId]: updated
+          }));
+          return updated;
+        });
         // Update conversation list locally
         setConversations(prev => {
           const updated = [...prev];
@@ -247,11 +404,21 @@ export default function MessagesPage() {
           <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 3, border: '1px solid #e3eafc' }}>
             {activeConversationId ? (
               <>
-                <Box sx={{ p: 2, borderBottom: '1px solid #e3eafc', bgcolor: '#f8faff' }}>
-                  <Typography variant="h6">
-                    {/* Simplified header, normally you'd fetch the user's details if it's 'new-' */}
-                    Conversation
+                <Box sx={{ p: 2, borderBottom: '1px solid #e3eafc', bgcolor: '#f8faff', display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="h6" fontWeight={700}>
+                    {activeConversationId.startsWith('new-')
+                      ? newChatUser ? `${newChatUser.firstName} ${newChatUser.lastName}` : 'New Conversation'
+                      : (() => {
+                          const activeConv = conversations.find(c => c._id === activeConversationId);
+                          const other = activeConv?.participants.find(p => p._id !== currentUser?._id);
+                          return other ? `${other.firstName} ${other.lastName}` : 'Conversation';
+                        })()}
                   </Typography>
+                  {isOtherUserTyping && (
+                    <Typography variant="caption" color="primary" sx={{ fontStyle: 'italic', display: 'block' }}>
+                      typing...
+                    </Typography>
+                  )}
                 </Box>
                 
                 <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -259,7 +426,10 @@ export default function MessagesPage() {
                     <Box textAlign="center" color="text.secondary" mt={2}>No messages here.</Box>
                   )}
                   {messages.map(msg => {
-                    const isMe = msg.sender._id === currentUser?._id;
+                    const msgSenderId = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
+                    const isMe = msgSenderId === currentUser?._id;
+                    const msgSenderName = typeof msg.sender === 'string' ? '' : msg.sender?.firstName;
+                    
                     return (
                       <Box 
                         key={msg._id} 
@@ -269,9 +439,9 @@ export default function MessagesPage() {
                           mb: 2 
                         }}
                       >
-                        {!isMe && (
+                        {!isMe && msgSenderName && (
                           <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
-                            {msg.sender.firstName}
+                            {msgSenderName}
                           </Typography>
                         )}
                         <Paper 
@@ -279,10 +449,20 @@ export default function MessagesPage() {
                             p: 1.5, 
                             borderRadius: 2, 
                             bgcolor: isMe ? 'primary.main' : 'grey.100',
-                            color: isMe ? 'primary.contrastText' : 'text.primary'
+                            color: isMe ? 'primary.contrastText' : 'text.primary',
+                            position: 'relative'
                           }}
                         >
-                          <Typography variant="body1">{msg.content}</Typography>
+                          <Typography variant="body1" sx={{ pr: isMe ? 4 : 0 }}>{msg.content}</Typography>
+                          {isMe && (
+                            <Box sx={{ position: 'absolute', right: 6, bottom: 2, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+                              {msg.readAt ? (
+                                <DoneAllIcon sx={{ fontSize: 14, color: 'inherit' }} titleAccess="Read" />
+                              ) : (
+                                <DoneIcon sx={{ fontSize: 14, color: 'inherit' }} titleAccess="Sent" />
+                              )}
+                            </Box>
+                          )}
                         </Paper>
                       </Box>
                     );
@@ -298,7 +478,7 @@ export default function MessagesPage() {
                         size="small"
                         placeholder="Type a message..."
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleInputChange}
                         autoComplete="off"
                       />
                     </Grid>

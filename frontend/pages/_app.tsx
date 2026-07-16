@@ -1,7 +1,8 @@
 import type { AppProps } from 'next/app';
+import { ReactNode, useEffect } from 'react';
 import { CssBaseline, Snackbar, Alert, Typography } from '@mui/material';
 import { useNotifications } from '../hooks/useNotifications';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CustomThemeProvider } from '../context/ThemeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Navbar from '../components/Navbar';
@@ -11,6 +12,46 @@ import '../styles/globals.css';
 import Head from 'next/head';
 import Chatbot from '../components/Chatbot';
 import '../i18n';
+
+const PUBLIC_ROUTES = [
+  '/',
+  '/landing',
+  '/about',
+  '/contact',
+  '/faq',
+  '/privacy',
+  '/terms',
+  '/jobs',
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/change-password',
+  '/404',
+];
+
+function isPublicRoute(pathname: string) {
+  return PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
+function AuthGate({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+  const publicRoute = isPublicRoute(router.pathname);
+
+  useEffect(() => {
+    if (publicRoute || isLoading) return;
+    if (!isAuthenticated) {
+      router.replace(`/auth/login?redirect=${encodeURIComponent(router.asPath)}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicRoute, isLoading, isAuthenticated, router.pathname]);
+
+  if (publicRoute) return <>{children}</>;
+  if (isLoading || !isAuthenticated) return null; // blank while validating / before redirect fires
+  return <>{children}</>;
+}
 
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -60,7 +101,9 @@ function MyApp({ Component, pageProps }: AppProps) {
                 flexDirection: 'column',
               }}
             >
-              <Component {...pageProps} />
+              <AuthGate>
+                <Component {...pageProps} />
+              </AuthGate>
             </div>
             {showFooter && <Footer />}
             <Chatbot />

@@ -17,7 +17,7 @@ export default function JobDetail() {
     if (!id) return;
     api.get(`/jobs/${id}`)
       .then(res => {
-        const fetchedJob = res.data.data.job;
+        const fetchedJob = res.data.data.jobOpportunity;
         setJob(fetchedJob);
         setLoading(false);
         if (fetchedJob) {

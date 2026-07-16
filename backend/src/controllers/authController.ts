@@ -15,7 +15,7 @@ import { AppError } from "../utils/AppError";
 const OTP_TTL_MS = 10 * 60 * 1000; // OTP valid for 10 minutes
 const OTP_MAX_ATTEMPTS = 5; // after 5 wrong tries the OTP is invalidated
 
-const generateOtpCode = () => crypto.randomInt(100000, 1000000).toString();
+const generateOtpCode = () => crypto.randomInt(100000, 999999).toString();
 
 const issueOtp = async (email: string, purpose: 'signup' | 'reset') => {
   const otp = generateOtpCode();
@@ -130,6 +130,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     emergencyContact,
     medicalHistory,
     allergies,
+    verificationToken,
   } = req.body;
 
   // 1. Verify that the OTP was provided
@@ -158,8 +159,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       );
     }
 
+    if (typeof licenseNumber !== 'string') {
+      throw new AppError("Invalid license number format", 400);
+    }
+
     // Check if license number already exists
-    const existingLicense = await User.findOne({ licenseNumber });
+    const existingLicense = await User.findOne({ licenseNumber: licenseNumber.trim() });
     if (existingLicense) {
       throw new AppError("Doctor with this license number already exists", 409);
     }
@@ -178,13 +183,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const userData: Partial<IUser> = {
     firstName,
     lastName,
-    email,
+    email: email,
     password,
     userType,
     phone,
     dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
     gender,
     address,
+    isVerified: true,
   };
 
   // Add doctor-specific fields
@@ -277,12 +283,18 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   if (!email || !otp) {
     throw new AppError('Email and OTP required', 400);
   }
+    const result = await consumeOtp(email, 'signup', otp);
+    if (!result.valid) {
+      throw new AppError(result.message || 'Invalid OTP', 400);
+    }
 
-  const result = await consumeOtp(email, 'signup', otp);
-  if (!result.valid) {
-    throw new AppError(result.message || 'Invalid OTP', 400);
-  }
-  res.json({ success: true });
+    const verificationToken = jwt.sign(
+      { email, purpose: 'signup' },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '30m' }
+    );
+
+    res.json({ success: true, verificationToken });
 });
 
 // Login user
@@ -294,8 +306,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Email and password are required", 400);
   }
 
+  if (typeof email !== 'string') {
+    throw new AppError("Invalid email format", 400);
+  }
+
   // Find user and include password for comparison
-  const user = await User.findOne({ email }).select("+password +loginAttempts +lockoutUntil");
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password +loginAttempts +lockoutUntil");
 
   if (!user) {
     throw new AppError("Invalid email or password", 401);
@@ -482,7 +498,10 @@ export const forgotPassword = asyncHandler(
     if (!email) {
       throw new AppError("Email required", 400);
     }
-    const user = await User.findOne({ email });
+    if (typeof email !== 'string') {
+      throw new AppError("Invalid email format", 400);
+    }
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
       return res.json({
@@ -515,6 +534,9 @@ export const resetPassword = asyncHandler(
     if (!email || !otp || !newPassword) {
       throw new AppError("All fields required", 400);
     }
+    if (typeof email !== 'string') {
+      throw new AppError("Invalid email format", 400);
+    }
     if (newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters", 400);
     }
@@ -522,7 +544,7 @@ export const resetPassword = asyncHandler(
     if (!result.valid) {
       throw new AppError(result.message || "Invalid OTP", 400);
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       throw new AppError("User not found", 404);
     }

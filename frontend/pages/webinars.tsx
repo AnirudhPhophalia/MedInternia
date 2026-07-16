@@ -30,7 +30,24 @@ import WebinarJoin from "../components/WebinarJoin";
 import { canUser } from "../utils/permissions";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/layout/EmptyState";
-import { Plus, Video } from "lucide-react";
+import { Plus, Video, Calendar as CalendarIcon, ExternalLink } from "lucide-react";
+import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { enUS } from 'date-fns/locale/en-US';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { generateGoogleCalendarUrl, generateOutlookCalendarUrl } from '../utils/calendarLinks';
+
+const locales = {
+  'en-US': enUS,
+};
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
 
 const specialtiesList = [
   "general",
@@ -74,7 +91,7 @@ export default function WebinarsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedWebinar, setSelectedWebinar] = useState<any>(null);
   const [canManageWebinars, setCanManageWebinars] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'calendar'>('active');
   const [registeredWebinars, setRegisteredWebinars] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
@@ -107,9 +124,12 @@ export default function WebinarsPage() {
     api.get(`/webinars?${params.toString()}`)
       .then(res => {
         const fetchedWebinars = res.data.data.webinars || [];
-        const visibleWebinars = activeTab === 'active'
-          ? fetchedWebinars.filter((webinar: any) => !isWebinarExpired(webinar))
-          : fetchedWebinars.filter((webinar: any) => isWebinarExpired(webinar));
+        let visibleWebinars = fetchedWebinars;
+        if (activeTab === 'active') {
+          visibleWebinars = fetchedWebinars.filter((w: any) => !isWebinarExpired(w));
+        } else if (activeTab === 'completed') {
+          visibleWebinars = fetchedWebinars.filter((w: any) => isWebinarExpired(w));
+        }
 
         setWebinars(visibleWebinars);
         setLoading(false);
@@ -220,6 +240,7 @@ export default function WebinarsPage() {
       >
         <Tab label="Active Webinars" value="active" sx={{ fontWeight: 600 }} />
         <Tab label="Completed Webinars" value="completed" sx={{ fontWeight: 600 }} />
+        <Tab label="Calendar View" value="calendar" sx={{ fontWeight: 600 }} />
       </Tabs>
 
       {/* Filters and Sorting Panel */}
@@ -301,6 +322,27 @@ export default function WebinarsPage() {
           actionLabel="Reset Filters"
           onAction={handleClearFilters}
         />
+      ) : activeTab === 'calendar' ? (
+        <Card sx={{ p: 3, borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+          <Calendar
+            localizer={localizer}
+            events={webinars.map((w: any) => ({
+              id: w._id,
+              title: w.title,
+              start: new Date(w.scheduledAt),
+              end: new Date(new Date(w.scheduledAt).getTime() + (w.duration || 60) * 60 * 1000),
+              resource: w,
+            }))}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: 650, fontFamily: 'inherit' }}
+            onSelectEvent={(event) => {
+              // Open a quick window for Google Calendar on click, or we could just open it directly
+              const url = generateGoogleCalendarUrl(event.resource);
+              window.open(url, '_blank');
+            }}
+          />
+        </Card>
       ) : (
         <Grid container spacing={3}>
           {webinars.map((w) => {
@@ -377,7 +419,35 @@ export default function WebinarsPage() {
                       </Stack>
                     </Stack>
 
-                    <Stack direction="row" justifyContent="flex-end">
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                      {!expired && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="info"
+                            href={generateGoogleCalendarUrl(w)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            startIcon={<CalendarIcon size={14} />}
+                            sx={{ borderRadius: 2, textTransform: 'none' }}
+                          >
+                            Calendar
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="info"
+                            href={generateOutlookCalendarUrl(w)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            startIcon={<ExternalLink size={14} />}
+                            sx={{ borderRadius: 2, textTransform: 'none' }}
+                          >
+                            Outlook
+                          </Button>
+                        </>
+                      )}
                       {canJoin ? (
                         <Button variant="contained" color="primary" onClick={() => setSelectedWebinar(w)} sx={{ borderRadius: 2, px: 3, textTransform: 'none' }}>
                           Join Live

@@ -19,6 +19,7 @@ import StarIcon from "@mui/icons-material/Star";
 import ThumbUpAltIcon from "@mui/icons-material/ThumbUpAlt";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import { useTranslation } from 'react-i18next';
+import { setGlobalToken } from '../context/AuthContext';
 
 interface ProfileDropdownProps {
   onNavigate: (path: string) => void;
@@ -46,6 +47,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
   // Logout logic
   const logout = () => {
   localStorage.removeItem("token");
+  setGlobalToken(null);
   localStorage.removeItem("userId");
   localStorage.removeItem("user");
   localStorage.removeItem("starredCases");
@@ -85,10 +87,8 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
               mr: 1,
             }}
           >
-            {(firstName && lastName)
-              ? (userType === 'doctor'
-                  ? `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`
-                  : `${firstName[0].toUpperCase()}${lastName[0].toUpperCase()}`)
+            {(firstName || lastName)
+              ? `${(firstName?.[0] || '').toUpperCase()}${(lastName?.[0] || '').toUpperCase()}`
               : 'U'}
           </Box>
         )}

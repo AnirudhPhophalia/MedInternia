@@ -106,6 +106,7 @@ export default function Jobs() {
   const [authChecked, setAuthChecked] = useState(false);
   const [userType, setUserType] = useState("");
   const [activeTab, setActiveTab] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   // Saved / Applied states using localStorage
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
@@ -168,6 +169,9 @@ export default function Jobs() {
     }
     const currentUserType = storedUser?.userType || getCurrentUserRole() || "";
     setUserType(String(currentUserType).toLowerCase());
+    if (storedUser?._id) {
+      setCurrentUserId(storedUser._id);
+    }
 
     // Load saved / applied jobs from localstorage
     try {
@@ -195,15 +199,21 @@ export default function Jobs() {
     api
       .get("/jobs", { params })
       .then((res) => {
-        const fetchedJobs = res.data.data.jobs || [];
-        setJobs(fetchedJobs);
+        const fetchedJobs = res.data.data.jobOpportunities || res.data.data.jobs || [];
+        const sortedJobs = [...fetchedJobs].sort((a: any, b: any) => {
+          const scoreA = a.matchPercentage !== undefined ? a.matchPercentage : -1;
+          const scoreB = b.matchPercentage !== undefined ? b.matchPercentage : -1;
+          return scoreB - scoreA;
+        });
+        setJobs(sortedJobs);
         if (!filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa) {
-          setOriginalJobs(fetchedJobs);
+          setOriginalJobs(sortedJobs);
         }
         setLoading(false);
       })
       .catch(() => {
-        setError("Failed to fetch jobs");
+        setJobs([]);
+        setOriginalJobs([]);
         setLoading(false);
       });
   }, [authChecked, filterSpecialty, filterExperience, filterRemote, filterVisa, smartSearchActive]);
@@ -219,23 +229,29 @@ export default function Jobs() {
     localStorage.setItem('savedJobs', JSON.stringify(updated));
   };
 
-  const handleApply = (job: any) => {
+  const handleApply = async (job: any) => {
     // Add to applications list in localstorage
     const exists = applications.find(app => app.id === job._id);
     if (exists) return;
 
-    const newApp: JobApplication = {
-      id: job._id,
-      title: job.title,
-      company: job.company || 'MedInternia Hospital Group',
-      location: job.location,
-      status: 'Applied',
-      appliedDate: new Date().toLocaleDateString()
-    };
+    try {
+      await api.post(`/jobs/${job._id}/apply`);
 
-    const updated = [newApp, ...applications];
-    setApplications(updated);
-    localStorage.setItem('jobApplications', JSON.stringify(updated));
+      const newApp: JobApplication = {
+        id: job._id,
+        title: job.title,
+        company: job.company || 'MedInternia Hospital Group',
+        location: job.location,
+        status: 'Applied',
+        appliedDate: new Date().toLocaleDateString()
+      };
+
+      const updated = [newApp, ...applications];
+      setApplications(updated);
+      localStorage.setItem('jobApplications', JSON.stringify(updated));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to apply for this job');
+    }
   };
 
   const isPatient = userType === "patient";
@@ -419,8 +435,29 @@ export default function Jobs() {
                               </IconButton>
                             </Stack>
 
-                            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                               <Chip label={j.status} color={j.status === 'Open' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700 }} />
+                              {j.matchPercentage !== undefined && (
+                                <Chip
+                                  icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important', color: 'inherit !important' }} />}
+                                  label={`${j.matchPercentage}% Match`}
+                                  size="small"
+                                  sx={{
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    backgroundColor: j.matchPercentage >= 80 
+                                      ? '#e6f4ea' 
+                                      : (j.matchPercentage >= 50 ? '#fef7e0' : '#fce8e6'),
+                                    color: j.matchPercentage >= 80 
+                                      ? '#137333' 
+                                      : (j.matchPercentage >= 50 ? '#b06000' : '#c5221f'),
+                                    '& .MuiChip-icon': {
+                                      color: 'inherit !important'
+                                    }
+                                  }}
+                                />
+                              )}
                               {j.salary && <Chip label={j.salary} size="small" variant="outlined" />}
                               <DeadlineCountdown deadline={j.applicationDeadline} />
                             </Box>
@@ -431,21 +468,33 @@ export default function Jobs() {
                               <Typography variant="caption" color="text.secondary">
                                 Posted: {new Date(j.createdAt || Date.now()).toLocaleDateString()}
                               </Typography>
-                              {j.status === "Open" ? (
-                                <Button 
-                                  variant="contained" 
-                                  color={isApplied ? "success" : "primary"}
-                                  onClick={() => handleApply(j)}
-                                  disabled={isApplied}
-                                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                                >
-                                  {isApplied ? "Applied" : "Apply"}
-                                </Button>
-                              ) : (
-                                <Button variant="outlined" disabled sx={{ borderRadius: 2, textTransform: 'none' }}>
-                                  Closed
-                                </Button>
-                              )}
+                              <Stack direction="row" spacing={1}>
+                                {j.postedBy && (typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id) !== currentUserId && (
+                                  <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={() => router.push(`/messages?userId=${typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id}`)}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                                  >
+                                    Message Recruiter
+                                  </Button>
+                                )}
+                                {j.status === "Open" ? (
+                                  <Button 
+                                    variant="contained" 
+                                    color={isApplied ? "success" : "primary"}
+                                    onClick={() => handleApply(j)}
+                                    disabled={isApplied}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                                  >
+                                    {isApplied ? "Applied" : "Apply"}
+                                  </Button>
+                                ) : (
+                                  <Button variant="outlined" disabled sx={{ borderRadius: 2, textTransform: 'none' }}>
+                                    Closed
+                                  </Button>
+                                )}
+                              </Stack>
                             </Stack>
                           </CardContent>
                         </Card>
@@ -485,20 +534,55 @@ export default function Jobs() {
                               </IconButton>
                             </Stack>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 3 }}>
-                              <Chip label={j.status} color={j.status === 'Open' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700 }} />
-                              {j.status === "Open" ? (
-                                <Button 
-                                  variant="contained" 
-                                  color={isApplied ? "success" : "primary"}
-                                  onClick={() => handleApply(j)}
-                                  disabled={isApplied}
-                                  sx={{ borderRadius: 2, textTransform: 'none' }}
-                                >
-                                  {isApplied ? "Applied" : "Apply"}
-                                </Button>
-                              ) : (
-                                <Button variant="outlined" disabled sx={{ borderRadius: 2 }}>Closed</Button>
-                              )}
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Chip label={j.status} color={j.status === 'Open' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700 }} />
+                                {j.matchPercentage !== undefined && (
+                                  <Chip
+                                    icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important', color: 'inherit !important' }} />}
+                                    label={`${j.matchPercentage}% Match`}
+                                    size="small"
+                                    sx={{
+                                      borderRadius: '6px',
+                                      fontWeight: 700,
+                                      fontSize: '0.75rem',
+                                      backgroundColor: j.matchPercentage >= 80 
+                                        ? '#e6f4ea' 
+                                        : (j.matchPercentage >= 50 ? '#fef7e0' : '#fce8e6'),
+                                      color: j.matchPercentage >= 80 
+                                        ? '#137333' 
+                                        : (j.matchPercentage >= 50 ? '#b06000' : '#c5221f'),
+                                      '& .MuiChip-icon': {
+                                        color: 'inherit !important'
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </Stack>
+                              <Stack direction="row" spacing={1}>
+                                {j.postedBy && (typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id) !== currentUserId && (
+                                  <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={() => router.push(`/messages?userId=${typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id}`)}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                                  >
+                                    Message Recruiter
+                                  </Button>
+                                )}
+                                {j.status === "Open" ? (
+                                  <Button 
+                                    variant="contained" 
+                                    color={isApplied ? "success" : "primary"}
+                                    onClick={() => handleApply(j)}
+                                    disabled={isApplied}
+                                    sx={{ borderRadius: 2, textTransform: 'none' }}
+                                  >
+                                    {isApplied ? "Applied" : "Apply"}
+                                  </Button>
+                                ) : (
+                                  <Button variant="outlined" disabled sx={{ borderRadius: 2 }}>Closed</Button>
+                                )}
+                              </Stack>
                             </Stack>
                           </CardContent>
                         </Card>

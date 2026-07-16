@@ -141,7 +141,7 @@ describe("Case Controller", () => {
       await expect(updateCase(req as any, res as any, next)).rejects.toThrow("You can only update your own cases");
     });
 
-    it("prevents updating certain fields like doctor, comments, moderationStatus", async () => {
+    it("only sends allow-listed case fields to the update query", async () => {
       mockedCase.findById.mockResolvedValue({ doctor: { toString: () => "doctor-1" } } as any);
       const updatedMock = { _id: "case-123", title: "New Title" };
       
@@ -150,9 +150,15 @@ describe("Case Controller", () => {
 
       const req = mockRequest("doctor-1", "doctor", { id: "case-123" }, {
         title: "New Title",
+        tags: ["cardiology"],
         doctor: "attacker-1",
         comments: [],
+        likes: ["attacker-1"],
         moderationStatus: "approved",
+        moderationReason: "bypass",
+        moderationAuditTrail: [],
+        pointsAwarded: 999999,
+        isActive: true,
       });
       const res = mockResponse();
 
@@ -161,14 +167,19 @@ describe("Case Controller", () => {
 
       expect(mockedCase.findByIdAndUpdate).toHaveBeenCalledWith(
         "case-123",
-        expect.objectContaining({ title: "New Title" }),
+        expect.objectContaining({ title: "New Title", tags: ["cardiology"] }),
         expect.anything()
       );
       
       const updatesPassed = (mockedCase.findByIdAndUpdate as jest.Mock).mock.calls[0][1];
       expect(updatesPassed).not.toHaveProperty("doctor");
       expect(updatesPassed).not.toHaveProperty("comments");
+      expect(updatesPassed).not.toHaveProperty("likes");
       expect(updatesPassed).not.toHaveProperty("moderationStatus");
+      expect(updatesPassed).not.toHaveProperty("moderationReason");
+      expect(updatesPassed).not.toHaveProperty("moderationAuditTrail");
+      expect(updatesPassed).not.toHaveProperty("pointsAwarded");
+      expect(updatesPassed).not.toHaveProperty("isActive");
     });
   });
 

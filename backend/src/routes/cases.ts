@@ -7,6 +7,9 @@ import {
   deleteCase,
   addComment,
   toggleLike,
+  toggleStar,
+  getStarredCases,
+  getLikedCases,
   getMyCases,
   addFollowUp,
   getCaseFollowUps,
@@ -34,6 +37,7 @@ import {
 } from '../controllers/caseController';
 import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
+import { checkPlagiarismAndAI } from '../middleware/plagiarismDetection';
 import multer from 'multer';
 import { isAllowedCaseAttachment } from '../utils/uploadValidation';
 
@@ -57,6 +61,8 @@ const router = express.Router();
 router.get('/recommended', authenticate, getRecommendedCases);
 router.get('/', optionalAuthenticate, getCases);
 router.get('/my/cases', authenticate, getMyCases);
+router.get('/liked', authenticate, getLikedCases);
+router.get('/starred', authenticate, getStarredCases);
 router.post('/:id/solve', authenticate, solveCase);
 router.get('/moderation/queue', authenticate, requirePermission('comment:moderate'), getCaseModerationQueue);
 router.get('/comments/moderation/queue', authenticate, requirePermission('comment:moderate'), getFlaggedComments);
@@ -66,12 +72,12 @@ router.get('/ai-posts/my', authenticate, getMyAICaseSchedules);
 router.post('/attachments', authenticate, upload.single('attachment'), uploadAttachment);
 
 // Permission-guarded case management routes
-router.post('/', authenticate, requirePermission('case:create'), createCase);
+router.post('/', authenticate, requirePermission('case:create'), checkPlagiarismAndAI, createCase);
 router.post('/ai-posts/schedule', authenticate, requirePermission('case:create'), scheduleAICasePost);
 router.patch('/ai-posts/:scheduleId/review', authenticate, requirePermission('comment:moderate'), reviewAICasePost);
 router.post('/ai-posts/publish-due', authenticate, requirePermission('comment:moderate'), publishDueAICasePosts);
 router.get('/:id', optionalAuthenticate, getCaseById);
-router.put('/:id', authenticate, requirePermission('case:update'), updateCase);
+router.put('/:id', authenticate, requirePermission('case:update'), checkPlagiarismAndAI, updateCase);
 router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
 router.patch('/:id/moderation', authenticate, requirePermission('comment:moderate'), moderateCase);
 router.patch('/:caseId/comments/:commentId/moderation', authenticate, requirePermission('comment:moderate'), moderateComment);
@@ -82,6 +88,7 @@ router.post('/:caseId/comments/:commentId/reply', authenticate, requirePermissio
 router.post('/:caseId/comments/:commentId/like', authenticate, likeComment);
 router.post('/:caseId/comments/:commentId/rate', authenticate, requirePermission('rating:create'), rateComment);
 router.post('/:id/like', authenticate, toggleLike);
+router.post('/:id/star', authenticate, toggleStar);
 
 // Follow-up routes
 router.post('/:id/follow-ups', authenticate, requirePermission('case:follow_up'), addFollowUp);
@@ -100,4 +107,5 @@ router.get('/:caseId/pinned-comments', authenticate, getPinnedComments);
 router.patch('/:id/repost-permission', authenticate, requirePermission('case:update'), toggleRepostPermission);
 // Repost a case (if allowed)
 router.post('/:id/repost', authenticate, requirePermission('case:repost'), repostCase);
+
 export default router;

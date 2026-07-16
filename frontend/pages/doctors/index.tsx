@@ -36,6 +36,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/api';
+import { withAuth } from '../../components/withAuth'; 
 
 interface DoctorMentorshipCardProps {
   doctor: any;
@@ -149,7 +150,7 @@ function DoctorMentorshipCard({ doctor, currentUserId, currentMentorId, onApplyM
   );
 }
 
-export default function Doctors() {
+function Doctors() {
   const router = useRouter();
   const [doctors, setDoctors] = useState<any[]>([]);
   const [originalDoctors, setOriginalDoctors] = useState<any[]>([]);
@@ -444,3 +445,4 @@ export default function Doctors() {
     </Box>
   );
 }
+export default withAuth(Doctors);                          

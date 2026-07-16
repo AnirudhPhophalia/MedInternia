@@ -48,6 +48,19 @@ const syncExpiredWebinars = async () => {
   }
 };
 
+const WEBINAR_UPDATABLE_FIELDS = [
+  'title',
+  'description',
+  'type',
+  'specialization',
+  'scheduledAt',
+  'duration',
+  'maxParticipants',
+  'registrationDeadline',
+  'materials',
+  'tags'
+] as const;
+
 // Create webinar
 export const createWebinar = async (req: AuthRequest, res: Response) => {
   try {
@@ -377,7 +390,6 @@ export const unregisterFromWebinar = async (req: AuthRequest, res: Response) => 
 export const updateWebinar = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
     const hostId = (req.user!._id as any).toString();
 
     const webinar = await Webinar.findOne({ _id: id, host: hostId });
@@ -388,7 +400,11 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    Object.assign(webinar, updateData);
+    for (const field of WEBINAR_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        (webinar as any)[field] = req.body[field];
+      }
+    }
     await webinar.save();
     await webinar.populate('host', 'firstName lastName specialization');
 

@@ -60,7 +60,7 @@ export const getMyMentorships = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const getMentorshipById = async (req: Request, res: Response): Promise<void> => {
+export const getMentorshipById = async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = (req as any).user.id;
     const mentorship = await Mentorship.findById(req.params.id)
@@ -68,8 +68,10 @@ export const getMentorshipById = async (req: Request, res: Response): Promise<vo
       .populate('mentee', 'firstName lastName profilePicture medicalSchool');
 
     if (!mentorship) {
-      res.status(404).json({ success: false, message: 'Mentorship not found' });
-      return;
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
     }
 
     // Verify authorized to view
@@ -84,15 +86,17 @@ export const getMentorshipById = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const updateMentorshipStatus = async (req: Request, res: Response): Promise<void> => {
+export const updateMentorshipStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const { status } = req.body;
     const userId = (req as any).user.id;
 
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
-      res.status(404).json({ success: false, message: 'Mentorship not found' });
-      return;
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
     }
 
     // Only mentor can accept/reject
@@ -110,11 +114,16 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
   }
 };
 
-export const addGoal = async (req: Request, res: Response): Promise<void> => {
+export const addGoal = async (req: Request, res: Response): Promise<any> => {
   try {
     const { title, description } = req.body;
     const mentorship = await Mentorship.findById(req.params.id);
-    if (!mentorship) return;
+    if (!mentorship) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
+    }
 
     mentorship.goals.push({ title, description, isCompleted: false } as any);
     await mentorship.save();
@@ -125,11 +134,16 @@ export const addGoal = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const toggleGoal = async (req: Request, res: Response): Promise<void> => {
+export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
   try {
     const { goalId } = req.params;
     const mentorship = await Mentorship.findById(req.params.id);
-    if (!mentorship) return;
+    if (!mentorship) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
+    }
 
     const goal = mentorship.goals.find((g: any) => g._id && g._id.toString() === goalId);
     if (goal) {
@@ -143,11 +157,16 @@ export const toggleGoal = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const addMeeting = async (req: Request, res: Response): Promise<void> => {
+export const addMeeting = async (req: Request, res: Response): Promise<any> => {
   try {
     const { scheduledAt, topic, link, notes } = req.body;
     const mentorship = await Mentorship.findById(req.params.id);
-    if (!mentorship) return;
+    if (!mentorship) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
+    }
 
     mentorship.meetings.push({ scheduledAt: new Date(scheduledAt), topic, link, notes } as any);
     await mentorship.save();

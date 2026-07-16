@@ -1,7 +1,18 @@
 import type { NextRouter } from "next/router";
 import { getGlobalToken } from "../context/AuthContext";
 
-export const protectedLandingPaths = ["/cases", "/jobs", "/webinars", "/leaderboard"];
+export const protectedLandingPaths = [
+  "/cases",
+  "/jobs",
+  "/webinars",
+  "/leaderboard",
+  "/webinar-demo",
+  "/learning-paths",
+  "/patients",
+  "/doctors",
+  "/diaries",
+  "/upload-raw",
+];
 
 export const hasAuthToken = () => {
   if (getGlobalToken()) return true;

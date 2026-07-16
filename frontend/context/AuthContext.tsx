@@ -41,6 +41,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(false);
       return;
     }
+
+    // Rehydrate token from localStorage immediately on mount.
+    // Without this, _globalToken stays null after every fresh page
+    // load/refresh, so the very first API call (validate-token) goes
+    // out with no Authorization header and fails even though a valid
+    // token exists in localStorage.
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      setToken(storedToken);
+      setGlobalToken(storedToken);
+    }
+
     api.get('/auth/validate-token')
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
@@ -48,9 +60,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
+          localStorage.setItem('userId', id);
+          localStorage.setItem('user', JSON.stringify(userData));
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Token was invalid/expired (or missing) — clear it so
+        // isAuthenticated actually reflects reality instead of
+        // hanging onto a stale/bad token.
+        setToken(null);
+        setGlobalToken(null);
+        localStorage.removeItem('token');
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -59,6 +80,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setGlobalToken(newToken);
     setUserId(newUserId);
     setUser(newUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('userId', newUserId);
+      localStorage.setItem('user', JSON.stringify(newUser));
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -66,6 +92,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setGlobalToken(null);
     setUserId(null);
     setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('user');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('starredCases');
+      localStorage.removeItem('starredPapers');
+      localStorage.removeItem('pinnedPapers');
+      document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
+    }
   }, []);
 
   const refreshUser = useCallback(() => {
@@ -73,8 +110,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
         if (userData) {
-          setUserId(String(userData._id || userData.id));
+          const id = String(userData._id || userData.id);
+          setUserId(id);
           setUser(userData);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('userId', id);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
         }
       })
       .catch(() => {});

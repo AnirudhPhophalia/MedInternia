@@ -23,6 +23,7 @@ import DatasetIcon from '@mui/icons-material/Dataset';
 import Image from 'next/image';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import TranscriptIcon from '@mui/icons-material/DescriptionOutlined';
 import WorkIcon from '@mui/icons-material/Work';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -122,6 +123,7 @@ export default function Navbar({ route }: { route?: string }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
   const { mode, toggleColorMode } = useContext(ThemeContext);
+  const [mounted, setMounted] = React.useState(false);
 
   const handleHomeNav = () => {
     if (typeof window !== 'undefined') {
@@ -153,7 +155,18 @@ export default function Navbar({ route }: { route?: string }) {
   const [firstName, setFirstName] = React.useState<string>('');
   const [lastName, setLastName] = React.useState<string>('');
   const [userType, setUserType] = React.useState<string>('');
-  const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      const userId = localStorage.getItem('userId');
+      return !!(token && userId);
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     const token = getAuthToken();
@@ -164,13 +177,26 @@ export default function Navbar({ route }: { route?: string }) {
     }
     setIsLoggedIn(true);
 
+    try {
+      const storedUserStr = localStorage.getItem('user');
+      if (storedUserStr) {
+        const storedUser = JSON.parse(storedUserStr);
+        setProfileImageUrl(storedUser.profilePicture || undefined);
+        setFirstName(storedUser.firstName || storedUser.name || '');
+        setLastName(storedUser.lastName || '');
+        setUserType(storedUser.userType || storedUser.role || '');
+      }
+    } catch (e) {
+      console.error("Failed to parse user from localStorage", e);
+    }
+
     import('../utils/api').then((apiModule) => {
       apiModule.default
         .get(`/users/${userId}/profile`)
         .then((res) => {
           const userData = res.data?.data?.user || res.data?.user || res.data;
           setProfileImageUrl(userData.profilePicture || undefined);
-          setFirstName(userData.firstName || '');
+          setFirstName(userData.firstName || userData.name || '');
           setLastName(userData.lastName || '');
           setUserType(userData.userType || '');
         })
@@ -181,6 +207,20 @@ export default function Navbar({ route }: { route?: string }) {
         });
     });
   }, [getAuthToken()]);
+
+  if (!mounted) {
+    return (
+      <>
+        <CssBaseline />
+        <Toolbar
+          sx={{
+            minHeight: theme.custom.navbarHeight,
+            visibility: 'hidden',
+          }}
+        />
+      </>
+    );
+  }
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,26 +235,33 @@ export default function Navbar({ route }: { route?: string }) {
 
   const navItems = [
     ...(isLoggedIn
-      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases') }]
+      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases', 'Cases') }]
       : []),
+    { href: '/webinar-demo', icon: <TranscriptIcon />, label: 'Webinar Transcripts' },
     { href: '/learning-paths', icon: <BookIcon />, label: t('navbar.learningPaths') },
     { href: '/patients', icon: <DatasetIcon />, label: t('navbar.patients') },
     { href: '/doctors', icon: <WorkIcon />, label: t('navbar.doctors') },
+    { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
+    { href: '/upload-raw', icon: <DatasetIcon />, label: 'Upload Raw' },
+    { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
     { href: '/webinars', icon: <VideocamIcon />, label: t('navbar.webinars') },
+    { href: '/flashcards', icon: <BookIcon />, label: 'Flashcards' },
     { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
     { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
-    { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
     { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
   ];
 
   const mobileNavItems = [
     ...(isLoggedIn
-      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases') }]
+      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases', 'Cases') }]
       : []),
+    { href: '/webinar-demo', icon: <TranscriptIcon />, label: 'Webinar Transcripts' },
     { href: '/learning-paths', icon: <BookIcon />, label: t('navbar.learningPaths') },
     { href: '/patients', icon: <DatasetIcon />, label: t('navbar.patients') },
     { href: '/doctors', icon: <WorkIcon />, label: t('navbar.doctors') },
+    { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
     { href: '/webinars', icon: <VideocamIcon />, label: t('navbar.webinars') },
+    { href: '/flashcards', icon: <BookIcon />, label: 'Flashcards' },
     { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
     { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
     { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
@@ -389,6 +436,7 @@ export default function Navbar({ route }: { route?: string }) {
             />
             <Typography
               variant="h6"
+              suppressHydrationWarning
               sx={{
                 fontWeight: 700,
                 letterSpacing: 0.5,
@@ -396,7 +444,7 @@ export default function Navbar({ route }: { route?: string }) {
                 color: 'text.primary',
               }}
             >
-              {t('navbar.brand')}
+              {t('navbar.brand', 'MedInternia')}
             </Typography>
           </Box>
 

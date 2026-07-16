@@ -2,7 +2,20 @@ import axios from 'axios';
 import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
 
 // Maintain backward compatibility for files importing getAuthToken
-export const getAuthToken = (): string | null => getGlobalToken();
+export const getAuthToken = (): string | null => {
+  const globalToken = getGlobalToken();
+  if (globalToken) return globalToken;
+  if (typeof window !== 'undefined') return localStorage.getItem('token');
+  return null;
+};
+
+export const getSocketUrl = (): string => {
+  const rawUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:3000';
+  return rawUrl.replace(/\/+$/, '').replace(/\/api$/, '');
+};
 
 const ensureApiPath = (baseUrl: string): string => {
   const normalized = baseUrl.replace(/\/+$/, '');
@@ -24,7 +37,10 @@ const api = axios.create({
 // Add interceptor to include JWT token in all requests
 api.interceptors.request.use(
   (config) => {
-    const token = getGlobalToken();
+    // Fall back to localStorage if the in-memory global token hasn't
+    // been hydrated yet (e.g. this is the very first request after a
+    // fresh page load, before AuthContext's mount effect has run).
+    const token = getGlobalToken() || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
     if (token) {
       config.headers = config.headers || {};
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -33,6 +49,7 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
 let isRedirectingToLogin = false;
 
 api.interceptors.response.use(
@@ -87,8 +104,8 @@ export const createDiary = async (title: string) => {
 };
 
 // Add a new entry to a diary
-export const addDiaryEntry = async (diaryId: string, day: string, content: string) => {
-  const res = await api.post(`/diaries/${diaryId}/entries`, { day, content });
+export const addDiaryEntry = async (diaryId: string, entry: Record<string, any>) => {
+  const res = await api.post(`/diaries/${diaryId}/entries`, entry);
   return res.data;
 };
 

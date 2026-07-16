@@ -50,7 +50,7 @@ export const getCollectionById = async (req: Request, res: Response): Promise<vo
   try {
     const collection = await Collection.findById(req.params.id).populate({
       path: 'cases',
-      populate: { path: 'author', select: 'firstName lastName profilePicture designation' }
+      populate: { path: 'doctor', select: 'firstName lastName profilePicture specialization' }
     });
     
     if (!collection) {
@@ -103,7 +103,7 @@ export const addCaseToCollection = async (req: Request, res: Response): Promise<
     }
 
     // Check if case is already in collection
-    if (collection.cases.includes(new mongoose.Types.ObjectId(caseId))) {
+    if (collection.cases.some((id: any) => id.toString() === caseId)) {
       res.status(400).json({ success: false, message: 'Case already in collection' });
       return;
     }
