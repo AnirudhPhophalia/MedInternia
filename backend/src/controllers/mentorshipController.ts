@@ -137,6 +137,9 @@ export const addGoal = async (req: Request, res: Response): Promise<any> => {
 export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
   try {
     const { goalId } = req.params;
+    const user = (req as any).user;
+    const userId = user.id;
+
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
       return res.status(404).json({
@@ -145,11 +148,21 @@ export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const goal = mentorship.goals.find((g: any) => g._id && g._id.toString() === goalId);
-    if (goal) {
-      goal.isCompleted = !goal.isCompleted;
-      await mentorship.save();
+    const isParticipant =
+      mentorship.mentor.toString() === userId ||
+      mentorship.mentee.toString() === userId;
+
+    if (!isParticipant && user.userType !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this mentorship' });
     }
+
+    const goal = mentorship.goals.find((g: any) => g._id && g._id.toString() === goalId);
+    if (!goal) {
+      return res.status(404).json({ success: false, message: 'Goal not found' });
+    }
+
+    goal.isCompleted = !goal.isCompleted;
+    await mentorship.save();
 
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
