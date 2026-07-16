@@ -433,8 +433,8 @@ export const createCase = asyncHandler(
       throw new AppError("User not authenticated", 401);
     }
 
-    if (user.userType !== "doctor" && user.userType !== "patient") {
-      throw new AppError("Only doctors and patients can create cases", 403);
+    if (user.userType !== "doctor" && user.userType !== "patient" && user.userType !== "admin") {
+      throw new AppError("Only doctors, patients, and admins can create cases", 403);
     }
 
     const {
