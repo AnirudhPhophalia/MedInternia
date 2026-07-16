@@ -160,12 +160,27 @@ export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
 export const addMeeting = async (req: Request, res: Response): Promise<any> => {
   try {
     const { scheduledAt, topic, link, notes } = req.body;
+    const user = (req as any).user;
+    const userId = user.id;
+
+    if (!scheduledAt || !topic) {
+      return res.status(400).json({ success: false, message: 'Meeting date and topic are required' });
+    }
+
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
       return res.status(404).json({
         success: false,
         message: "Mentorship not found",
       });
+    }
+
+    const isParticipant =
+      mentorship.mentor.toString() === userId ||
+      mentorship.mentee.toString() === userId;
+
+    if (!isParticipant && user.userType !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this mentorship' });
     }
 
     mentorship.meetings.push({ scheduledAt: new Date(scheduledAt), topic, link, notes } as any);
