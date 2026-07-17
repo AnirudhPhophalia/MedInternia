@@ -502,7 +502,12 @@ export const forgotPassword = asyncHandler(
     if (typeof email !== 'string') {
       throw new AppError("Invalid email format", 400);
     }
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const normalizedEmail = email.toLowerCase().trim();
+    if (!normalizedEmail) {
+      throw new AppError("Email required", 400);
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
 
 if (!user) {
     return res.json({
@@ -512,14 +517,14 @@ if (!user) {
     });
 }
     // Generate OTP
-    const otp = await issueOtp(email, 'reset');
+    const otp = await issueOtp(normalizedEmail, 'reset');
 
     
 
     try {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: email,
+        to: normalizedEmail,
         subject: "MedInternia Password Reset OTP",
         text: `Your password reset OTP is: ${otp}. It will expire in 10 minutes.`,
       });
@@ -541,14 +546,19 @@ export const resetPassword = asyncHandler(
     if (typeof email !== 'string') {
       throw new AppError("Invalid email format", 400);
     }
+    const normalizedEmail = email.toLowerCase().trim();
+    if (!normalizedEmail) {
+      throw new AppError("Email required", 400);
+    }
+
     if (newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters", 400);
     }
-    const result = await consumeOtp(email, 'reset', otp);
+    const result = await consumeOtp(normalizedEmail, 'reset', otp);
     if (!result.valid) {
       throw new AppError(result.message || "Invalid OTP", 400);
     }
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       throw new AppError("User not found", 404);
     }
