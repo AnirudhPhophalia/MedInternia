@@ -5,6 +5,12 @@ import User from '../models/User';
 export const requestMentorship = async (req: Request, res: Response): Promise<void> => {
   try {
     const { mentorId, specialtyRequested, initialMessage } = req.body;
+    const requester = (req as any).user;
+
+    if (requester.userType !== 'intern') {
+      res.status(403).json({ success: false, message: 'Only interns can request mentorship' });
+      return;
+    }
     
     // Check if mentor exists and is a doctor
     const mentor = await User.findById(mentorId);
