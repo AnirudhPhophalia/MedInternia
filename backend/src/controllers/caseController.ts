@@ -286,12 +286,20 @@ export const likeComment = asyncHandler(
       { $pull: { "comments.$.likes": userIdObj } },
     );
 
+    if (pullResult.matchedCount === 0) {
+      const caseExists = await Case.exists({ _id: caseId });
+      throw new AppError(caseExists ? "Comment not found" : "Case not found", 404);
+    }
+
     if (pullResult.modifiedCount === 0) {
       // Not already liked, so add the like
-      await Case.updateOne(
+      const addResult = await Case.updateOne(
         { _id: caseId, "comments._id": commentId },
         { $addToSet: { "comments.$.likes": userIdObj } },
       );
+      if (addResult.matchedCount === 0) {
+        throw new AppError("Comment not found", 404);
+      }
       liked = true;
     }
 
@@ -299,6 +307,10 @@ export const likeComment = asyncHandler(
     const updatedCase = await Case.findById(caseId, {
       comments: { $elemMatch: { _id: commentId } },
     });
+    if (!updatedCase || !updatedCase.comments.length) {
+      throw new AppError("Comment not found", 404);
+    }
+
     const likes = ((updatedCase?.comments as any)?.[0]?.likes as any[])?.length ?? 0;
 
     res.json({
