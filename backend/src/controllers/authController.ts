@@ -55,30 +55,27 @@ const consumeOtp = async (
   const isMatch = await bcrypt.compare(submittedOtp, record.otpHash);
 
   if (!isMatch) {
+    // Atomic increment to avoid race conditions with concurrent verification attempts
+    const updated = await Otp.findOneAndUpdate(
+      { _id: record._id, attempts: { $lt: OTP_MAX_ATTEMPTS } },
+      { $inc: { attempts: 1 } },
+      { new: true }
+    );
 
-   const updated = await Otp.findOneAndUpdate(
-     { _id: record._id, attempts: { $lt: OTP_MAX_ATTEMPTS } },
-     { $inc: { attempts: 1 } },
-     { new: true }
-   );
+    const attemptsNow = updated ? updated.attempts : OTP_MAX_ATTEMPTS;
 
-   if (!updated) {
-     
-     await Otp.deleteOne({ _id: record._id });
-     return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
-   }
+    if (attemptsNow >= OTP_MAX_ATTEMPTS) {
+      await Otp.deleteOne({ _id: record._id });
+      return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
+    }
 
-   if (updated.attempts >= OTP_MAX_ATTEMPTS) {
-     await Otp.deleteOne({ _id: updated._id });
-     return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
-   }
-
-   return { valid: false, message: 'Invalid OTP' };
+    return { valid: false, message: 'Invalid OTP' };
   }
 
   await Otp.deleteOne({ _id: record._id });
   return { valid: true };
 };
+
 
 // Upload profile picture
 export const uploadProfilePicture = asyncHandler(
@@ -148,31 +145,38 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     verificationToken,
   } = req.body;
 
+  // 1. A verified signup token (issued by /verify-otp after real OTP verification)
+  // is required — this replaces requiring a raw OTP directly on /register, since
+  // that previously allowed accounts to be created with unowned/unverified emails.
   if (!verificationToken) {
-    throw new AppError('Email verification token is required', 400);
+    throw new AppError("Email verification is required to register", 400);
   }
 
-  if (typeof email !== 'string') {
-    throw new AppError("Invalid email format", 400);
-  }
-
+  let verifiedEmail: string;
   try {
-    const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET as string) as any;
-    if (decoded.email !== email || decoded.purpose !== 'signup') {
-      throw new AppError('Invalid email verification token', 400);
+    const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET as string) as {
+      email?: string;
+      purpose?: string;
+    };
+    if (!decoded?.email || decoded.purpose !== "signup") {
+      throw new Error("invalid token payload");
     }
-  } catch (err) {
-    throw new AppError('Email verification token is invalid or expired', 400);
+    verifiedEmail = decoded.email;
+  } catch {
+    throw new AppError("Invalid or expired verification token. Please verify your email again.", 400);
   }
 
-  // Check if user already exists
-  const normalizedEmail = email.toLowerCase().trim();
-  const existingUser = await User.findOne({ email: normalizedEmail });
+  if (verifiedEmail !== email) {
+    throw new AppError("Verification token does not match the provided email", 400);
+  }
+
+  // 2. Check if user already exists
+  const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw new AppError("User with this email already exists", 400);
   }
 
-  // Validate required fields based on user type
+  // 3. Validate required fields based on user type
   if (userType === "doctor") {
     if (!specialization || !licenseNumber) {
       throw new AppError(
@@ -205,7 +209,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const userData: Partial<IUser> = {
     firstName,
     lastName,
-    email: normalizedEmail,
+    email: email,
     password,
     userType,
     phone,
@@ -238,8 +242,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     userData.allergies = allergies;
   }
 
-  // Create new user
-  const user = new User(userData);
+  // Create new user — email ownership was already proven via the verified
+  // signup token above, so mark the account as verified immediately.
+  const user = new User({ ...userData, isVerified: true });
   await user.save();
 
   // Generate JWT tokens
@@ -276,9 +281,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-export const sendOtp = async (req: Request, res: Response) => {
+// Send registration validation OTP
+export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ success: false, message: 'Email required' });
+  if (!email) {
+    throw new AppError('Email required', 400);
+  }
+
   const otp = await issueOtp(email, 'signup');
   try {
     await transporter.sendMail({
@@ -287,31 +296,31 @@ export const sendOtp = async (req: Request, res: Response) => {
       subject: 'MedInternia Email Verification OTP',
       text: `Your OTP is: ${otp}. It will expire in 10 minutes.`
     });
-    return res.json({ success: true });
+    res.json({ success: true, message: 'OTP sent successfully!' });
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Send OTP email error:', errorMsg);
-    return res.status(500).json({ success: false, message: 'Failed to send OTP' });
+    console.error('Send OTP email error:', err);
+    throw new AppError('Failed to send OTP email setup error', 500);
   }
-};
+});
 
+// Verify OTP directly if frontend uses isolated checkpoints
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
     throw new AppError('Email and OTP required', 400);
   }
-    const result = await consumeOtp(email, 'signup', otp);
-    if (!result.valid) {
-      throw new AppError(result.message || 'Invalid OTP', 400);
-    }
+  const result = await consumeOtp(email, 'signup', otp);
+  if (!result.valid) {
+    throw new AppError(result.message || 'Invalid OTP', 400);
+  }
 
-    const verificationToken = jwt.sign(
-      { email, purpose: 'signup' },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '30m' }
-    );
+  const verificationToken = jwt.sign(
+    { email, purpose: 'signup' },
+    process.env.JWT_SECRET as string,
+    { expiresIn: '30m' }
+  );
 
-    res.json({ success: true, verificationToken });
+  res.json({ success: true, verificationToken });
 });
 
 // Login user
@@ -518,29 +527,21 @@ export const forgotPassword = asyncHandler(
     if (typeof email !== 'string') {
       throw new AppError("Invalid email format", 400);
     }
-    const normalizedEmail = email.toLowerCase().trim();
-    if (!normalizedEmail) {
-      throw new AppError("Email required", 400);
-    }
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
-    const user = await User.findOne({ email: normalizedEmail });
-
-if (!user) {
-    return res.json({
+    if (!user) {
+      return res.json({
         success: true,
-        message:
-            "If an account exists with this email, an OTP has been sent."
-    });
-}
+        message: "If an account exists with this email, an OTP has been sent."
+      });
+    }
     // Generate OTP
-    const otp = await issueOtp(normalizedEmail, 'reset');
-
-    
+    const otp = await issueOtp(email, 'reset');
 
     try {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: normalizedEmail,
+        to: email,
         subject: "MedInternia Password Reset OTP",
         text: `Your password reset OTP is: ${otp}. It will expire in 10 minutes.`,
       });
@@ -562,19 +563,14 @@ export const resetPassword = asyncHandler(
     if (typeof email !== 'string') {
       throw new AppError("Invalid email format", 400);
     }
-    const normalizedEmail = email.toLowerCase().trim();
-    if (!normalizedEmail) {
-      throw new AppError("Email required", 400);
-    }
-
     if (newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters", 400);
     }
-    const result = await consumeOtp(normalizedEmail, 'reset', otp);
+    const result = await consumeOtp(email, 'reset', otp);
     if (!result.valid) {
       throw new AppError(result.message || "Invalid OTP", 400);
     }
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       throw new AppError("User not found", 404);
     }
