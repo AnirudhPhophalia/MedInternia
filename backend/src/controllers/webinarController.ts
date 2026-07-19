@@ -486,6 +486,14 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { rating, comments } = req.body;
     const userId = (req.user!._id as any).toString();
+    const ratingValue = Number(rating);
+
+    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
 
     const webinar = await Webinar.findById(id);
     if (!webinar) {
@@ -513,7 +521,7 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    participant.feedback = { rating, comments };
+    participant.feedback = { rating: ratingValue, comments };
     await webinar.save();
 
     res.json({

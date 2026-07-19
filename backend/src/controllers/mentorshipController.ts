@@ -5,6 +5,12 @@ import User from '../models/User';
 export const requestMentorship = async (req: Request, res: Response): Promise<void> => {
   try {
     const { mentorId, specialtyRequested, initialMessage } = req.body;
+    const requesterId = (req as any).user.id;
+
+    if (mentorId === requesterId) {
+      res.status(400).json({ success: false, message: 'You cannot request mentorship from yourself' });
+      return;
+    }
     
     // Check if mentor exists and is a doctor
     const mentor = await User.findById(mentorId);
@@ -16,7 +22,7 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
     // Check if already requested
     const existing = await Mentorship.findOne({
       mentor: mentorId,
-      mentee: (req as any).user.id,
+      mentee: requesterId,
       status: { $in: ['pending', 'active'] }
     });
 
@@ -27,7 +33,7 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
 
     const mentorship = await Mentorship.create({
       mentor: mentorId,
-      mentee: (req as any).user.id,
+      mentee: requesterId,
       specialtyRequested,
       initialMessage,
     });

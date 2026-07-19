@@ -86,7 +86,8 @@ export const getDueFlashcards = async (req: Request, res: Response): Promise<voi
 export const reviewFlashcard = async (req: Request, res: Response): Promise<void> => {
   try {
     const { quality } = req.body; // 0-5 score
-    if (quality === undefined || quality < 0 || quality > 5) {
+    const qualityScore = Number(quality);
+    if (!Number.isInteger(qualityScore) || qualityScore < 0 || qualityScore > 5) {
       res.status(400).json({ success: false, message: 'Quality score (0-5) is required' });
       return;
     }
@@ -97,7 +98,7 @@ export const reviewFlashcard = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const updated = sm2({ interval: flashcard.interval, repetitions: flashcard.repetitions, easeFactor: flashcard.easeFactor }, quality);
+    const updated = sm2({ interval: flashcard.interval, repetitions: flashcard.repetitions, easeFactor: flashcard.easeFactor }, qualityScore);
     flashcard.interval = updated.interval;
     flashcard.repetitions = updated.repetitions;
     flashcard.easeFactor = updated.easeFactor;

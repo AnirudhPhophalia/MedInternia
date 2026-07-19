@@ -45,6 +45,13 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (comment.author.toString() !== revieweeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reviewee must match the comment author'
+      });
+    }
+
     // Check if review already exists
     const existingReview = await PeerReview.findOne({
       reviewer: reviewerId,
@@ -245,15 +252,9 @@ export const markReviewHelpful = async (req: AuthRequest, res: Response) => {
   try {
     const { reviewId } = req.params;
     const { isHelpful } = req.body;
+    const requesterId = (req.user!._id as any).toString();
 
-    const review = await PeerReview.findByIdAndUpdate(
-      reviewId,
-      { isHelpful },
-      { new: true }
-    ).populate([
-      { path: 'reviewer', select: 'firstName lastName userType' },
-      { path: 'reviewee', select: 'firstName lastName userType' }
-    ]);
+    const review = await PeerReview.findById(reviewId);
 
     if (!review) {
       return res.status(404).json({
@@ -261,6 +262,24 @@ export const markReviewHelpful = async (req: AuthRequest, res: Response) => {
         message: 'Review not found'
       });
     }
+
+    const canUpdateHelpfulness =
+      review.reviewee.toString() === requesterId ||
+      req.user!.userType === 'admin';
+
+    if (!canUpdateHelpfulness) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this review'
+      });
+    }
+
+    review.isHelpful = isHelpful;
+    await review.save();
+    await review.populate([
+      { path: 'reviewer', select: 'firstName lastName userType' },
+      { path: 'reviewee', select: 'firstName lastName userType' }
+    ]);
 
     res.json({
       success: true,
