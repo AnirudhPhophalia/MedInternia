@@ -145,6 +145,18 @@ router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) 
 router.get('/:id/mentees', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const currentUser = req.user!;
+    const canViewMentees =
+      currentUser.userType === 'admin' ||
+      (currentUser.userType === 'doctor' && (currentUser._id as any).toString() === id);
+
+    if (!canViewMentees) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
     const mentees = await User.find({ userType: 'intern', mentorDoctor: id, isActive: true })
       .select('firstName lastName email medicalSchool yearOfStudy points averageRating streak');
     res.json({

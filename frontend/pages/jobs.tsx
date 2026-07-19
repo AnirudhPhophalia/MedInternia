@@ -25,8 +25,7 @@ import {
   TextField,
   InputAdornment
 } from "@mui/material";
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkButton from '../components/BookmarkButton';
 import WorkIcon from '@mui/icons-material/Work';
 import BusinessIcon from '@mui/icons-material/Business';
 import RoomIcon from '@mui/icons-material/Room';
@@ -173,10 +172,8 @@ export default function Jobs() {
       setCurrentUserId(storedUser._id);
     }
 
-    // Load saved / applied jobs from localstorage
+    // Load applied jobs from localstorage (bookmarks are now handled server-side)
     try {
-      const saved = JSON.parse(localStorage.getItem('savedJobs') || '[]');
-      setSavedJobIds(saved);
       const apps = JSON.parse(localStorage.getItem('jobApplications') || '[]');
       setApplications(apps);
     } catch (e) {
@@ -218,16 +215,16 @@ export default function Jobs() {
       });
   }, [authChecked, filterSpecialty, filterExperience, filterRemote, filterVisa, smartSearchActive]);
 
-  const toggleSaveJob = (id: string) => {
-    let updated;
-    if (savedJobIds.includes(id)) {
-      updated = savedJobIds.filter(savedId => savedId !== id);
-    } else {
-      updated = [...savedJobIds, id];
-    }
-    setSavedJobIds(updated);
-    localStorage.setItem('savedJobs', JSON.stringify(updated));
-  };
+  useEffect(() => {
+  if (!currentUserId) return;
+  api.get(`/users/${currentUserId}/saved`)
+    .then(res => {
+      const savedJobs = res.data?.data?.savedJobs || [];
+      // savedJobs come back populated (full job objects) from this endpoint
+      setSavedJobIds(savedJobs.map((j: any) => j._id));
+    })
+    .catch(() => setSavedJobIds([]));
+}, [currentUserId]);
 
   const handleApply = async (job: any) => {
     // Add to applications list in localstorage
@@ -408,7 +405,6 @@ export default function Jobs() {
                     <Typography align="center" color="text.secondary">No job opportunities found.</Typography>
                   ) : (
                     jobs.map((j) => {
-                      const isSaved = savedJobIds.includes(j._id);
                       const isApplied = applications.some(app => app.id === j._id);
 
                       return (
@@ -430,9 +426,7 @@ export default function Jobs() {
                                   </Stack>
                                 </Stack>
                               </Box>
-                              <IconButton onClick={() => toggleSaveJob(j._id)} color="primary">
-                                {isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
-                              </IconButton>
+                              <BookmarkButton itemType="job" itemId={j._id} />
                             </Stack>
 
                             <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -529,9 +523,7 @@ export default function Jobs() {
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">{j.location}</Typography>
                               </Box>
-                              <IconButton onClick={() => toggleSaveJob(j._id)} color="primary">
-                                <BookmarkIcon />
-                              </IconButton>
+                              <BookmarkButton itemType="job" itemId={j._id} />
                             </Stack>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 3 }}>
                               <Stack direction="row" spacing={1} alignItems="center">

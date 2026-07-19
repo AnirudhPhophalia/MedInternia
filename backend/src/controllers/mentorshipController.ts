@@ -6,9 +6,15 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
   try {
     const { mentorId, specialtyRequested, initialMessage } = req.body;
     const requester = (req as any).user;
+    const requesterId = requester.id;
 
     if (requester.userType !== 'intern') {
       res.status(403).json({ success: false, message: 'Only interns can request mentorship' });
+      return;
+    }
+
+    if (mentorId === requesterId) {
+      res.status(400).json({ success: false, message: 'You cannot request mentorship from yourself' });
       return;
     }
     
@@ -22,7 +28,7 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
     // Check if already requested
     const existing = await Mentorship.findOne({
       mentor: mentorId,
-      mentee: (req as any).user.id,
+      mentee: requesterId,
       status: { $in: ['pending', 'active'] }
     });
 
@@ -33,7 +39,7 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
 
     const mentorship = await Mentorship.create({
       mentor: mentorId,
-      mentee: (req as any).user.id,
+      mentee: requesterId,
       specialtyRequested,
       initialMessage,
     });

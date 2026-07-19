@@ -20,7 +20,7 @@ router.get('/', getAllResearchPapers);
 
 // Place specific routes BEFORE dynamic routes
 router.get('/download/:filename', authenticate, (req, res) => {
-  const filename = path.basename(req.params.filename);
+  const filename = path.basename(String(req.params.filename));
   if (!filename || filename.includes('..')) {
     return res.status(400).json({ success: false, message: 'Invalid filename' });
   }
