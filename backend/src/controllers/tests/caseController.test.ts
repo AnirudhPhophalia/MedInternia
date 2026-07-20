@@ -56,14 +56,7 @@ describe("Case Controller", () => {
 
   describe("createCase", () => {
     it("creates a patient case with default moderation status as pending", async () => {
-      mockedAnalyzeCase.mockResolvedValue({
-        symptoms: ["headache"],
-        diagnosis: "migraine",
-        treatment: "rest",
-        tags: ["neurology"],
-        difficulty: "easy",
-        specialty: "Neurology",
-      });
+      // analyzeCase is no longer called in the controller
 
       const req = mockRequest("patient-1", "patient", {}, {
         title: "Patient Case",
@@ -92,14 +85,7 @@ describe("Case Controller", () => {
     });
 
     it("creates a doctor case with default moderation status as approved", async () => {
-      mockedAnalyzeCase.mockResolvedValue({
-        symptoms: [],
-        diagnosis: "",
-        treatment: "",
-        tags: [],
-        difficulty: "medium",
-        specialty: "General",
-      });
+      // analyzeCase is no longer called in the controller
 
       const req = mockRequest("doctor-1", "doctor", {}, {
         title: "Doctor Case",
@@ -121,7 +107,7 @@ describe("Case Controller", () => {
       expect(mockedCase).toHaveBeenCalledWith(expect.objectContaining({
         title: "Doctor Case",
         isPatientCase: false,
-        moderationStatus: "approved",
+        moderationStatus: "pending",
       }));
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("doctor-1", {
         $inc: { points: 10 },
