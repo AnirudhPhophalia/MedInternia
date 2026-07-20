@@ -14,7 +14,7 @@ for root, dirs, files in os.walk("."):
                 with open(path, "r", encoding="utf-8") as f:
                     code += f"\nFILE:{path}\n"
                     code += f.read()[:4000]
-            except:
+            except (IOError, OSError, UnicodeDecodeError):
                 pass
 
 prompt = f"""
