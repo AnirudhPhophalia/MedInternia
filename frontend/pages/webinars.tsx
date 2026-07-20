@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import {
   Box,
   Container,
@@ -216,16 +217,26 @@ export default function WebinarsPage() {
         subtitle="Join live clinical classes, AMAs, and interactive case discussions led by specialists."
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Webinars" }]}
         action={
-          canManageWebinars ? (
+          <Stack direction="row" spacing={2}>
             <Button
-              onClick={() => router.push('/webinars/create')}
-              variant="contained"
-              startIcon={<Plus size={18} />}
+              onClick={() => router.push('/profile/me')}
+              variant="outlined"
+              startIcon={<PersonIcon />}
               sx={{ borderRadius: 3, fontWeight: 700 }}
             >
-              Create Webinar
+              My RSVPs
             </Button>
-          ) : null
+            {canManageWebinars ? (
+              <Button
+                onClick={() => router.push('/webinars/create')}
+                variant="contained"
+                startIcon={<Plus size={18} />}
+                sx={{ borderRadius: 3, fontWeight: 700 }}
+              >
+                Create Webinar
+              </Button>
+            ) : null}
+          </Stack>
         }
       />
 
@@ -377,7 +388,7 @@ export default function WebinarsPage() {
                       />
                       <Stack direction="row" spacing={1}>
                         {isRegistered && (
-                          <Chip label="Registered" color="success" size="small" variant="outlined" sx={{ fontWeight: 700 }} />
+                          <Chip label="RSVP'd" color="success" size="small" variant="outlined" sx={{ fontWeight: 700 }} />
                         )}
                         <Chip 
                           label={expired ? 'Completed' : w.status?.toUpperCase()} 
@@ -405,7 +416,15 @@ export default function WebinarsPage() {
                     <Stack spacing={1.5} sx={{ mb: 3 }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ color: 'text.secondary' }}>
                         <PersonIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="caption">Host: <strong>{hostName}</strong></Typography>
+                        <Typography variant="caption">Host: <strong>
+                          {w.host?._id ? (
+                            <Link href={`/users/${w.host._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                              {hostName}
+                            </Link>
+                          ) : (
+                            hostName
+                          )}
+                        </strong></Typography>
                       </Stack>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ color: 'text.secondary' }}>
                         <CalendarTodayIcon sx={{ fontSize: 18 }} />
@@ -454,11 +473,11 @@ export default function WebinarsPage() {
                         </Button>
                       ) : canRegister ? (
                         <Button variant="contained" color="success" onClick={() => handleRegister(w._id)} sx={{ borderRadius: 2, px: 3, textTransform: 'none' }}>
-                          Register
+                          RSVP
                         </Button>
                       ) : canUnregister ? (
                         <Button variant="outlined" color="warning" onClick={() => handleUnregister(w._id)} sx={{ borderRadius: 2, px: 3, textTransform: 'none' }}>
-                          Unregister
+                          Cancel RSVP
                         </Button>
                       ) : (
                         <Chip 
