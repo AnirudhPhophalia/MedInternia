@@ -23,6 +23,8 @@ import messageRoutes from './messageRoutes';
 import flashcardRoutes from './flashcards';
 import collectionRoutes from './collections';
 import learningPathRoutes from './learningPaths';
+import leaderboardRoutes from './leaderboard';
+
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -84,6 +86,7 @@ router.use('/webinars', webinarRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/integration', integrationRoutes);
 router.use('/symptoms', symptomRoutes);
+router.use('/leaderboard', leaderboardRoutes);
 router.use('/', enhancedRoutes);
 router.use('/research-papers', researchPaperRoutes);
 router.use("/diaries", diaryRoutes);
