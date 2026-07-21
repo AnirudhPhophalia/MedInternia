@@ -21,6 +21,10 @@ jest.mock("../../models/Case");
 jest.mock("../../models/User");
 jest.mock("../../models/Notification");
 jest.mock("../../services/aiTaggerService");
+jest.mock("../../services/ragService", () => ({
+  ingestCase: jest.fn().mockResolvedValue(undefined),
+  suggestCases: jest.fn().mockResolvedValue([]),
+}));
 jest.mock("../notificationController");
 
 const mockedCase = Case as jest.Mocked<typeof Case>;
