@@ -5,6 +5,15 @@ import JobOpportunity from '../models/JobOpportunity';
 import User from '../models/User';
 import UserBadge from '../models/UserBadge';
 
+const hasInvalidSalaryRange = (salary: any): boolean => {
+  if (!salary || typeof salary !== 'object') return false;
+  return (
+    typeof salary.min === 'number' &&
+    typeof salary.max === 'number' &&
+    salary.min > salary.max
+  );
+};
+
 // Create job opportunity (doctors and admins only)
 export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
   try {
@@ -28,6 +37,13 @@ export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({
         success: false,
         message: 'Only doctors or admins can post job opportunities'
+      });
+    }
+
+    if (hasInvalidSalaryRange(salary)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Minimum salary cannot be greater than maximum salary'
       });
     }
 
@@ -249,6 +265,13 @@ export const updateJobOpportunity = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         message: 'Job opportunity not found or you are not authorized to update it'
+      });
+    }
+
+    if (req.body.salary !== undefined && hasInvalidSalaryRange(req.body.salary)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Minimum salary cannot be greater than maximum salary'
       });
     }
     
