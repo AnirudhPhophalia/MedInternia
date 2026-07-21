@@ -12,6 +12,7 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
+import { ingestCase, suggestCases } from "../services/ragService";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { uploadCaseAttachment } from "../utils/cloudinary";
@@ -827,6 +828,8 @@ export const createCase = asyncHandler(
       await newCase.save();
       await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
 
+      ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: true }).catch(console.error);
+
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
 
@@ -847,6 +850,20 @@ export const createCase = asyncHandler(
     await newCase.save();
     await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
 
+    ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: false }).catch(console.error);
+
     res.status(201).json({ success: true, data: { case: newCase } });
   }
 );
+
+export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const caseDoc = await Case.findById(getId(req.params.id));
+  if (!caseDoc) {
+    throw new AppError("Case not found", 404);
+  }
+  
+  const text = `${caseDoc.title}\n${caseDoc.description}`;
+  const similar = await suggestCases(text, 3);
+  
+  res.json({ success: true, data: { similarCases: similar } });
+});
