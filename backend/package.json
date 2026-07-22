@@ -35,7 +35,8 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.5",
     "pdf-parse": "^2.4.5",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -46,6 +47,7 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.13.1",
+    "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.1",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
