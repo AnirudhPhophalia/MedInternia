@@ -270,6 +270,7 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
             }}
             href="#"
             target="_blank"
+            rel="noopener noreferrer"
           >
             {file.name}
             <Typography component="span" sx={{ ml: "auto", fontSize: 13, color: "#888" }}>
@@ -299,6 +300,7 @@ function CaseDetailsDialog({ open, onClose, caseData }: { open: boolean; onClose
             }}
             href="#"
             target="_blank"
+            rel="noopener noreferrer"
           >
             {file.name}
             <Typography component="span" sx={{ ml: "auto", fontSize: 13, color: "#888" }}>

@@ -259,6 +259,7 @@ const filteredPapers = papers.filter((paper) => {
               href={openPaper.fileUrl}
               download
               target="_blank"
+              rel="noopener noreferrer"
             >
               Download PDF
             </Button>
