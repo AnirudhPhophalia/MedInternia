@@ -14,6 +14,7 @@ import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
+import { corsOptions, isAllowedOrigin } from './config/cors';
 
 function sanitizeObject(obj: any, path = ''): void {
   if (!obj || typeof obj !== 'object') return;
@@ -62,68 +63,10 @@ const initializeApp = async () => {
 
 // Middleware
 app.use(helmet());
-const defaultAllowedOrigins = [
-  'https://medinternia.vercel.app',
-  'https://med-internia.vercel.app',
-  'http://localhost:3005',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001',
-  'http://127.0.0.1:5173'
-];
-
-const normalizeOrigin = (value: string): string => {
-  const trimmed = value.trim();
-  try {
-    return new URL(trimmed).origin.toLowerCase();
-  } catch {
-    return trimmed.replace(/\/+$/, '').toLowerCase();
-  }
-};
-
-const allowedOrigins = new Set(
-  [
-    ...defaultAllowedOrigins,
-    ...(process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
-      : [])
-  ].map(normalizeOrigin)
-);
-
-const isAllowedOrigin = (origin: string): boolean => {
-  const normalizedOrigin = normalizeOrigin(origin);
-  return allowedOrigins.has(normalizedOrigin);
-};
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (isAllowedOrigin(origin)) return callback(null, true);
-    return callback(new Error(`Not allowed by CORS: ${origin}`));
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  credentials: true,
-  allowedHeaders: [
-    'Origin',
-    'X-Requested-With',
-    'Content-Type',
-    'Accept',
-    'Authorization',
-    'X-API-KEY'
-  ],
-  optionsSuccessStatus: 204
-}));
+app.use(cors(corsOptions));
 
 // Ensure preflight OPTIONS requests are handled for all routes
-app.options(/.*/, cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (isAllowedOrigin(origin)) return callback(null, true);
-    return callback(new Error(`Not allowed by CORS: ${origin}`));
-  },
-  optionsSuccessStatus: 204
-}));
+app.options(/.*/, cors(corsOptions));
 app.use(morgan('combined'));
 
 // Serve uploads folder for profile images

@@ -463,7 +463,7 @@ export default function Navbar({ route }: { route?: string }) {
                 fontWeight: 700,
                 letterSpacing: 0.5,
                 display: { xs: 'none', sm: 'block' },
-                color: 'text.primary',
+                color: "#12355B",
               }}
             >
               {t('navbar.brand', 'MedInternia')}

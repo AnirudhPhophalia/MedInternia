@@ -636,6 +636,18 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { question, options } = req.body;
+    const trimmedQuestion = typeof question === 'string' ? question.trim() : '';
+    const normalizedOptions = Array.isArray(options)
+      ? options.map((option) => typeof option === 'string' ? option.trim() : '').filter(Boolean)
+      : [];
+
+    if (!trimmedQuestion) {
+      return res.status(400).json({ success: false, message: 'Poll question is required' });
+    }
+
+    if (normalizedOptions.length < 2) {
+      return res.status(400).json({ success: false, message: 'At least two poll options are required' });
+    }
     
     if (req.user!.userType !== 'doctor' && req.user!.userType !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
@@ -648,8 +660,8 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
     }
 
     webinar.polls.push({
-      question,
-      options,
+      question: trimmedQuestion,
+      options: normalizedOptions,
       active: true,
       votes: new Map(),
       createdAt: new Date()
@@ -733,6 +745,11 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { question } = req.body;
+    const trimmedQuestion = typeof question === 'string' ? question.trim() : '';
+
+    if (!trimmedQuestion) {
+      return res.status(400).json({ success: false, message: 'Question is required' });
+    }
 
     const webinar = await Webinar.findById(id);
     if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
@@ -744,7 +761,7 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
     }
 
     webinar.qna.push({
-      question,
+      question: trimmedQuestion,
       author: req.user!._id,
       upvotes: [],
       isAnswered: false,

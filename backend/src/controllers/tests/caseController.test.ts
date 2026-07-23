@@ -5,6 +5,7 @@ import {
   deleteCase,
   addComment,
   getCases,
+  getPinnedComments,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
@@ -21,6 +22,10 @@ jest.mock("../../models/Case");
 jest.mock("../../models/User");
 jest.mock("../../models/Notification");
 jest.mock("../../services/aiTaggerService");
+jest.mock("../../services/ragService", () => ({
+  ingestCase: jest.fn().mockResolvedValue(undefined),
+  suggestCases: jest.fn().mockResolvedValue([]),
+}));
 jest.mock("../notificationController");
 
 const mockedCase = Case as jest.Mocked<typeof Case>;
@@ -73,7 +78,7 @@ describe("Case Controller", () => {
 
       const save = jest.fn().mockResolvedValue(undefined);
       const populate = jest.fn().mockResolvedValue(undefined);
-      (mockedCase as unknown as jest.Mock).mockImplementation(() => ({ save, populate }));
+      (mockedCase as unknown as jest.Mock).mockImplementation(() => ({ save, populate, _id: "patient-1" }));
       mockedUser.findByIdAndUpdate.mockResolvedValue({} as any);
 
       const next = jest.fn();
@@ -296,6 +301,49 @@ describe("Case Controller", () => {
           })
         })
       }));
+    });
+  });
+
+  describe("getPinnedComments", () => {
+    it("returns pinned comments for a valid caseId", async () => {
+      const pinnedComment = { _id: "comment-1", content: "Pinned", isPinned: true };
+      mockedCase.findById.mockResolvedValue({
+        comments: [pinnedComment, { _id: "comment-2", content: "Regular", isPinned: false }],
+      } as any);
+      const req = mockRequest("user-1", "doctor", { caseId: "case-123" });
+      const res = mockResponse();
+
+      await getPinnedComments(req as any, res as any, jest.fn());
+
+      expect(mockedCase.findById).toHaveBeenCalledWith("case-123");
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: { comments: [pinnedComment] },
+      });
+    });
+
+    it("preserves the existing 404 response for a nonexistent case", async () => {
+      mockedCase.findById.mockResolvedValue(null);
+      const req = mockRequest("user-1", "doctor", { caseId: "missing-case" });
+      const res = mockResponse();
+
+      await expect(
+        getPinnedComments(req as any, res as any, jest.fn())
+      ).rejects.toMatchObject({ message: "Case not found", statusCode: 404 });
+    });
+
+    it("uses caseId rather than an unrelated id parameter", async () => {
+      mockedCase.findById.mockResolvedValue({ comments: [] } as any);
+      const req = mockRequest("user-1", "doctor", {
+        caseId: "declared-case-id",
+        id: "wrong-id",
+      });
+      const res = mockResponse();
+
+      await getPinnedComments(req as any, res as any, jest.fn());
+
+      expect(mockedCase.findById).toHaveBeenCalledWith("declared-case-id");
+      expect(mockedCase.findById).not.toHaveBeenCalledWith("wrong-id");
     });
   });
 });

@@ -746,8 +746,8 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized: user not found in request" });
     }
-    const myId = req.user._id;
-    const me = await User.findById(myId)
+    const targetUserId = req.params.userId || req.user._id;
+    const me = await User.findById(targetUserId)
       .populate('following', 'firstName lastName profilePicture specialization userType')
       .populate('followers', 'firstName lastName profilePicture specialization userType');
     if (!me) return res.status(404).json({ success: false, message: "User not found" });

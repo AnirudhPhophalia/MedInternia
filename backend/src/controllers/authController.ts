@@ -153,6 +153,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // Normalize the submitted email (casing/whitespace) so it matches the value
   // carried in the verification token and stored by the OTP flow.
   const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw new AppError("Invalid email format", 400);
+  }
 
   // 1. A verified signup token (issued by /verify-otp after real OTP verification)
   // is required — this replaces requiring a raw OTP directly on /register, since
@@ -167,7 +170,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       email?: string;
       purpose?: string;
     };
-    if (!decoded?.email || decoded.purpose !== "signup") {
+    if (!decoded?.email || decoded.purpose !== "signup" || normalizeEmail(decoded.email) !== normalizedEmail) {
       throw new Error("invalid token payload");
     }
     verifiedEmail = decoded.email;
@@ -310,6 +313,9 @@ export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw new AppError('Email required', 400);
+  }
   const otp = await issueOtp(normalizedEmail, 'signup');
   try {
     await transporter.sendMail({
@@ -333,6 +339,9 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw new AppError('Email and OTP required', 400);
+  }
   const result = await consumeOtp(normalizedEmail, 'signup', otp);
   if (!result.valid) {
     throw new AppError(result.message || 'Invalid OTP', 400);
