@@ -809,16 +809,15 @@ export const createCase = asyncHandler(
     }
     const { title, description, specialization } = req.body;
     const spec = specialization || (user as any).specialization || "General Medicine";
-    const aiAnalysis = await analyzeCase(title, description, spec);
 
     if (user.userType === "patient") {
       const newCase = new Case({
         title,
         description,
-        symptoms: aiAnalysis.symptoms,
+        symptoms: req.body.symptoms || [],
         patientInfo: req.body.patientInfo || {},
-        diagnosis: aiAnalysis.diagnosis,
-        treatment: aiAnalysis.treatment,
+        diagnosis: undefined,
+        treatment: undefined,
         doctor: user._id,
         isPatientCase: true,
         moderationStatus: "pending",
@@ -833,14 +832,22 @@ export const createCase = asyncHandler(
     const newCase = new Case({
       title,
       description,
-      symptoms: aiAnalysis.symptoms,
+      symptoms: req.body.symptoms || [],
       patientInfo: req.body.patientInfo || {},
-      diagnosis: aiAnalysis.diagnosis,
-      treatment: aiAnalysis.treatment,
+      diagnosis: undefined,
+      treatment: undefined,
       doctor: user._id,
       isPatientCase: false,
       specialization: spec,
-      moderationStatus: "approved",
+      moderationStatus: "pending",
+      moderationAuditTrail: [
+        {
+          status: "pending",
+          reason: "Case awaiting background compliance and AI moderation",
+          reviewedBy: undefined,
+          reviewedAt: new Date(),
+        },
+      ],
       pointsAwarded: 10,
     });
 

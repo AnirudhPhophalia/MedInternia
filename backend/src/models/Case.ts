@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { checkCompliance } from '../services/nerService';
+import agenda from '../config/agenda';
 
 export interface IComment extends Document {
   author: mongoose.Types.ObjectId;
@@ -344,46 +344,46 @@ const CaseSchema = new Schema<ICase>({
   timestamps: true
 });
 
-// Pre-save hook to audit title, description, and comments
-CaseSchema.pre('save', async function(next) {
-  const caseDoc = this;
-
-  // 1. Audit case title or description if modified
-  try {
-    if (caseDoc.isModified('title') && caseDoc.title) {
-      const res = await checkCompliance(caseDoc.title, caseDoc.patientInfo?.age);
-      caseDoc.title = res.redacted_text;
-    }
-    if (caseDoc.isModified('description') && caseDoc.description) {
-      const res = await checkCompliance(caseDoc.description, caseDoc.patientInfo?.age);
-      caseDoc.description = res.redacted_text;
-    }
-  } catch (err) {
-    console.error('Compliance check failed for Case title/description:', err);
+// Pre-save hook to determine if moderation is needed
+CaseSchema.pre('save', function(next) {
+  const caseDoc = this as any;
+  
+  // Skip if we're saving from the moderation job
+  if (caseDoc.$skipModerationQueue) {
+    return next();
   }
 
-  // 2. Audit new or modified comments
+  let needsModeration = false;
+
+  // 1. Check if case title or description modified
+  if (caseDoc.isModified('title') || caseDoc.isModified('description')) {
+    caseDoc.moderationStatus = 'pending';
+    needsModeration = true;
+  }
+
+  // 2. Check if there are new/modified comments
   for (const comment of caseDoc.comments) {
     if (comment.isNew || comment.isModified('content')) {
-      try {
-        const res = await checkCompliance(comment.content, caseDoc.patientInfo?.age);
-        comment.content = res.redacted_text;
-        if (res.is_flagged) {
-          comment.isFlagged = true;
-          comment.flagReasons = res.flag_reasons;
-          comment.moderationStatus = 'pending';
-        } else {
-          comment.isFlagged = false;
-          comment.flagReasons = [];
-          comment.moderationStatus = 'approved';
-        }
-      } catch (err) {
-        console.error('Compliance check failed for Comment:', err);
-      }
+      comment.moderationStatus = 'pending';
+      needsModeration = true;
     }
+  }
+
+  // Mark if moderation is needed for the post-save hook
+  if (needsModeration) {
+    caseDoc.$needsModeration = true;
   }
 
   next();
+});
+
+// Post-save hook to enqueue the agenda job
+CaseSchema.post('save', function(doc: any) {
+  if (doc.$needsModeration) {
+    agenda.now('moderate case', { caseId: doc._id.toString() }).catch(err => {
+      console.error('[Agenda] Failed to queue moderation job for case', doc._id, err);
+    });
+  }
 });
 
 // Indexes for better performance

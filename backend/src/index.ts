@@ -14,6 +14,8 @@ import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
+import agenda from './config/agenda';
+import './jobs/moderationJob'; // Import to register the job
 
 function sanitizeObject(obj: any, path = ''): void {
   if (!obj || typeof obj !== 'object') return;
@@ -56,6 +58,10 @@ const initializeApp = async () => {
 
   // Create default badges if they don't exist
   await createDefaultBadges();
+
+  // Start Agenda background job queue
+  await agenda.start();
+  console.log('Agenda background jobs started');
 
   console.log('Application initialized successfully');
 };
