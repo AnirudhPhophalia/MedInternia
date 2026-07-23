@@ -1,11 +1,20 @@
 import { Response } from "express";
-import { updateJobOpportunity, deleteJobOpportunity, calculateMatchScore } from "../jobController";
+import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore } from "../jobController";
 import { AuthRequest } from "../../middleware/auth";
 import JobOpportunity from "../../models/JobOpportunity";
+import User from "../../models/User";
+import UserBadge from "../../models/UserBadge";
 
 jest.mock("../../models/JobOpportunity");
+jest.mock("../../models/User");
+jest.mock("../../models/UserBadge");
+jest.mock("../notificationController", () => ({
+    createAndEmitNotification: jest.fn().mockResolvedValue(undefined),
+}));
 
 const mockedJobOpportunity = JobOpportunity as jest.Mocked<typeof JobOpportunity>;
+const mockedUser = User as jest.Mocked<typeof User>;
+const mockedUserBadge = UserBadge as jest.Mocked<typeof UserBadge>;
 
 const mockResponse = () => {
     const res: Partial<Response> = {};
@@ -162,5 +171,199 @@ describe("Job Controller ownership checks (issue #410)", () => {
             const score = calculateMatchScore(user, job);
             expect(score).toBe(100); // Defaults to 100 if no requirements specified
         });
+    });
+});
+
+describe("Job application validation (issue #818)", () => {
+    const futureDeadline = new Date("2099-01-01T00:00:00.000Z");
+
+    const makeJob = (overrides: Record<string, unknown> = {}) => ({
+        _id: "job-123",
+        title: "Medical internship",
+        postedBy: null,
+        isActive: true,
+        applicationDeadline: futureDeadline,
+        applications: 0,
+        applicants: [],
+        requirements: { minimumPoints: 0, requiredBadges: [] },
+        ...overrides,
+    });
+
+    const mockPopulatedJob = (job: unknown) => {
+        (mockedJobOpportunity.findById as jest.Mock).mockReturnValueOnce({
+            populate: jest.fn().mockResolvedValue(job),
+        });
+    };
+
+    const mockUserBadges = (badges: Array<{ badge: unknown }> = []) => {
+        (mockedUserBadge.find as jest.Mock).mockReturnValue({
+            select: jest.fn().mockResolvedValue(badges),
+        });
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        (mockedUser.findById as jest.Mock).mockResolvedValue({ _id: "user-1", points: 100 });
+    });
+
+    it("preserves the not-found response without attempting an update", async () => {
+        mockPopulatedJob(null);
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("missing-job", "user-1"), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ success: false, message: "Job opportunity not found" });
+        expect(mockedJobOpportunity.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["inactive", { isActive: false }, "This job opportunity is no longer active."],
+        ["expired", { applicationDeadline: new Date("2000-01-01T00:00:00.000Z") }, "The application deadline for this job has passed."],
+    ])("rejects an %s job without changing application data", async (_case, overrides, message) => {
+        const job = makeJob(overrides);
+        mockPopulatedJob(job);
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("job-123", "user-1"), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ success: false, message });
+        expect(job.applicants).toHaveLength(0);
+        expect(job.applications).toBe(0);
+        expect(mockedJobOpportunity.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["points only", 49, [], []],
+        ["badges only", 100, [{ _id: "badge-1", name: "Qualified" }], []],
+        ["points while badges are satisfied", 49, [{ _id: "badge-1", name: "Qualified" }], [{ badge: "badge-1" }]],
+    ])("rejects unmet %s eligibility without changing application data", async (_case, points, requiredBadges, userBadges) => {
+        const job = makeJob({ requirements: { minimumPoints: 50, requiredBadges } });
+        mockPopulatedJob(job);
+        (mockedUser.findById as jest.Mock).mockResolvedValue({ _id: "user-1", points });
+        mockUserBadges(userBadges);
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("job-123", "user-1"), res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            success: false,
+            message: "You do not meet the eligibility requirements for this job.",
+            data: { eligibility: expect.objectContaining({ isEligible: false }) },
+        }));
+        expect(job.applicants).toHaveLength(0);
+        expect(job.applications).toBe(0);
+        expect(mockedJobOpportunity.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("preserves duplicate-application behavior", async () => {
+        mockPopulatedJob(makeJob({ applicants: [{ user: "user-1" }] }));
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("job-123", "user-1"), res);
+
+        expect(res.status).toHaveBeenCalledWith(409);
+        expect(res.json).toHaveBeenCalledWith({ success: false, message: "You have already applied to this job." });
+        expect(mockedJobOpportunity.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["without optional requirements", { minimumPoints: 0, requiredBadges: [] }, []],
+        ["when fully eligible", { minimumPoints: 100, requiredBadges: [{ _id: "badge-1", name: "Qualified" }] }, [{ badge: "badge-1" }]],
+    ])("applies exactly once %s", async (_case, requirements, badges) => {
+        const job = makeJob({ requirements });
+        mockPopulatedJob(job);
+        mockUserBadges(badges);
+        const updatedJob = { ...job, applications: 1, applicants: [{ user: "user-1" }] };
+        const populate = jest.fn().mockResolvedValue(updatedJob);
+        (mockedJobOpportunity.findOneAndUpdate as jest.Mock).mockReturnValue({ populate });
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("job-123", "user-1"), res);
+
+        expect(mockedJobOpportunity.findOneAndUpdate).toHaveBeenCalledTimes(1);
+        expect(mockedJobOpportunity.findOneAndUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                _id: "job-123",
+                isActive: true,
+                $or: [
+                    { applicationDeadline: { $exists: false } },
+                    { applicationDeadline: null },
+                    { applicationDeadline: { $gte: expect.any(Date) } },
+                ],
+                "applicants.user": { $ne: "user-1" },
+            }),
+            expect.objectContaining({
+                $push: { applicants: { user: "user-1", appliedAt: expect.any(Date) } },
+                $inc: { applications: 1 },
+            }),
+            { new: true }
+        );
+        expect(updatedJob.applicants).toHaveLength(1);
+        expect(updatedJob.applications).toBe(1);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("allows applications when no deadline is configured", async () => {
+        const job = makeJob({ applicationDeadline: undefined });
+        mockPopulatedJob(job);
+        mockUserBadges([]);
+        const updatedJob = {
+            ...job,
+            applications: 1,
+            applicants: [{ user: "user-1" }],
+        };
+        (mockedJobOpportunity.findOneAndUpdate as jest.Mock).mockReturnValue({
+            populate: jest.fn().mockResolvedValue(updatedJob),
+        });
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("job-123", "user-1"), res);
+
+        expect(mockedJobOpportunity.findOneAndUpdate).toHaveBeenCalledTimes(1);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("shares the same point and badge calculation with the eligibility endpoint", async () => {
+        const job = makeJob({
+            requirements: {
+                minimumPoints: 100,
+                requiredBadges: [{ _id: "badge-1", name: "Qualified" }],
+            },
+        });
+        mockPopulatedJob(job);
+        (mockedUser.findById as jest.Mock).mockResolvedValue({ _id: "user-1", points: 50 });
+        mockUserBadges([]);
+        const res = mockResponse();
+
+        await checkJobEligibility(mockRequest("job-123", "user-1"), res);
+
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: {
+                eligibility: expect.objectContaining({
+                    isEligible: false,
+                    reasons: ["Minimum 100 points required", "Required badge: Qualified"],
+                }),
+            },
+        });
+    });
+
+    it("reports an inactive race instead of a duplicate and performs no second update", async () => {
+        const job = makeJob();
+        mockPopulatedJob(job);
+        (mockedJobOpportunity.findOneAndUpdate as jest.Mock).mockReturnValue({
+            populate: jest.fn().mockResolvedValue(null),
+        });
+        (mockedJobOpportunity.findById as jest.Mock).mockResolvedValueOnce(makeJob({ isActive: false }));
+        const res = mockResponse();
+
+        await applyToJob(mockRequest("job-123", "user-1"), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ success: false, message: "This job opportunity is no longer active." });
+        expect(mockedJobOpportunity.findOneAndUpdate).toHaveBeenCalledTimes(1);
     });
 });
