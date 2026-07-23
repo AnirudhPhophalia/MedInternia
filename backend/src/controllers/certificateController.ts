@@ -30,6 +30,19 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const startDate = new Date(duration?.startDate);
+    const endDate = new Date(duration?.endDate);
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime()) ||
+      endDate <= startDate
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Certificate end date must be after the start date'
+      });
+    }
+
     if (doctor.userType !== 'admin' && (doctor.mentoringCredits || 0) < casesReviewed) {
       return res.status(400).json({
         success: false,
