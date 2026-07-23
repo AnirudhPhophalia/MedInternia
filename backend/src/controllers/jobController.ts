@@ -124,6 +124,7 @@ export const calculateMatchScore = (user: any, job: any): number => {
 export const getJobOpportunities = async (req: Request, res: Response) => {
   try {
     const {
+      search,
       type,
       specialization,
       location,
@@ -138,6 +139,15 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
     } = req.query;
 
     const filter: any = {};
+    if (search) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { title: new RegExp(search as string, 'i') },
+          { description: new RegExp(search as string, 'i') }
+        ]
+      });
+    }
     if (type) filter.type = type;
     if (specialization) {
       if (Array.isArray(specialization)) {

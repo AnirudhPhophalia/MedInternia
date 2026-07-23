@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore } from "../jobController";
+import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore, getJobOpportunities } from "../jobController";
 import { AuthRequest } from "../../middleware/auth";
 import JobOpportunity from "../../models/JobOpportunity";
 import User from "../../models/User";
@@ -170,6 +170,42 @@ describe("Job Controller ownership checks (issue #410)", () => {
             const job = {};
             const score = calculateMatchScore(user, job);
             expect(score).toBe(100); // Defaults to 100 if no requirements specified
+        });
+    });
+
+    describe("getJobOpportunities search and filter", () => {
+        it("applies search query filter on title or description", async () => {
+            const chainable = {
+                populate: jest.fn().mockReturnThis(),
+                sort: jest.fn().mockReturnThis(),
+                skip: jest.fn().mockReturnThis(),
+                limit: jest.fn().mockResolvedValue([{ toObject: () => ({ title: "Surgery Intern" }) }])
+            };
+            (mockedJobOpportunity.find as jest.Mock).mockReturnValue(chainable as any);
+            (mockedJobOpportunity.countDocuments as jest.Mock).mockResolvedValue(1);
+
+            const req = {
+                query: { search: "surgery" }
+            } as any;
+            const res = mockResponse();
+
+            await getJobOpportunities(req, res);
+
+            expect(mockedJobOpportunity.find).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    $and: expect.arrayContaining([
+                        {
+                            $or: [
+                                { title: expect.any(RegExp) },
+                                { description: expect.any(RegExp) }
+                            ]
+                        }
+                    ])
+                })
+            );
+            expect(res.json).toHaveBeenCalledWith(
+                expect.objectContaining({ success: true })
+            );
         });
     });
 });
