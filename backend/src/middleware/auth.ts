@@ -28,7 +28,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     let token: string | undefined;
 
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
       token = authHeader.substring(7);
     } else if (req.cookies?.token) {
       token = req.cookies.token;
@@ -111,7 +111,7 @@ export const optionalAuthenticate = async (req: AuthRequest, res: Response, next
     let token: string | undefined;
 
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
       token = authHeader.substring(7);
     } else if (req.cookies?.token) {
       token = req.cookies.token;

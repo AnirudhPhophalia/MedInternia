@@ -392,12 +392,22 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const isPasswordValid = await user.comparePassword(password);
 
   if (!isPasswordValid) {
-    const newAttempts = (user.loginAttempts || 0) + 1;
-    const update: any = { $inc: { loginAttempts: 1 } };
-    if (newAttempts >= 5) {
-      update.$set = { lockoutUntil: new Date(Date.now() + 15 * 60 * 1000) };
-    }
-    await User.findByIdAndUpdate(user._id, update);
+    await User.findOneAndUpdate(
+      { _id: user._id },
+      [
+        { $set: { loginAttempts: { $add: [{ $ifNull: ['$loginAttempts', 0] }, 1] } } },
+        { $set: {
+            lockoutUntil: {
+              $cond: {
+                if: { $gte: ['$loginAttempts', 5] },
+                then: new Date(Date.now() + 15 * 60 * 1000),
+                else: '$lockoutUntil'
+              }
+            }
+          }
+        }
+      ]
+    );
     throw new AppError("Invalid email or password", 401);
   }
 
