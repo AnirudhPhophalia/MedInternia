@@ -14,6 +14,7 @@ import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
+import { startLeaderboardCron } from './cron/leaderboardWorker';
 
 function sanitizeObject(obj: any, path = ''): void {
   if (!obj || typeof obj !== 'object') return;
@@ -56,6 +57,9 @@ const initializeApp = async () => {
 
   // Create default badges if they don't exist
   await createDefaultBadges();
+
+  // Start leaderboard cache cron job
+  startLeaderboardCron();
 
   console.log('Application initialized successfully');
 };
