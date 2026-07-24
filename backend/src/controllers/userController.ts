@@ -727,7 +727,16 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized: user not found in request" });
     }
     const myId = req.user._id;
-    const { userId } = req.body;
+    const routeOwnerId = req.params.userId;
+    const userId = req.params.followId || req.body.userId;
+
+    if (routeOwnerId && routeOwnerId !== myId.toString()) {
+      return res.status(403).json({ success: false, message: "Cannot update another user's following list" });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User to unfollow is required" });
+    }
 
     await Promise.all([
       User.findByIdAndUpdate(myId, { $pull: { following: userId } }),
