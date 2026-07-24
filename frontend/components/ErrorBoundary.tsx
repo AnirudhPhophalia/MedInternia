@@ -1,5 +1,5 @@
 import React, { Component, ReactNode } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Stack } from '@mui/material';
 
 interface Props {
   children: ReactNode;
@@ -7,25 +7,24 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
+  handleRetry = () => {
+    window.location.reload();
   };
 
   render() {
@@ -36,18 +35,25 @@ class ErrorBoundary extends Component<Props, State> {
           flexDirection="column"
           alignItems="center"
           justifyContent="center"
-          minHeight="60vh"
+          minHeight="70vh"
           p={4}
+          textAlign="center"
+          role="alert"
+          aria-live="assertive"
         >
-          <Typography variant="h4" gutterBottom>
-            Something went wrong
-          </Typography>
-          <Typography variant="body1" color="text.secondary" mb={3}>
-            {this.state.error?.message || 'An unexpected error occurred'}
-          </Typography>
-          <Button variant="contained" onClick={this.handleReset}>
-            Try Again
-          </Button>
+          <Stack spacing={2} alignItems="center" maxWidth={520}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Oops, something went wrong!
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              We could not load this part of MedInternia safely. Please try
+              again, and if the problem continues, refresh later or contact
+              support.
+            </Typography>
+            <Button variant="contained" onClick={this.handleRetry}>
+              Try Again
+            </Button>
+          </Stack>
         </Box>
       );
     }
