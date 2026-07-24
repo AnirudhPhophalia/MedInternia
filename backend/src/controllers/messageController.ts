@@ -127,6 +127,13 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
     throw new AppError("Message content is required", 400);
   }
 
+  // Validate content length BEFORE hitting the DB to fail fast and avoid
+  // wasted round trips for oversized payloads. The Message schema enforces
+  // maxlength: 2000 on save, but checking here returns a clearer error.
+  if (trimmedContent.length > 2000) {
+    throw new AppError("Message content must not exceed 2000 characters", 400);
+  }
+
   if (senderId.toString() === receiverId) {
     throw new AppError("You cannot message yourself", 400);
   }
@@ -167,7 +174,15 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
     content: trimmedContent
   });
 
-  conversation.lastMessage = trimmedContent;
+  // Store a truncated preview for the conversation list rather than the full
+  // message body. This prevents transferring up to 2000 characters per
+  // conversation on every getConversations() call.
+  const PREVIEW_MAX_LENGTH = 100;
+  const preview = trimmedContent.length > PREVIEW_MAX_LENGTH
+    ? trimmedContent.substring(0, PREVIEW_MAX_LENGTH) + '...'
+    : trimmedContent;
+
+  conversation.lastMessage = preview;
   conversation.updatedAt = new Date();
   await conversation.save();
 

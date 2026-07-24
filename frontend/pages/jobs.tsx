@@ -136,6 +136,7 @@ export default function Jobs() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
 
   // Filter states
+  const [filterSearch, setFilterSearch] = useState<string>("");
   const [filterSpecialty, setFilterSpecialty] = useState<string[]>([]);
   const [filterExperience, setFilterExperience] = useState<string>("");
   const [filterLocation, setFilterLocation] = useState<string>("");
@@ -211,6 +212,7 @@ export default function Jobs() {
 
     setLoading(true);
     const params: any = {};
+    if (filterSearch.trim()) params.search = filterSearch.trim();
     if (filterSpecialty.length > 0) {
       params.specialization = filterSpecialty;
     }
@@ -229,7 +231,7 @@ export default function Jobs() {
           return scoreB - scoreA;
         });
         setJobs(sortedJobs);
-        if (!filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa) {
+        if (!filterSearch.trim() && !filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa && !filterLocation.trim()) {
           setOriginalJobs(sortedJobs);
         }
         setLoading(false);
@@ -239,7 +241,7 @@ export default function Jobs() {
         setOriginalJobs([]);
         setLoading(false);
       });
-  }, [authChecked, filterSpecialty, filterExperience, filterLocation, filterRemote, filterVisa, smartSearchActive]);
+  }, [authChecked, filterSearch, filterSpecialty, filterExperience, filterLocation, filterRemote, filterVisa, smartSearchActive]);
 
   useEffect(() => {
   if (!currentUserId) return;
@@ -340,6 +342,8 @@ export default function Jobs() {
             <Grid container spacing={4}>
               <Grid size={{ xs: 12, md: 3 }}>
                 <JobFilters
+                  searchQuery={filterSearch}
+                  onSearchQueryChange={setFilterSearch}
                   specialties={filterSpecialty}
                   onSpecialtiesChange={setFilterSpecialty}
                   experience={filterExperience}
@@ -351,6 +355,7 @@ export default function Jobs() {
                   location={filterLocation}
                   onLocationChange={setFilterLocation}
                   onClear={() => {
+                    setFilterSearch('');
                     setFilterSpecialty([]);
                     setFilterExperience('');
                     setFilterLocation('');

@@ -148,8 +148,9 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
     if (!req.user || (String(req.user._id) !== userId && req.user.userType !== 'admin')) {
       return res.status(403).json({
         success: false,
-        message: 'Forbidden: cannot view other users\' profiles'
+        message: 'Forbidden: cannot view other users\'profiles'
       });
+     
     }
 
     const user = await User.findById(userId)
@@ -231,7 +232,10 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
     });
   }
 };
-
+ export const getCurrentUserProfile = async (req: AuthRequest, res: Response) => {
+  req.params.userId = String(req.user!._id);
+  return getUserProfile(req, res);
+};
 const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
   'bio', 'profilePicture', 'linkedInProfile', 'githubProfile',
@@ -742,8 +746,8 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized: user not found in request" });
     }
-    const myId = req.user._id;
-    const me = await User.findById(myId)
+    const targetUserId = req.params.userId || req.user._id;
+    const me = await User.findById(targetUserId)
       .populate('following', 'firstName lastName profilePicture specialization userType')
       .populate('followers', 'firstName lastName profilePicture specialization userType');
     if (!me) return res.status(404).json({ success: false, message: "User not found" });

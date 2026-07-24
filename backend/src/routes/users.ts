@@ -4,6 +4,7 @@ import { requirePermission } from '../middleware/permissions';
 import {
   getUserProfile,
   getPublicProfile,
+  getCurrentUserProfile,
   updateUserProfile,
   getInternScorecard,
   getDoctorMentorSummary,
@@ -40,7 +41,7 @@ const router = Router();
 
 // Parse resume and auto-populate profile
 router.post('/profile/parse-resume', authenticate, resumeUpload.single('resume'), parseResume);
-
+router.get('/profile', authenticate, getCurrentUserProfile);
 // Get user profile by ID
 router.get('/:userId/profile', authenticate, getUserProfile);
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth';
+import { messageLimiter } from '../middleware/otpRateLimiter';
 import {
   getConversations,
   getMessages,
@@ -14,6 +15,7 @@ router.use(authenticate);
 router.get('/conversations', getConversations);
 router.patch('/:conversationId/read', markAsRead);
 router.get('/:conversationId', getMessages);
-router.post('/', sendMessage);
+// messageLimiter runs after authenticate so keyGenerator has access to req.user.
+router.post('/', messageLimiter, sendMessage);
 
 export default router;

@@ -233,7 +233,7 @@ export default function AboutPage() {
                 <Typography
                   sx={{
                     mt: 3,
-                    color: "text.secondary",
+                    color: "#64748b",
                     fontSize: { xs: "1.05rem", md: "1.15rem" },
                     lineHeight: 1.75,
                     maxWidth: 520,
@@ -380,7 +380,7 @@ export default function AboutPage() {
             >
               A learning path, not a feature list
             </Typography>
-            <Typography sx={{ mt: 2, color: "text.secondary", fontSize: "1.05rem", lineHeight: 1.7 }}>
+            <Typography sx={{ mt: 2, color: "#64748b", fontSize: "1.05rem", lineHeight: 1.7 }}>
               Every part of MedInternia supports the same arc: learn from real
               cases, connect with the people around you, and move your career
               forward.
@@ -448,7 +448,7 @@ export default function AboutPage() {
                           >
                             {item.title}
                           </Typography>
-                          <Typography sx={{ color: "text.secondary", lineHeight: 1.75 }}>
+                          <Typography sx={{ color: "#64748b", lineHeight: 1.75 }}>
                             {item.text}
                           </Typography>
                         </Box>
@@ -633,7 +633,7 @@ export default function AboutPage() {
               <Typography
                 sx={{
                   mt: 2,
-                  color: "text.secondary",
+                  color: "#64748b",
                   fontSize: "1.05rem",
                   maxWidth: 520,
                   mx: "auto",

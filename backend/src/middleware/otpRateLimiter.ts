@@ -41,3 +41,20 @@ export const chatbotLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Too many chatbot requests. Please try again after 15 minutes.' }
 });
+
+// Limits each authenticated user to 30 outbound messages per minute.
+// Keyed by user ID from the JWT so the window is per-sender, not per-IP
+// (which would be trivially bypassed from the same machine).
+export const messageLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many messages sent. Please wait a minute before sending more.' },
+  keyGenerator: (req) => {
+    // req.user is attached by the authenticate middleware which runs before
+    // this limiter on the message route.
+    const user = (req as any).user;
+    return user?._id?.toString() ?? req.ip ?? 'unknown';
+  }
+});
