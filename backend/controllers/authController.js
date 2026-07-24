@@ -6,6 +6,7 @@ const {
   setRefreshTokenCookie,
   REFRESH_TOKEN_SECRET,
 } = require('../utils/tokenUtils');
+const { enqueueOTP } = require('../queues/emailQueue');
 
 let User;
 try {
@@ -221,8 +222,42 @@ const logout = async (req, res) => {
   }
 };
 
+/**
+ * Send OTP: Generates OTP code, enqueues BullMQ background email job, and immediately returns 200 OK.
+ */
+const sendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required',
+      });
+    }
+
+    // Generate a 6-digit random OTP code
+    const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Asynchronously dispatch OTP email via BullMQ queue without blocking API response
+    await enqueueOTP(email, generatedCode);
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP dispatch request accepted and queued successfully.',
+    });
+  } catch (error) {
+    console.error('[authController.sendOTP Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process OTP dispatch request',
+    });
+  }
+};
+
 module.exports = {
   login,
   refresh,
   logout,
+  sendOTP,
 };
