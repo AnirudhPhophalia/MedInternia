@@ -42,6 +42,7 @@ import { Briefcase } from "lucide-react";
 import RecentlyViewedInternships from "../components/RecentlyViewedInternships";
 import DeadlineCountdown from "../components/DeadlineCountdown";
 import JobFilters from "../components/layout/JobFilters";
+import InternshipCard from "../components/InternshipCard";
 
 interface JobApplication {
   id: string;
@@ -442,90 +443,12 @@ export default function Jobs() {
                       const isApplied = applications.some(app => app.id === j._id);
 
                       return (
-                        <Card key={j._id} sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                          <CardContent sx={{ p: 3 }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                              <Box>
-                                <Typography variant="h6" fontWeight={700} color="primary">
-                                  {j.title}
-                                </Typography>
-                                <Stack direction="row" spacing={2} sx={{ mt: 1, color: 'text.secondary' }} flexWrap="wrap" useFlexGap>
-                                  <Stack direction="row" spacing={0.5} alignItems="center">
-                                    <BusinessIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="caption">{j.company || 'MedInternia Partners'}</Typography>
-                                  </Stack>
-                                  <Stack direction="row" spacing={0.5} alignItems="center">
-                                    <RoomIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="caption">{formatJobLocation(j.location)}</Typography>
-                                  </Stack>
-                                </Stack>
-                              </Box>
-                              <BookmarkButton itemType="job" itemId={j._id} />
-                            </Stack>
-
-                            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <Chip label={j.status} color={j.status === 'Open' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700 }} />
-                              {j.matchPercentage !== undefined && (
-                                <Chip
-                                  icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important', color: 'inherit !important' }} />}
-                                  label={`${j.matchPercentage}% Match`}
-                                  size="small"
-                                  sx={{
-                                    borderRadius: '6px',
-                                    fontWeight: 700,
-                                    fontSize: '0.75rem',
-                                    backgroundColor: j.matchPercentage >= 80 
-                                      ? '#e6f4ea' 
-                                      : (j.matchPercentage >= 50 ? '#fef7e0' : '#fce8e6'),
-                                    color: j.matchPercentage >= 80 
-                                      ? '#137333' 
-                                      : (j.matchPercentage >= 50 ? '#b06000' : '#c5221f'),
-                                    '& .MuiChip-icon': {
-                                      color: 'inherit !important'
-                                    }
-                                  }}
-                                />
-                              )}
-                              {formatJobSalary(j.salary) && <Chip label={formatJobSalary(j.salary)} size="small" variant="outlined" />}
-                              <DeadlineCountdown deadline={j.applicationDeadline} />
-                            </Box>
-
-                            <Divider sx={{ my: 2 }} />
-
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Typography variant="caption" color="text.secondary">
-                                Posted: {new Date(j.createdAt || Date.now()).toLocaleDateString()}
-                              </Typography>
-                              <Stack direction="row" spacing={1}>
-                                {j.postedBy && (typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id) !== currentUserId && (
-                                  <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    onClick={() => router.push(`/messages?userId=${typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id}`)}
-                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                                  >
-                                    Message Recruiter
-                                  </Button>
-                                )}
-                                {j.status === "Open" ? (
-                                  <Button 
-                                    variant="contained" 
-                                    color={isApplied ? "success" : "primary"}
-                                    onClick={() => handleApply(j)}
-                                    disabled={isApplied}
-                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                                  >
-                                    {isApplied ? "Applied" : "Apply"}
-                                  </Button>
-                                ) : (
-                                  <Button variant="outlined" disabled sx={{ borderRadius: 2, textTransform: 'none' }}>
-                                    Closed
-                                  </Button>
-                                )}
-                              </Stack>
-                            </Stack>
-                          </CardContent>
-                        </Card>
+                        <InternshipCard
+                          key={j._id}
+                          internship={j}
+                          isApplied={isApplied}
+                          onApply={(item) => handleApply(item)}
+                        />
                       );
                     })
                   )}
