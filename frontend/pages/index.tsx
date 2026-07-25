@@ -62,6 +62,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
+import { fetchTopContributors, GithubContributor } from '../utils/githubContributors';
 const HeroProductPreview = dynamic(
   () => import("../components/landing/HeroProductPreview"),
   {
@@ -507,6 +508,9 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
+  const [contributors, setContributors] = React.useState<GithubContributor[]>([]);
+  const [contributorsLoading, setContributorsLoading] = React.useState(true);
+  const [contributorsError, setContributorsError] = React.useState(false);
 
   // Needed by the feature cards below, and also by the hero mouse-parallax setup.
   const shouldReduceMotion = useReducedMotion();
@@ -514,6 +518,23 @@ export default function HomePage() {
   React.useEffect(() => {
     const token = typeof window !== 'undefined' ? getAuthToken() : null;
     setIsLoggedIn(!!token);
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchTopContributors(3)
+      .then((data) => {
+        if (!cancelled) setContributors(data);
+      })
+      .catch(() => {
+        if (!cancelled) setContributorsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setContributorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const getAuthAwareHref = (path: string) =>
@@ -1105,7 +1126,7 @@ export default function HomePage() {
         </motion.div>
       </Container>
 
-      {/* Top Contributors — skeleton / coming soon */}
+      {/* Top Contributors */}
       <Container maxWidth="xl" sx={{ mb: 12 }}>
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
@@ -1114,7 +1135,9 @@ export default function HomePage() {
                 Top Contributors
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Leaderboard rankings coming soon
+                {contributorsError
+                  ? "Couldn't load rankings right now"
+                  : 'Celebrating the people building MedInternia'}
               </Typography>
             </Box>
             <Link href={getAuthAwareHref('/leaderboard')} style={{ textDecoration: 'none', color: '#0072ff', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
@@ -1122,28 +1145,107 @@ export default function HomePage() {
             </Link>
           </Box>
           <Grid container spacing={3}>
-            {[1, 2, 3].map((rank) => (
-              <Grid size={{ xs: 12, md: 4 }} key={rank}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 3,
-                    borderRadius: '20px',
-                    border: '1px dashed #cbd5e1',
-                    bgcolor: '#fafbfc',
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" spacing={2.5}>
-                    <Skeleton variant="circular" width={56} height={56} animation="wave" />
-                    <Box sx={{ flex: 1 }}>
-                      <Skeleton variant="text" width="70%" height={28} animation="wave" sx={{ mb: 0.5 }} />
-                      <Skeleton variant="text" width="40%" height={20} animation="wave" />
-                    </Box>
-                    <Chip label="Coming Soon" size="small" sx={{ fontWeight: 600, bgcolor: '#e8f4ff', color: '#0056cc' }} />
-                  </Stack>
-                </Paper>
-              </Grid>
-            ))}
+            {(contributorsLoading || contributorsError ? [1, 2, 3] : contributors).map((item, i) => {
+              const rank = i + 1;
+              const medalColor = rank === 1 ? '#d97706' : rank === 2 ? '#94a3b8' : '#b45309';
+
+              if (contributorsLoading) {
+                return (
+                  <Grid size={{ xs: 12, md: 4 }} key={rank}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 3,
+                        borderRadius: '20px',
+                        border: '1px dashed #cbd5e1',
+                        bgcolor: '#fafbfc',
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={2.5}>
+                        <Skeleton variant="circular" width={56} height={56} animation="wave" />
+                        <Box sx={{ flex: 1 }}>
+                          <Skeleton variant="text" width="70%" height={28} animation="wave" sx={{ mb: 0.5 }} />
+                          <Skeleton variant="text" width="40%" height={20} animation="wave" />
+                        </Box>
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                );
+              }
+
+              if (contributorsError) {
+                return (
+                  <Grid size={{ xs: 12, md: 4 }} key={rank}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 3,
+                        borderRadius: '20px',
+                        border: '1px dashed #cbd5e1',
+                        bgcolor: '#fafbfc',
+                      }}
+                    >
+                      <Stack direction="row" alignItems="center" spacing={2.5}>
+                        <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#eef2f7' }} />
+                        <Box sx={{ flex: 1 }}>
+                          <Typography fontWeight={700} color="text.secondary">
+                            Unavailable
+                          </Typography>
+                        </Box>
+                        <Chip label={`#${rank}`} size="small" sx={{ fontWeight: 600, bgcolor: '#f1f5f9', color: '#64748b' }} />
+                      </Stack>
+                    </Paper>
+                  </Grid>
+                );
+              }
+
+              const contributor = item as GithubContributor;
+              return (
+                <Grid size={{ xs: 12, md: 4 }} key={contributor.login}>
+                  <Paper
+                    component="a"
+                    href={contributor.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: '20px',
+                      border: '1px solid #e2e8f0',
+                      bgcolor: '#fff',
+                      display: 'block',
+                      textDecoration: 'none',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 12px 28px rgba(15,23,42,0.08)' },
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2.5}>
+                      <Image
+                        src={contributor.avatar_url}
+                        alt={contributor.login}
+                        width={56}
+                        height={56}
+                        style={{ borderRadius: '50%' }}
+                        unoptimized
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontWeight={700} color="#1a202c" noWrap>
+                          {contributor.login}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {contributor.contributions} contribution{contributor.contributions === 1 ? '' : 's'}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={`#${rank}`}
+                        size="small"
+                        sx={{ fontWeight: 700, bgcolor: `${medalColor}1a`, color: medalColor }}
+                      />
+                    </Stack>
+                  </Paper>
+                </Grid>
+              );
+            })}
           </Grid>
         </motion.div>
       </Container>
