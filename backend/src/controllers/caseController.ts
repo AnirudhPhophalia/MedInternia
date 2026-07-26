@@ -500,7 +500,7 @@ export const generateAISuggestions = asyncHandler(async (req: AuthRequest, res: 
   const caseDoc = await Case.findById(getId(req.params.id));
   if (!caseDoc) throw new AppError("Case not found", 404);
 
-  if ((caseDoc as any).doctor?.toString() !== user._id!.toString() && user.userType !== "admin") {
+  if ((caseDoc as any).doctor?.toString() !== user._id!.toString()) {
     throw new AppError("You can only generate AI suggestions for your own cases", 403);
   }
 
