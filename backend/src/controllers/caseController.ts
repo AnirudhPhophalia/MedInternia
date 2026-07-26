@@ -494,8 +494,15 @@ export const moderateCase = asyncHandler(async (req: AuthRequest, res: Response)
 });
 
 export const generateAISuggestions = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+  if (!user) throw new AppError("User not authenticated", 401);
+
   const caseDoc = await Case.findById(getId(req.params.id));
   if (!caseDoc) throw new AppError("Case not found", 404);
+
+  if ((caseDoc as any).doctor?.toString() !== user._id!.toString() && user.userType !== "admin") {
+    throw new AppError("You can only generate AI suggestions for your own cases", 403);
+  }
 
   const spec = (caseDoc as any).specialization || "General Medicine";
   const analysis = await analyzeCase(caseDoc.title, caseDoc.description, spec);
