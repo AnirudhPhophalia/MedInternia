@@ -10,6 +10,11 @@ const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) =>
   return new Date(new Date(webinar.scheduledAt).getTime() + durationInMinutes * 60 * 1000);
 };
 
+const generateJitsiMeetingLink = (webinarId?: unknown): string => {
+  const suffix = webinarId ? String(webinarId) : `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  return `https://meet.jit.si/webinar-${suffix}`;
+};
+
 const isWebinarExpired = (webinar: { scheduledAt: Date; duration?: number; status: string }) => {
   const now = new Date();
 
@@ -113,7 +118,7 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       registrationDeadline,
       materials,
       tags,
-      meetingLink: `https://meet.jit.si/webinar-${new Date().getTime()}-${Math.floor(Math.random()*10000)}`
+      meetingLink: generateJitsiMeetingLink()
     });
 
     await webinar.save();
@@ -663,8 +668,7 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Generate a simple meeting link (in production, integrate with Zoom, Google Meet, etc.)
-    const meetingLink = `https://meet.example.com/webinar-${webinar._id}`;
+    const meetingLink = generateJitsiMeetingLink(webinar._id);
     
     webinar.meetingLink = meetingLink;
     webinar.status = 'live';
