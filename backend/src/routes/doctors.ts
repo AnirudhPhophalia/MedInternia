@@ -35,6 +35,30 @@ router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get specializations list
+router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const specializations = await User.distinct('specialization', {
+      userType: 'doctor',
+      isActive: true,
+      specialization: { $exists: true, $ne: null }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        specializations
+      }
+    });
+  } catch (error) {
+    console.error('Get specializations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // Get doctor by ID
 router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res) => {
   try {
@@ -110,30 +134,6 @@ router.put('/:id/professional-info', authenticate, authorize('doctor'), async (r
     });
   } catch (error) {
     console.error('Update doctor professional info error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
-// Get specializations list
-router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const specializations = await User.distinct('specialization', {
-      userType: 'doctor',
-      isActive: true,
-      specialization: { $exists: true, $ne: null }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        specializations
-      }
-    });
-  } catch (error) {
-    console.error('Get specializations error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
