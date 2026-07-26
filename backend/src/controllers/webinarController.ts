@@ -248,7 +248,7 @@ export const getWebinars = async (req: Request, res: Response) => {
 };
 
 // Get webinar by ID
-export const getWebinarById = async (req: Request, res: Response) => {
+export const getWebinarById = async (req: AuthRequest, res: Response) => {
   try {
     await syncExpiredWebinars();
 
@@ -265,9 +265,68 @@ export const getWebinarById = async (req: Request, res: Response) => {
       });
     }
 
+    // Build the base public response — only safe fields
+    const userId = req.user?._id?.toString();
+    const isHostOrAdmin = !!userId && (
+      req.user!.userType === 'admin' ||
+      req.user!.userType === 'moderator' ||
+      webinar.host._id?.toString() === userId ||
+      webinar.host.toString() === userId
+    );
+
+    // Full document for organizers, admins, and moderators
+    if (isHostOrAdmin) {
+      return res.json({
+        success: true,
+        data: { webinar }
+      });
+    }
+
+    const isParticipant = !!userId && webinar.participants.some(p =>
+      (p.user._id?.toString() || p.user.toString()) === userId
+    );
+
+    const publicWebinar = {
+      _id: webinar._id,
+      title: webinar.title,
+      description: webinar.description,
+      host: webinar.host,
+      type: webinar.type,
+      specialization: webinar.specialization,
+      scheduledAt: webinar.scheduledAt,
+      duration: webinar.duration,
+      maxParticipants: webinar.maxParticipants,
+      registrationDeadline: webinar.registrationDeadline,
+      tags: webinar.tags,
+      materials: webinar.materials,
+      isActive: webinar.isActive,
+      isRecorded: webinar.isRecorded,
+      status: webinar.status,
+      createdAt: webinar.createdAt,
+      updatedAt: webinar.updatedAt,
+      participantCount: webinar.participants?.length || 0
+    };
+
+    if (isParticipant) {
+      const participantWebinar = {
+        ...publicWebinar,
+        meetingLink: webinar.meetingLink,
+        polls: webinar.polls,
+        qna: webinar.qna,
+        participants: webinar.participants.map(p => ({
+          user: (p.user as any)._id?.toString() || p.user.toString()
+        }))
+      };
+
+      return res.json({
+        success: true,
+        data: { webinar: participantWebinar }
+      });
+    }
+
     res.json({
       success: true,
-      data: { webinar }
+      data: { webinar: publicWebinar }
     });
   } catch (error: any) {
     console.error('Get webinar error:', error);
