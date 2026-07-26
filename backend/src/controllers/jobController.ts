@@ -10,6 +10,18 @@ const isInvalidPastDeadline = (deadline: unknown): boolean => {
   return Number.isNaN(parsedDeadline.getTime()) || parsedDeadline <= new Date();
 };
 
+const MAX_JOB_SEARCH_LENGTH = 100;
+
+const normalizeJobSearchTerm = (value: unknown): string | null => {
+  if (value === undefined || value === null || Array.isArray(value)) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildLiteralRegex = (value: string): RegExp => new RegExp(escapeRegex(value), 'i');
+
 // Create job opportunity (doctors and admins only)
 export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
   try {
@@ -141,7 +153,8 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
 
     const filter: any = {};
     const filterConditions: any[] = [];
-    const searchQuery = (search || q) as string | undefined;
+    const searchQuery = normalizeJobSearchTerm(search || q);
+    const locationQuery = normalizeJobSearchTerm(location);
 
     if (type) filter.type = type;
     if (specialization) {
@@ -151,7 +164,14 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
     }
 
     if (searchQuery) {
-      const searchRegex = new RegExp(searchQuery, 'i');
+      if (searchQuery.length > MAX_JOB_SEARCH_LENGTH) {
+        return res.status(400).json({
+          success: false,
+          message: `Search query must be ${MAX_JOB_SEARCH_LENGTH} characters or fewer`
+        });
+      }
+
+      const searchRegex = buildLiteralRegex(searchQuery);
       filterConditions.push({
         $or: [
           { title: searchRegex },
@@ -160,8 +180,15 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
       });
     }
 
-    if (location) {
-      const locRegex = new RegExp(location as string, 'i');
+    if (locationQuery) {
+      if (locationQuery.length > MAX_JOB_SEARCH_LENGTH) {
+        return res.status(400).json({
+          success: false,
+          message: `Location query must be ${MAX_JOB_SEARCH_LENGTH} characters or fewer`
+        });
+      }
+
+      const locRegex = buildLiteralRegex(locationQuery);
       filterConditions.push({
         $or: [
           { 'location.city': locRegex },
