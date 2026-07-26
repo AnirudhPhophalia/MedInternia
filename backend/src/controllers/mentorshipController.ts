@@ -114,6 +114,12 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
     mentorship.status = status;
     await mentorship.save();
 
+    if (status === 'active') {
+      await User.findByIdAndUpdate(mentorship.mentee, {
+        mentorDoctor: mentorship.mentor
+      });
+    }
+
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });

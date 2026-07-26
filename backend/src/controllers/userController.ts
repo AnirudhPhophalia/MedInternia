@@ -240,7 +240,7 @@ const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
   'bio', 'profilePicture', 'linkedInProfile', 'githubProfile',
   'specialization', 'experience', 'qualifications',
-  'medicalSchool', 'yearOfStudy', 'interests', 'skills', 'mentorDoctor',
+  'medicalSchool', 'yearOfStudy', 'interests', 'skills',
   'academicAchievements', 'careerGoals',
   'emergencyContact', 'medicalHistory', 'allergies'
 ];
