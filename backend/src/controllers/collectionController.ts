@@ -48,21 +48,34 @@ export const getUserCollections = async (req: Request, res: Response): Promise<v
 // @access  Private
 export const getCollectionById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const collection = await Collection.findById(req.params.id).populate({
-      path: 'cases',
-      populate: { path: 'doctor', select: 'firstName lastName profilePicture specialization' }
-    });
+    const collection = await Collection.findById(req.params.id);
     
     if (!collection) {
       res.status(404).json({ success: false, message: 'Collection not found' });
       return;
     }
-    
+
+    const userId = (req as any).user.id;
+    const userType = (req as any).user.userType;
+    const isOwner = collection.user.toString() === userId;
+    const isAdminOrMod = userType === 'admin' || userType === 'moderator';
+
     // Check if user is owner or if it's public
-    if (collection.user.toString() !== (req as any).user.id && !collection.isPublic) {
+    if (!isOwner && !collection.isPublic) {
       res.status(403).json({ success: false, message: 'Not authorized to view this collection' });
       return;
     }
+
+    // Reuse the project's standard visibility filter for non-owners, non-admins
+    const isPublicViewer = collection.isPublic && !isOwner && !isAdminOrMod;
+
+    await collection.populate({
+      path: 'cases',
+      match: isPublicViewer
+        ? { isActive: { $ne: false }, $or: [{ moderationStatus: 'approved' }, { moderationStatus: { $exists: false } }] }
+        : undefined,
+      populate: { path: 'doctor', select: 'firstName lastName profilePicture specialization' }
+    });
 
     res.status(200).json({ success: true, data: collection });
   } catch (error: any) {
