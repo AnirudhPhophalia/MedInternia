@@ -10,6 +10,18 @@ const isInvalidPastDeadline = (deadline: unknown): boolean => {
   return Number.isNaN(parsedDeadline.getTime()) || parsedDeadline <= new Date();
 };
 
+const MAX_JOB_PAGE_LIMIT = 50;
+
+const parsePositiveInteger = (value: unknown, fallback: number): number | null => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (Array.isArray(value)) return null;
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
+
+  return parsed;
+};
+
 // Create job opportunity (doctors and admins only)
 export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
   try {
@@ -180,10 +192,27 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
     if (visaSponsorship === 'true') filter.visaSponsorship = true;
     if (maxExperience) filter['requirements.yearsOfExperience'] = { $lte: Number(maxExperience) };
 
+    const pageNumber = parsePositiveInteger(page, 1);
+    const limitNumber = parsePositiveInteger(limit, 10);
+
+    if (pageNumber === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Page must be a positive integer'
+      });
+    }
+
+    if (limitNumber === null || limitNumber > MAX_JOB_PAGE_LIMIT) {
+      return res.status(400).json({
+        success: false,
+        message: `Limit must be a positive integer no greater than ${MAX_JOB_PAGE_LIMIT}`
+      });
+    }
+
     // Filter out expired opportunities
     filter.applicationDeadline = { $gte: new Date() };
 
-    const skip = (Number(page) - 1) * Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
     const sort: any = {};
     sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
@@ -192,7 +221,7 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
       .populate('requirements.requiredBadges', 'name description icon')
       .sort(sort)
       .skip(skip)
-      .limit(Number(limit));
+      .limit(limitNumber);
 
     const total = await JobOpportunity.countDocuments(filter);
 
@@ -211,7 +240,7 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: { jobOpportunities: enrichedJobs, jobs: enrichedJobs, total, page, totalPages: Math.ceil(total / Number(limit)) }
+      data: { jobOpportunities: enrichedJobs, jobs: enrichedJobs, total, page: pageNumber, totalPages: Math.ceil(total / limitNumber) }
     });
   } catch (error) {
     console.error('Get job opportunities error:', error);
