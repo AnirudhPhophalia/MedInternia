@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../utils/api';
 
 /**
  * Custom hook to fetch case discussions from backend API.
@@ -9,12 +10,8 @@ export const useGetDiscussions = (caseId) => {
     queryKey: ['discussions', caseId],
     queryFn: async () => {
       if (!caseId) return [];
-      const res = await fetch(`/api/cases/${caseId}/discussions`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch case discussions');
-      }
-      const data = await res.json();
-      return data.discussions || data;
+      const res = await api.get(`/cases/${caseId}`);
+      return res.data?.data?.case?.comments || [];
     },
     enabled: Boolean(caseId),
   });
@@ -29,20 +26,8 @@ export const useAddDiscussion = (caseId) => {
 
   return useMutation({
     mutationFn: async (newComment) => {
-      const res = await fetch(`/api/cases/${caseId}/discussions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newComment),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to submit discussion reply');
-      }
-
-      return res.json();
+      const res = await api.post(`/cases/${caseId}/comments`, newComment);
+      return res.data;
     },
 
     // Optimistic UI updates
