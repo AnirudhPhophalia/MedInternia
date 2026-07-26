@@ -59,7 +59,7 @@ export default function ResetPassword() {
       setSuccess("Password reset successfully!");
 
       setTimeout(() => {
-        router.push("/login");
+        router.push("/auth/login");
       }, 2000);
     } catch (err: any) {
       setError(
