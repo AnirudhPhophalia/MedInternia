@@ -23,6 +23,7 @@ import messageRoutes from './messageRoutes';
 import flashcardRoutes from './flashcards';
 import collectionRoutes from './collections';
 import learningPathRoutes from './learningPaths';
+import waitlistRoutes from './waitlist';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -91,5 +92,6 @@ router.use('/messages', messageRoutes);
 router.use('/flashcards', flashcardRoutes);
 router.use('/collections', collectionRoutes);
 router.use('/learning-paths', learningPathRoutes);
+router.use('/waitlist', waitlistRoutes);
 
 export default router;

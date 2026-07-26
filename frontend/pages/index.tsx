@@ -1,4 +1,4 @@
-import { getAuthToken } from "../utils/api";
+import api, { getAuthToken } from "../utils/api";
 import dynamic from "next/dynamic";
 import { IBM_Plex_Mono, Sora } from "next/font/google";
 import React from "react";
@@ -508,6 +508,8 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
+  const [waitlistLoading, setWaitlistLoading] = React.useState(false);
+  const [waitlistError, setWaitlistError] = React.useState('');
 
   // Needed by the feature cards below, and also by the hero mouse-parallax setup.
   const shouldReduceMotion = useReducedMotion();
@@ -520,10 +522,21 @@ export default function HomePage() {
   const getAuthAwareHref = (path: string) =>
     !isLoggedIn && protectedLandingPaths.includes(path) ? getLoginHref(path) : path;
 
-  const handleWaitlistSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleWaitlistSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setWaitlistSubmitted(true);
-    setWaitlistEmail('');
+    setWaitlistError('');
+    setWaitlistLoading(true);
+    try {
+      await api.post('/waitlist', { email: waitlistEmail });
+      setWaitlistSubmitted(true);
+      setWaitlistEmail('');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || 'Something went wrong. Please try again.';
+      setWaitlistError(message);
+    } finally {
+      setWaitlistLoading(false);
+    }
   };
 
   const navItems = isLoggedIn
@@ -1226,6 +1239,7 @@ export default function HomePage() {
                       onChange={(event) => {
                         setWaitlistEmail(event.target.value);
                         setWaitlistSubmitted(false);
+                        setWaitlistError('');
                       }}
                       inputProps={{ 'aria-label': 'Email address for mobile launch notifications' }}
                     />
@@ -1233,11 +1247,17 @@ export default function HomePage() {
                       type="submit"
                       variant="contained"
                       size="large"
+                      disabled={waitlistLoading}
                       sx={{ px: 4, whiteSpace: 'nowrap' }}
                     >
-                      Notify Me
+                      {waitlistLoading ? 'Submitting...' : 'Notify Me'}
                     </Button>
                   </Stack>
+                  {waitlistError && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      {waitlistError}
+                    </Alert>
+                  )}
                   {waitlistSubmitted && (
                     <Alert severity="success" sx={{ mt: 2 }}>
                       You are on the notify list. We will share updates when mobile access opens.
