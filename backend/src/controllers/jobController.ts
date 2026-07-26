@@ -1,5 +1,6 @@
 import { createAndEmitNotification } from './notificationController';
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth';
 import JobOpportunity from '../models/JobOpportunity';
 import User from '../models/User';
@@ -9,6 +10,15 @@ const isInvalidPastDeadline = (deadline: unknown): boolean => {
   const parsedDeadline = new Date(deadline as any);
   return Number.isNaN(parsedDeadline.getTime()) || parsedDeadline <= new Date();
 };
+
+const isValidJobId = (id: unknown): id is string => (
+  typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)
+);
+
+const sendInvalidJobIdResponse = (res: Response) => res.status(400).json({
+  success: false,
+  message: 'Invalid job opportunity ID'
+});
 
 // Create job opportunity (doctors and admins only)
 export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
@@ -227,6 +237,10 @@ export const getJobOpportunityById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    if (!isValidJobId(id)) {
+      return sendInvalidJobIdResponse(res);
+    }
+
     const jobOpportunity = await JobOpportunity.findById(id)
       .populate('postedBy', 'firstName lastName specialization isVerifiedDoctor profilePicture')
       .populate('requirements.requiredBadges', 'name description icon color');
@@ -273,6 +287,10 @@ export const updateJobOpportunity = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req.user!._id as any).toString();
+
+    if (!isValidJobId(id)) {
+      return sendInvalidJobIdResponse(res);
+    }
 
     const jobOpportunity = await JobOpportunity.findOne({
       _id: id, 
@@ -321,6 +339,10 @@ export const deleteJobOpportunity = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const userId = (req.user!._id as any).toString();
 
+    if (!isValidJobId(id)) {
+      return sendInvalidJobIdResponse(res);
+    }
+
     const jobOpportunity = await JobOpportunity.findOne({
       _id: id,
       postedBy: userId
@@ -353,6 +375,10 @@ export const checkJobEligibility = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user!._id;
+
+    if (!isValidJobId(id)) {
+      return sendInvalidJobIdResponse(res);
+    }
 
     const jobOpportunity = await JobOpportunity.findById(id)
       .populate('requirements.requiredBadges');
@@ -392,6 +418,10 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req.user!._id as any).toString();
+
+    if (!isValidJobId(id)) {
+      return sendInvalidJobIdResponse(res);
+    }
 
     // 1. Fetch the requested job and validate it exists.
     const existingJob = await JobOpportunity.findById(id)
