@@ -32,7 +32,6 @@ const PUBLIC_ROUTES = [
   "/faq",
   "/privacy",
   "/terms",
-  "/jobs",
   "/auth/login",
   "/auth/register",
   "/auth/forgot-password",
