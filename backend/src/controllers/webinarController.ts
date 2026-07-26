@@ -40,6 +40,20 @@ const canInteractWithWebinar = (
   );
 };
 
+const ensureWebinarAcceptsLiveInteraction = (
+  webinar: { scheduledAt: Date; duration?: number; status: string },
+  res: Response
+) => {
+  if (isWebinarExpired(webinar) || webinar.status === 'completed' || webinar.status === 'cancelled') {
+    return res.status(400).json({
+      success: false,
+      message: 'This webinar no longer accepts live interactions'
+    });
+  }
+
+  return null;
+};
+
 const syncExpiredWebinars = async () => {
   const now = new Date();
 
@@ -714,6 +728,9 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
 
     const webinar = await Webinar.findById(id);
     if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    const lifecycleResponse = ensureWebinarAcceptsLiveInteraction(webinar, res);
+    if (lifecycleResponse) return lifecycleResponse;
+
     if (webinar.host.toString() !== String(req.user!._id) && req.user!.userType !== 'admin') {
       return res.status(403).json({ success: false, message: 'Only the host can create polls' });
     }
@@ -745,6 +762,9 @@ export const votePoll = async (req: AuthRequest, res: Response) => {
 
     const webinar = await Webinar.findById(id);
     if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    const lifecycleResponse = ensureWebinarAcceptsLiveInteraction(webinar, res);
+    if (lifecycleResponse) return lifecycleResponse;
+
     if (!canInteractWithWebinar(webinar, req)) {
       return res.status(403).json({
         success: false,
