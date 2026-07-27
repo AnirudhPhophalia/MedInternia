@@ -96,7 +96,7 @@ router.post('/:id/follow-ups', authenticate, requirePermission('case:follow_up')
 router.get('/:id/follow-ups', authenticate, getCaseFollowUps);
 
 // AI suggestion routes
-router.post('/:id/ai-suggestions', authenticate, generateAISuggestions);
+router.post('/:id/ai-suggestions', authenticate, requirePermission('case:update'), generateAISuggestions);
 router.get('/:id/ai-suggestions', authenticate, getCaseAISuggestions);
 router.get('/:id/similar', authenticate, getSimilarCases);
 
