@@ -4,22 +4,63 @@ import {
   getLeaderboard,
   getDoctorMentorSummary,
   updateUserStreak,
+  deleteAccount,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
 import Certificate from "../../models/Certificate";
 import UserBadge from "../../models/UserBadge";
+import Diary from "../../models/Diary";
+import Flashcard from "../../models/Flashcard";
+import Collection from "../../models/Collection";
+import UserLearningPath from "../../models/UserLearningPath";
+import Notification from "../../models/Notification";
+import Rating from "../../models/Rating";
+import PeerReview from "../../models/PeerReview";
+import Mentorship from "../../models/Mentorship";
+import Webinar from "../../models/Webinar";
+import JobOpportunity from "../../models/JobOpportunity";
+import Conversation from "../../models/Conversation";
+import ResearchPaper from "../../models/ResearchPaper";
+import AICasePostSchedule from "../../models/AICasePostSchedule";
 import { checkAndAwardAutoBadges } from "../badgeController";
 
 jest.mock("../../models/User");
 jest.mock("../../models/Case");
 jest.mock("../../models/Certificate");
 jest.mock("../../models/UserBadge");
+jest.mock("../../models/Diary");
+jest.mock("../../models/Flashcard");
+jest.mock("../../models/Collection");
+jest.mock("../../models/UserLearningPath");
+jest.mock("../../models/Notification");
+jest.mock("../../models/Rating");
+jest.mock("../../models/PeerReview");
+jest.mock("../../models/Mentorship");
+jest.mock("../../models/Webinar");
+jest.mock("../../models/JobOpportunity");
+jest.mock("../../models/Conversation");
+jest.mock("../../models/ResearchPaper");
+jest.mock("../../models/AICasePostSchedule");
 jest.mock("../badgeController");
 
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
 const mockedCase = Case as unknown as jest.Mocked<typeof Case>;
 const mockedCertificate = Certificate as unknown as jest.Mocked<typeof Certificate>;
+const mockedUserBadge = UserBadge as unknown as jest.Mocked<typeof UserBadge>;
+const mockedDiary = Diary as unknown as jest.Mocked<typeof Diary>;
+const mockedFlashcard = Flashcard as unknown as jest.Mocked<typeof Flashcard>;
+const mockedCollection = Collection as unknown as jest.Mocked<typeof Collection>;
+const mockedUserLearningPath = UserLearningPath as unknown as jest.Mocked<typeof UserLearningPath>;
+const mockedNotification = Notification as unknown as jest.Mocked<typeof Notification>;
+const mockedRating = Rating as unknown as jest.Mocked<typeof Rating>;
+const mockedPeerReview = PeerReview as unknown as jest.Mocked<typeof PeerReview>;
+const mockedMentorship = Mentorship as unknown as jest.Mocked<typeof Mentorship>;
+const mockedWebinar = Webinar as unknown as jest.Mocked<typeof Webinar>;
+const mockedJobOpportunity = JobOpportunity as unknown as jest.Mocked<typeof JobOpportunity>;
+const mockedConversation = Conversation as unknown as jest.Mocked<typeof Conversation>;
+const mockedResearchPaper = ResearchPaper as unknown as jest.Mocked<typeof ResearchPaper>;
+const mockedAICasePostSchedule = AICasePostSchedule as unknown as jest.Mocked<typeof AICasePostSchedule>;
 const mockedCheckAndAwardAutoBadges = checkAndAwardAutoBadges as jest.Mock;
 
 const mockResponse = () => {
@@ -190,6 +231,143 @@ describe("User Controller", () => {
 
       await getDoctorMentorSummary(req, res);
       expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe("deleteAccount", () => {
+    const userId = new mongoose.Types.ObjectId().toHexString();
+    const mockSession = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      abortTransaction: jest.fn(),
+      endSession: jest.fn(),
+    };
+
+    const mockUserDoc = {
+      _id: userId,
+      firstName: "Test",
+      lastName: "User",
+      email: "test@example.com",
+      userType: "intern",
+    };
+
+    const mockReq = (overrides = {}) =>
+      ({
+        params: { userId },
+        user: { _id: userId, userType: "intern" },
+        headers: {},
+        ...overrides,
+      }) as any;
+
+    beforeEach(() => {
+      jest.spyOn(mongoose, "startSession").mockResolvedValue(mockSession as any);
+      mockedUser.findById.mockResolvedValue(mockUserDoc as any);
+      mockedUser.findByIdAndDelete.mockResolvedValue(mockUserDoc as any);
+      mockedDiary.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedFlashcard.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedCollection.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedUserLearningPath.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedUserBadge.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedNotification.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedAICasePostSchedule.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedRating.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedPeerReview.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedCase.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedWebinar.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedJobOpportunity.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedMentorship.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedConversation.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedResearchPaper.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedUser.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+    });
+
+    it("returns 403 when deleting another user's account", async () => {
+      const req = mockReq({ user: { _id: "different-id", userType: "intern" } });
+      const res = mockResponse();
+      await deleteAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false })
+      );
+    });
+
+    it("returns 404 when user does not exist", async () => {
+      mockedUser.findById.mockResolvedValue(null);
+      const req = mockReq();
+      const res = mockResponse();
+      await deleteAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false })
+      );
+    });
+
+    it("deletes user-owned records and cleans up references in a transaction", async () => {
+      const req = mockReq();
+      const res = mockResponse();
+
+      await deleteAccount(req, res);
+
+      expect(mongoose.startSession).toHaveBeenCalled();
+      expect(mockSession.startTransaction).toHaveBeenCalled();
+
+      expect(mockedUser.updateMany).toHaveBeenCalledWith(
+        { following: expect.any(mongoose.Types.ObjectId) },
+        { $pull: { following: expect.any(mongoose.Types.ObjectId) } },
+        { session: mockSession }
+      );
+      expect(mockedDiary.deleteMany).toHaveBeenCalled();
+      expect(mockedFlashcard.deleteMany).toHaveBeenCalled();
+      expect(mockedCollection.deleteMany).toHaveBeenCalled();
+      expect(mockedUserLearningPath.deleteMany).toHaveBeenCalled();
+      expect(mockedUserBadge.deleteMany).toHaveBeenCalled();
+      expect(mockedNotification.deleteMany).toHaveBeenCalled();
+      expect(mockedAICasePostSchedule.deleteMany).toHaveBeenCalled();
+      expect(mockedRating.deleteMany).toHaveBeenCalled();
+      expect(mockedPeerReview.deleteMany).toHaveBeenCalled();
+
+      expect(mockedCase.updateMany).toHaveBeenCalledWith(
+        { doctor: expect.any(mongoose.Types.ObjectId), isActive: true },
+        { $set: { isActive: false } },
+        { session: mockSession }
+      );
+
+      expect(mockedUser.findByIdAndDelete).toHaveBeenCalledWith(
+        expect.any(mongoose.Types.ObjectId),
+        { session: mockSession }
+      );
+
+      expect(mockSession.commitTransaction).toHaveBeenCalled();
+      expect(mockSession.endSession).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true })
+      );
+    });
+
+    it("aborts transaction and returns 500 on failure", async () => {
+      mockedDiary.deleteMany.mockRejectedValue(new Error("DB error"));
+      const req = mockReq();
+      const res = mockResponse();
+
+      await deleteAccount(req, res);
+
+      expect(mockSession.abortTransaction).toHaveBeenCalled();
+      expect(mockSession.endSession).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    it("handles user with no related records gracefully", async () => {
+      mockedDiary.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedFlashcard.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      const req = mockReq();
+      const res = mockResponse();
+
+      await deleteAccount(req, res);
+
+      expect(mockSession.commitTransaction).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true })
+      );
     });
   });
 

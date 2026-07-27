@@ -5,6 +5,19 @@ import User from '../models/User';
 import UserBadge from '../models/UserBadge';
 import Case from '../models/Case';
 import Certificate from '../models/Certificate';
+import Diary from '../models/Diary';
+import Flashcard from '../models/Flashcard';
+import Collection from '../models/Collection';
+import UserLearningPath from '../models/UserLearningPath';
+import Notification from '../models/Notification';
+import Rating from '../models/Rating';
+import PeerReview from '../models/PeerReview';
+import Mentorship from '../models/Mentorship';
+import Webinar from '../models/Webinar';
+import JobOpportunity from '../models/JobOpportunity';
+import Conversation from '../models/Conversation';
+import ResearchPaper from '../models/ResearchPaper';
+import AICasePostSchedule from '../models/AICasePostSchedule';
 import { checkAndAwardAutoBadges } from './badgeController';
 import { extractTextFromBuffer, parseResumeText } from '../services/resumeParserService';
 import jwt from 'jsonwebtoken';
@@ -785,43 +798,165 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
 
 // Delete user account permanently
 export const deleteAccount = async (req: AuthRequest, res: Response) => {
+  const { userId } = req.params;
+  const requestingUserId = (req.user!._id as any).toString();
+
+  if (userId !== requestingUserId) {
+    return res.status(403).json({
+      success: false,
+      message: 'You can only delete your own account'
+    });
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'User not found'
+    });
+  }
+
+  // Blacklist the current JWT so it cannot be reused after deletion
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = jwt.decode(token) as { exp?: number } | null;
+      const expiresAt = decoded?.exp
+        ? new Date(decoded.exp * 1000)
+        : new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await blacklistToken(token, expiresAt);
+    } catch {
+      // Non-fatal — proceed with deletion even if blacklisting fails
+    }
+  }
+
+  const session = await mongoose.startSession();
+  let committed = false;
   try {
-    const { userId } = req.params;
-    const requestingUserId = (req.user!._id as any).toString();
+    session.startTransaction();
 
-    // Users can only delete their own account
-    if (userId !== requestingUserId) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only delete your own account'
-      });
-    }
+    const userIdObj = new mongoose.Types.ObjectId(userId as string);
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    // 1. Clean up User-to-User cross-references
+    await User.updateMany(
+      { following: userIdObj },
+      { $pull: { following: userIdObj } },
+      { session }
+    );
+    await User.updateMany(
+      { followers: userIdObj },
+      { $pull: { followers: userIdObj } },
+      { session }
+    );
+    await User.updateMany(
+      { mentorDoctor: userIdObj },
+      { $set: { mentorDoctor: null } },
+      { session }
+    );
 
-    // Blacklist the current JWT so it cannot be reused after deletion
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      try {
-        const decoded = jwt.decode(token) as { exp?: number } | null;
-        const expiresAt = decoded?.exp
-          ? new Date(decoded.exp * 1000)
-          : new Date(Date.now() + 24 * 60 * 60 * 1000); // fallback: 24h from now
-        await blacklistToken(token, expiresAt);
-      } catch {
-        // Non-fatal — proceed with deletion even if blacklisting fails
-      }
-    }
+    // 2. Delete owned records (user's private data)
+    await Diary.deleteMany({ user: userIdObj }, { session });
+    await Flashcard.deleteMany({ user: userIdObj }, { session });
+    await Collection.deleteMany({ user: userIdObj }, { session });
+    await UserLearningPath.deleteMany({ user: userIdObj }, { session });
+    await UserBadge.deleteMany({ user: userIdObj }, { session });
+    await Notification.deleteMany({ recipient: userIdObj }, { session });
+    await AICasePostSchedule.deleteMany({ author: userIdObj }, { session });
 
-    // Delete the user document
-    await User.findByIdAndDelete(userId);
+    // 3. Delete ratings and peer reviews (useless without either party)
+    await Rating.deleteMany(
+      { $or: [{ rater: userIdObj }, { ratee: userIdObj }] },
+      { session }
+    );
+    await PeerReview.deleteMany(
+      { $or: [{ reviewer: userIdObj }, { reviewee: userIdObj }] },
+      { session }
+    );
+
+    // 4. Nullify optional reviewer references
+    await Case.updateMany(
+      { reviewedBy: userIdObj },
+      { $set: { reviewedBy: null } },
+      { session }
+    );
+    await UserBadge.updateMany(
+      { verifiedBy: userIdObj },
+      { $set: { verifiedBy: null } },
+      { session }
+    );
+    await AICasePostSchedule.updateMany(
+      { reviewedBy: userIdObj },
+      { $set: { reviewedBy: null } },
+      { session }
+    );
+
+    // 5. Soft-delete community content (consistent with existing isActive pattern)
+    await Case.updateMany(
+      { doctor: userIdObj, isActive: true },
+      { $set: { isActive: false } },
+      { session }
+    );
+    await Webinar.updateMany(
+      { host: userIdObj, isActive: true },
+      { $set: { isActive: false, status: 'cancelled' } },
+      { session }
+    );
+    await JobOpportunity.updateMany(
+      { postedBy: userIdObj, isActive: true },
+      { $set: { isActive: false } },
+      { session }
+    );
+
+    // 6. Set mentorship to completed if user was mentor or mentee
+    await Mentorship.updateMany(
+      { $or: [{ mentor: userIdObj }, { mentee: userIdObj }], status: { $ne: 'completed' } },
+      { $set: { status: 'completed' } },
+      { session }
+    );
+
+    // 7. Pull user from array references in shared content
+    await Case.updateMany(
+      { likes: userIdObj },
+      { $pull: { likes: userIdObj } },
+      { session }
+    );
+    await Case.updateMany(
+      { starredBy: userIdObj },
+      { $pull: { starredBy: userIdObj } },
+      { session }
+    );
+    await Webinar.updateMany(
+      { 'participants.user': userIdObj },
+      { $pull: { participants: { user: userIdObj } } },
+      { session }
+    );
+    await Webinar.updateMany(
+      {},
+      { $pull: { 'qna.$[].upvotes': userIdObj } },
+      { session }
+    );
+    await JobOpportunity.updateMany(
+      { 'applicants.user': userIdObj },
+      { $pull: { applicants: { user: userIdObj } } },
+      { session }
+    );
+    await Conversation.updateMany(
+      { participants: userIdObj },
+      { $pull: { participants: userIdObj } },
+      { session }
+    );
+    await ResearchPaper.updateMany(
+      {},
+      { $pull: { 'comments.$[].likes': userIdObj } },
+      { session }
+    );
+
+    // 8. Delete the user document
+    await User.findByIdAndDelete(userIdObj, { session });
+
+    await session.commitTransaction();
+    committed = true;
 
     return res.json({
       success: true,
@@ -833,6 +968,9 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
       success: false,
       message: 'Internal server error'
     });
+  } finally {
+    if (!committed) await session.abortTransaction();
+    session.endSession();
   }
 };
 
