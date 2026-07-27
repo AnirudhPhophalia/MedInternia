@@ -17,7 +17,10 @@ export async function ingestCase(caseId: string, text: string, metadata: Record<
   try {
     const res = await fetch(`${RAG_SERVICE_URL}/api/ingest-case`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+      },
       body: JSON.stringify({ case_id: caseId, text, metadata }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -35,7 +38,10 @@ export async function suggestCases(text: string, k: number = 3): Promise<Similar
   try {
     const res = await fetch(`${RAG_SERVICE_URL}/api/suggest-cases`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+      },
       body: JSON.stringify({ text, k }),
       signal: AbortSignal.timeout(30_000),
     });
