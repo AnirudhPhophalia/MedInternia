@@ -1,8 +1,27 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'access_token_secret_key';
-const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'refresh_token_secret_key';
+const MIN_SECRET_LENGTH = 32;
+
+/**
+ * Validates that a JWT signing secret is present and long enough to resist
+ * brute-force forgery. Throws at startup so misconfigured deployments fail
+ * fast rather than silently using a predictable default.
+ */
+function assertValidSecret(name, value) {
+  if (!value || value === 'access_token_secret_key' || value === 'refresh_token_secret_key') {
+    throw new Error(`CRITICAL: ${name} must be set to a secure random value. Do not use the default placeholder.`);
+  }
+  if (value.length < MIN_SECRET_LENGTH) {
+    throw new Error(`CRITICAL: ${name} must be at least ${MIN_SECRET_LENGTH} characters long.`);
+  }
+}
+
+const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+
+assertValidSecret('JWT_ACCESS_SECRET', ACCESS_TOKEN_SECRET);
+assertValidSecret('JWT_REFRESH_SECRET', REFRESH_TOKEN_SECRET);
 
 /**
  * Generate a short-lived (15-minute) Access Token.

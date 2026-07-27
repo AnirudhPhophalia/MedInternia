@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const redis = require('../config/redis');
 const {
   generateAccessToken,
@@ -223,7 +225,9 @@ const logout = async (req, res) => {
 };
 
 /**
- * Send OTP: Generates OTP code, enqueues BullMQ background email job, and immediately returns 200 OK.
+ * Send OTP: Generates a cryptographically secure 6-digit OTP, stores a bcrypt
+ * hash in Redis with a 10-minute TTL, and enqueues the plaintext code for
+ * email delivery via BullMQ. Returns 200 immediately.
  */
 const sendOTP = async (req, res) => {
   try {
@@ -236,10 +240,17 @@ const sendOTP = async (req, res) => {
       });
     }
 
-    // Generate a 6-digit random OTP code
-    const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // crypto.randomInt is cryptographically secure — Math.random() is not.
+    const generatedCode = crypto.randomInt(100_000, 1_000_000).toString();
 
-    // Asynchronously dispatch OTP email via BullMQ queue without blocking API response
+    // Hash before storing so a Redis breach does not expose plain OTP codes.
+    const hashedCode = await bcrypt.hash(generatedCode, 10);
+
+    // Store hashed OTP in Redis with a 10-minute TTL. Any prior pending OTP
+    // for this email is overwritten, preventing code accumulation.
+    await redis.set(`otp:${email}`, hashedCode, 'EX', 600);
+
+    // Dispatch plaintext OTP to the user's inbox via BullMQ email queue.
     await enqueueOTP(email, generatedCode);
 
     return res.status(200).json({
@@ -255,9 +266,70 @@ const sendOTP = async (req, res) => {
   }
 };
 
+/**
+ * Verify OTP: Compares the submitted code against the bcrypt hash stored in
+ * Redis. Deletes the hash on success to prevent reuse, then issues a
+ * short-lived (30-minute) signed verification token the client must present
+ * to downstream endpoints (e.g. /register, /reset-password).
+ */
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP are required',
+      });
+    }
+
+    const storedHash = await redis.get(`otp:${email}`);
+
+    if (!storedHash) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP not found or expired. Please request a new one.',
+      });
+    }
+
+    const isMatch = await bcrypt.compare(otp.toString(), storedHash);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP',
+      });
+    }
+
+    // Delete immediately so the code cannot be reused.
+    await redis.del(`otp:${email}`);
+
+    // Issue a short-lived verification token. Downstream endpoints verify
+    // this token to confirm email ownership without re-asking for the OTP.
+    const verificationToken = jwt.sign(
+      { email, purpose: 'signup' },
+      process.env.JWT_SECRET,
+      { expiresIn: '30m' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully',
+      verificationToken,
+    });
+  } catch (error) {
+    console.error('[authController.verifyOTP Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to verify OTP',
+    });
+  }
+};
+
 module.exports = {
   login,
   refresh,
   logout,
   sendOTP,
+  verifyOTP,
 };
