@@ -23,10 +23,10 @@ MedInternia is a comprehensive medical education and collaboration platform desi
 
 The medical education and collaboration ecosystem faces critical real-world challenges:
 
-* **Limited collaborative case discussion platforms** — Medical professionals lack dedicated spaces for structured peer-to-peer case discussions
-* **Difficulty accessing medical mentorship and peer learning** — Interns and students struggle to connect with experienced doctors for guidance
-* **Fragmented internship and job discovery** — No centralized hub exists for medical internship, residency, and job opportunities
-* **Lack of centralized medical learning and networking ecosystems** — Medical knowledge, networking, and career tools are scattered across disconnected platforms
+- **Limited collaborative case discussion platforms** — Medical professionals lack dedicated spaces for structured peer-to-peer case discussions
+- **Difficulty accessing medical mentorship and peer learning** — Interns and students struggle to connect with experienced doctors for guidance
+- **Fragmented internship and job discovery** — No centralized hub exists for medical internship, residency, and job opportunities
+- **Lack of centralized medical learning and networking ecosystems** — Medical knowledge, networking, and career tools are scattered across disconnected platforms
 
 ---
 
@@ -34,9 +34,9 @@ The medical education and collaboration ecosystem faces critical real-world chal
 
 MedInternia was built to transform how medical professionals learn, collaborate, and grow:
 
-* **Why MedInternia was built** — To create a unified platform where doctors, interns, students, and patients can connect, share knowledge, and advance their careers together
-* **Long-term goals** — To become the leading ecosystem for medical education, peer learning, mentorship, and career development globally
-* **Intended impact on medical education and collaboration** — Improve healthcare quality by empowering better-trained and better-connected medical professionals
+- **Why MedInternia was built** — To create a unified platform where doctors, interns, students, and patients can connect, share knowledge, and advance their careers together
+- **Long-term goals** — To become the leading ecosystem for medical education, peer learning, mentorship, and career development globally
+- **Intended impact on medical education and collaboration** — Improve healthcare quality by empowering better-trained and better-connected medical professionals
 
 ---
 
@@ -44,12 +44,12 @@ MedInternia was built to transform how medical professionals learn, collaborate,
 
 MedInternia addresses these challenges through an integrated platform:
 
-* **Case-Based Learning** — Explore and analyze real medical cases with peers
-* **Medical Job Board** — Find internships and career opportunities in one place
-* **Webinars & Live AMAs** — Join live sessions with experienced professionals
-* **Leaderboard & Achievements** — Track contributions and earn recognition
-* **AI-Powered Suggestions** — Get smart recommendations for learning and collaboration
-* **Peer Review & Ratings** — Maintain quality through community feedback
+- **Case-Based Learning** — Explore and analyze real medical cases with peers
+- **Medical Job Board** — Find internships and career opportunities in one place
+- **Webinars & Live AMAs** — Join live sessions with experienced professionals
+- **Leaderboard & Achievements** — Track contributions and earn recognition
+- **AI-Powered Suggestions** — Get smart recommendations for learning and collaboration
+- **Peer Review & Ratings** — Maintain quality through community feedback
 
 ---
 
@@ -57,51 +57,51 @@ MedInternia addresses these challenges through an integrated platform:
 
 MedInternia is built for everyone in the medical ecosystem:
 
-| User | How MedInternia Helps |
-|------|----------------------|
+| User                | How MedInternia Helps                                |
+| ------------------- | ---------------------------------------------------- |
 | 🎓 Medical Students | Case-based peer learning, mentorship, certifications |
-| 🏥 Interns | Job and residency discovery, skill building |
-| 👨‍⚕️ Doctors | Share expertise, review cases, host webinars |
-| 🤝 Contributors | Clear docs, good first issues, active maintainers |
-| 🏅 GSSoC Reviewers | Problem-driven architecture, real-world impact |
-| 💼 Recruiters | Modern tech stack, healthcare domain experience |
+| 🏥 Interns          | Job and residency discovery, skill building          |
+| 👨‍⚕️ Doctors          | Share expertise, review cases, host webinars         |
+| 🤝 Contributors     | Clear docs, good first issues, active maintainers    |
+| 🏅 GSSoC Reviewers  | Problem-driven architecture, real-world impact       |
+| 💼 Recruiters       | Modern tech stack, healthcare domain experience      |
 
 ---
+
 ---
 
 # 🌟 Features
 
 ## 🗂️ Case-Based Learning System
 
-* Create, publish, and discuss medical cases
-* Nested comments and threaded replies
-* Interactive peer discussions
+- Create, publish, and discuss medical cases
+- Nested comments and threaded replies
+- Interactive peer discussions
 
 ## 🧑‍⚕️ Peer Review & Ratings
 
-* Doctors and interns can review cases
-* Rating system for cases and comments
+- Doctors and interns can review cases
+- Rating system for cases and comments
 
 ## 🏅 Badges & Certifications
 
-* Earn participation badges
-* Achievement-based certificates
+- Earn participation badges
+- Achievement-based certificates
 
 ## 💼 Medical Job Board
 
-* Browse and apply for medical jobs
-* Internship and residency opportunities
+- Browse and apply for medical jobs
+- Internship and residency opportunities
 
 ## 🎥 Webinars & AMA Sessions
 
-* Attend and host webinars
-* Interactive live sessions
-
+- Attend and host webinars
+- Interactive live sessions
 
 ## 🤖 AI-Powered Suggestions
 
-* Smart recommendations for discussions
-* AI-assisted learning support
+- Smart recommendations for discussions
+- AI-assisted learning support
 
 ## 📹 Video Conferencing
 
@@ -112,14 +112,14 @@ MedInternia is built for everyone in the medical ecosystem:
 
 ## 👤 User Profiles
 
-* Manage professional information
-* Personalized dashboards
+- Manage professional information
+- Personalized dashboards
 
 ## 🔒 Authentication & Security
 
-* JWT Authentication
-* OTP Verification
-* Protected routes
+- JWT Authentication
+- OTP Verification
+- Protected routes
 
 ---
 
@@ -127,23 +127,23 @@ MedInternia is built for everyone in the medical ecosystem:
 
 ## Frontend
 
-* Next.js
-* React.js
-* Material UI
+- Next.js
+- React.js
+- Material UI
 
 ## Backend
 
-* Node.js
-* Express.js
-* MongoDB
-* Mongoose
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
 
 ## Authentication & Security
 
-* JWT
-* Nodemailer
-* Helmet
-* CORS
+- JWT
+- Nodemailer
+- Helmet
+- CORS
 
 ---
 
@@ -159,6 +159,7 @@ MedInternia/
 ```
 
 ## 📁 Folder Structure
+
 ```
 MedInternia/
 │
@@ -174,22 +175,25 @@ MedInternia/
 > **Note on `requirements.txt`:** This file is a placeholder for the planned
 > Python NLP microservice. See `docs/ai-nlp-integration.md` for the implementation
 > plan and `backend/.env.example` for the `NLP_SERVICE_URL` configuration.
-Also update the "Getting Started" section to add:
-markdown## 4️⃣ Start Development Servers
+> Also update the "Getting Started" section to add:
+> markdown## 4️⃣ Start Development Servers
 
 ### Backend
+
 ```bash
 cd backend
 npm run dev
 ```
 
 ### Frontend
+
 ```bash
-cd frontend  
+cd frontend
 npm run dev
 ```
 
 ### NLP Service (Optional — only needed for AI Suggestions feature)
+
 > ⚠️ The NLP module is **not yet implemented**. The AI-Powered Suggestions feature
 > is currently planned. See [docs/ai-nlp-integration.md](docs/ai-nlp-integration.md)
 > for the implementation roadmap.
@@ -284,12 +288,12 @@ npm run dev
 
 # 📝 Usage
 
-* Register as a doctor, intern, or patient
-* Verify email via OTP
-* Create and discuss cases
-* Attend webinars
-* Apply for jobs
-* Earn badges and certificates
+- Register as a doctor, intern, or patient
+- Verify email via OTP
+- Create and discuss cases
+- Attend webinars
+- Apply for jobs
+- Earn badges and certificates
 
 ---
 

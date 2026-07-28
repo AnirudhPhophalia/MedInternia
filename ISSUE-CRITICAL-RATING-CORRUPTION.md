@@ -23,29 +23,34 @@ This is a **multi-layered architectural and mathematical bug** with three interc
 
 ```typescript
 // UNRATE path (lines 115-120)
-comment.ratedBy.splice(rateIndex, 1);                              // ← ID removed
-if (comment.ratedBy.length === 0) comment.rating = undefined;       // fine
-else comment.rating = Math.round(                                    // ← WRONG
-  (comment.rating ?? 0) * comment.ratedBy.length
-  / (comment.ratedBy.length + 1)
-);
+comment.ratedBy.splice(rateIndex, 1); // ← ID removed
+if (comment.ratedBy.length === 0)
+  comment.rating = undefined; // fine
+else
+  comment.rating = Math.round(
+    // ← WRONG
+    ((comment.rating ?? 0) * comment.ratedBy.length) /
+      (comment.ratedBy.length + 1),
+  );
 
 // RATE path (lines 124-126)
-comment.ratedBy.push(userIdObj);                                    // ← ID added
+comment.ratedBy.push(userIdObj); // ← ID added
 if (!comment.rating) comment.rating = rating;
-else comment.rating = Math.round(                                    // ← drifts from rounding
-  ((comment.rating * (comment.ratedBy.length - 1)) + rating)
-  / comment.ratedBy.length
-);
+else
+  comment.rating = Math.round(
+    // ← drifts from rounding
+    (comment.rating * (comment.ratedBy.length - 1) + rating) /
+      comment.ratedBy.length,
+  );
 ```
 
 **Why the unrate formula is mathematically wrong:**
 
-| Variable | Meaning |
-|----------|---------|
-| `n` | number of raters before unrate |
-| `S` | sum of all individual ratings |
-| `r` | the specific rating being removed |
+| Variable | Meaning                           |
+| -------- | --------------------------------- |
+| `n`      | number of raters before unrate    |
+| `S`      | sum of all individual ratings     |
+| `r`      | the specific rating being removed |
 
 Before unrate: `n` raters, stored average `A = S/n` (approximately, since `A` is rounded).  
 After splice: `n-1` raters remain. The correct new average should be `(S - r) / (n-1)`.
@@ -72,22 +77,22 @@ The rating drifted from 5 to 3 with a single unrate cycle. Repeating rate/unrate
 
 The project contains **two** `rateComment` implementations with fundamentally different designs:
 
-| Aspect | `caseController.rateComment` (lines 95-135) | `enhancedController.rateComment` (lines 8-128) |
-|--------|---------------------------------------------|------------------------------------------------|
-| Who can rate | **Any authenticated user** | **Doctors only** |
-| Storage | Toggle on comment sub-document (no audit trail) | Permanent `Rating` collection document |
-| Points | **None awarded** | Points awarded to intern (`rating * 2` by default) |
-| Unrate | Allowed (with broken math) | Not allowed (one rating per doctor per comment) |
-| Avg recompute | From the corrupted `rating` field using wrong formula | From all persisted `Rating` documents (accurate) |
+| Aspect        | `caseController.rateComment` (lines 95-135)           | `enhancedController.rateComment` (lines 8-128)     |
+| ------------- | ----------------------------------------------------- | -------------------------------------------------- |
+| Who can rate  | **Any authenticated user**                            | **Doctors only**                                   |
+| Storage       | Toggle on comment sub-document (no audit trail)       | Permanent `Rating` collection document             |
+| Points        | **None awarded**                                      | Points awarded to intern (`rating * 2` by default) |
+| Unrate        | Allowed (with broken math)                            | Not allowed (one rating per doctor per comment)    |
+| Avg recompute | From the corrupted `rating` field using wrong formula | From all persisted `Rating` documents (accurate)   |
 
 Both are registered at the **exact same URL path**, but due to route ordering in `api.ts`, the correct version is **never invoked**:
 
 ```typescript
 // backend/src/routes/api.ts
 
-router.use('/cases', caseRoutes);        // line 67 — matched FIRST
+router.use("/cases", caseRoutes); // line 67 — matched FIRST
 // ...
-router.use('/', enhancedRoutes);          // line 77 — matched SECOND
+router.use("/", enhancedRoutes); // line 77 — matched SECOND
 ```
 
 **Why this shadows the enhanced routes:**
@@ -115,6 +120,7 @@ ratedBy: [{
 ```
 
 This data structure **cannot support toggle-based averaging** because:
+
 - It stores no per-user rating values
 - When a user unrates, their rating value is lost forever
 - The average cannot be correctly recomputed
@@ -139,12 +145,12 @@ This design enables correct average recomputation from persisted records — but
 
 ### Root Cause Summary
 
-| Layer | Problem | File:Line |
-|-------|---------|-----------|
-| **Architecture** | `enhancedRoutes` mounted at `/` **after** `caseRoutes` at `/cases` — shadowing 3 identical route paths | `api.ts:67,77` |
-| **Mathematics** | Unrate formula `rating × (n-1) / n` produces `S(n-1)/n²` instead of correct `(S-r)/(n-1)` | `caseController.ts:119-120` |
-| **Data model** | `ratedBy: ObjectId[]` cannot support toggle averaging; needs `{userId, rating}[]` or separate collection | `Case.ts:84-87` |
-| **Rounding** | RATE path uses rounded `comment.rating` as approximate sum, causing compounding error per cycle | `caseController.ts:126` |
+| Layer            | Problem                                                                                                  | File:Line                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------- | --------------------------- |
+| **Architecture** | `enhancedRoutes` mounted at `/` **after** `caseRoutes` at `/cases` — shadowing 3 identical route paths   | `api.ts:67,77`              |
+| **Mathematics**  | Unrate formula `rating × (n-1) / n` produces `S(n-1)/n²` instead of correct `(S-r)/(n-1)`                | `caseController.ts:119-120` |
+| **Data model**   | `ratedBy: ObjectId[]` cannot support toggle averaging; needs `{userId, rating}[]` or separate collection | `Case.ts:84-87`             |
+| **Rounding**     | RATE path uses rounded `comment.rating` as approximate sum, causing compounding error per cycle          | `caseController.ts:126`     |
 
 ---
 
@@ -163,24 +169,26 @@ This design enables correct average recomputation from persisted records — but
 
 ### Impact Assessment
 
-| Affected System | How |
-|----------------|-----|
-| **Intern leaderboard** | Sorted by `points` then `averageRating` — ratings are corrupted |
-| **Gamification badges** | Badge criteria like `upvotes_received` thresholds based on unreliable data |
-| **Doctor reputation** | Doctor comment ratings are unreliable |
-| **Intern scorecard** | `performanceMetrics.averageRating` is corrupted |
-| **Peer review system** | `averageRating` on User model is overwritten by corrupted values |
-| **Upgrade profile** | Intern-to-doctor promotion (when implemented correctly) would use corrupted metrics |
+| Affected System         | How                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| **Intern leaderboard**  | Sorted by `points` then `averageRating` — ratings are corrupted                     |
+| **Gamification badges** | Badge criteria like `upvotes_received` thresholds based on unreliable data          |
+| **Doctor reputation**   | Doctor comment ratings are unreliable                                               |
+| **Intern scorecard**    | `performanceMetrics.averageRating` is corrupted                                     |
+| **Peer review system**  | `averageRating` on User model is overwritten by corrupted values                    |
+| **Upgrade profile**     | Intern-to-doctor promotion (when implemented correctly) would use corrupted metrics |
 
 ---
 
 ### Suggested Fix Strategy
 
 **Short-term fix (prevent data corruption):**
+
 - Fix the unrate formula or disable unrating entirely by removing the toggle: make `rateComment` one-directional (rate only, no unrate)
 - Alternatively, store individual `{userId, rating}` pairs in the comment subdocument instead of bare `ObjectId[]`
 
 **Medium-term fix (enable correct implementation):**
+
 - Resolve the route shadowing by either:
   - Removing the overlapping routes from `caseRoutes` (keeping only `enhancedRoutes`)
   - Moving `enhancedRoutes` mounting before `caseRoutes` in `api.ts`
@@ -188,4 +196,5 @@ This design enables correct average recomputation from persisted records — but
 - Enable `enhancedController.rateComment` which uses the `Rating` collection for correct, auditable rating storage
 
 **Data migration:**
+
 - Write a migration script that recomputes all comment averages from the `Rating` collection documents to repair corrupted data

@@ -1,18 +1,18 @@
-import mongoose from 'mongoose';
-import { Request, Response } from 'express';
-import Waitlist from '../models/Waitlist';
+import mongoose from "mongoose";
+import { Request, Response } from "express";
+import Waitlist from "../models/Waitlist";
 
 const normalizeEmail = (value?: string): string =>
-  (value ?? '').toString().trim().toLowerCase();
+  (value ?? "").toString().trim().toLowerCase();
 
 export const addToWaitlist = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
-    if (!email || typeof email !== 'string') {
+    if (!email || typeof email !== "string") {
       return res.status(400).json({
         success: false,
-        message: 'Email is required',
+        message: "Email is required",
       });
     }
 
@@ -22,7 +22,7 @@ export const addToWaitlist = async (req: Request, res: Response) => {
     if (existing) {
       return res.status(409).json({
         success: false,
-        message: 'This email is already on the waitlist',
+        message: "This email is already on the waitlist",
       });
     }
 
@@ -30,25 +30,25 @@ export const addToWaitlist = async (req: Request, res: Response) => {
 
     res.status(201).json({
       success: true,
-      message: 'Successfully added to the waitlist',
+      message: "Successfully added to the waitlist",
     });
   } catch (error) {
     if (error instanceof mongoose.Error.ValidationError) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide a valid email address',
+        message: "Please provide a valid email address",
       });
     }
     if ((error as any)?.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: 'This email is already on the waitlist',
+        message: "This email is already on the waitlist",
       });
     }
-    console.error('Waitlist error:', error);
+    console.error("Waitlist error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: "Internal server error",
     });
   }
 };

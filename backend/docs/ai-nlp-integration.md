@@ -34,6 +34,7 @@ Python NLP Service (port 5000)
 NLP Models (spaCy / transformers)
 
 This approach was chosen over:
+
 - **Child process spawning** — not suitable for high-concurrency requests
 - **gRPC** — adds complexity not justified at current scale
 - **Message queue** — appropriate if NLP tasks take > 5 seconds
@@ -42,23 +43,24 @@ This approach was chosen over:
 
 ## Planned NLP Features
 
-| Feature | Implementation Plan | Priority |
-|---|---|---|
-| Case Recommendations | Cosine similarity on TF-IDF vectors of case descriptions | High |
-| AI Learning Suggestions | Collaborative filtering based on user case history | Medium |
-| Medical Term Extraction | spaCy with en_core_med7_lg medical NER model | Medium |
-| Search Ranking | BM25 ranking for case search results | Low |
+| Feature                 | Implementation Plan                                      | Priority |
+| ----------------------- | -------------------------------------------------------- | -------- |
+| Case Recommendations    | Cosine similarity on TF-IDF vectors of case descriptions | High     |
+| AI Learning Suggestions | Collaborative filtering based on user case history       | Medium   |
+| Medical Term Extraction | spaCy with en_core_med7_lg medical NER model             | Medium   |
+| Search Ranking          | BM25 ranking for case search results                     | Low      |
 
 ---
 
 ## Planned File Structure
+
 nlp/
-├── README.md              ← This document (to be moved here)
-├── requirements.txt       ← Python dependencies (currently at repo root)
-├── main.py                ← FastAPI entrypoint (GET /health, POST /recommend)
+├── README.md ← This document (to be moved here)
+├── requirements.txt ← Python dependencies (currently at repo root)
+├── main.py ← FastAPI entrypoint (GET /health, POST /recommend)
 ├── models/
-│   ├── case_recommender.py
-│   └── medical_ner.py
+│ ├── case_recommender.py
+│ └── medical_ner.py
 └── tests/
 └── test_recommender.py
 
@@ -69,6 +71,7 @@ nlp/
 ### POST /recommend/cases
 
 **Request** (from Node.js backend):
+
 ```json
 {
   "case_description": "Patient presents with chest pain and shortness of breath",
@@ -78,6 +81,7 @@ nlp/
 ```
 
 **Response**:
+
 ```json
 {
   "recommendations": [
@@ -111,8 +115,8 @@ If you want to implement the NLP module:
 Add these to `backend/.env` when implementing:
 NLP Service (Python microservice — must be running before backend)
 NLP_SERVICE_URL=http://localhost:5000
-NLP_SERVICE_TIMEOUT_MS=5000    # Timeout for NLP API calls (ms)
-NLP_ENABLED=false              # Set to true when NLP service is running
+NLP_SERVICE_TIMEOUT_MS=5000 # Timeout for NLP API calls (ms)
+NLP_ENABLED=false # Set to true when NLP service is running
 
 ---
 

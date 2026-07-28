@@ -66,28 +66,24 @@ const MedicalCasePanel = () => {
       </p>
 
       <p>
-        <strong>Chief Complaint:</strong> Persistent fever,
-        chest pain, dry cough, and shortness of breath
-        for the last 5 days.
+        <strong>Chief Complaint:</strong> Persistent fever, chest pain, dry
+        cough, and shortness of breath for the last 5 days.
       </p>
 
       <p>
-        <strong>History:</strong> Chronic smoker for
-        15 years with occasional alcohol consumption.
+        <strong>History:</strong> Chronic smoker for 15 years with occasional
+        alcohol consumption.
       </p>
 
       <p>
-        <strong>Additional Description:</strong> The
-        patient reports worsening breathing difficulty
-        during mild physical activity and discomfort
-        while lying flat.
+        <strong>Additional Description:</strong> The patient reports worsening
+        breathing difficulty during mild physical activity and discomfort while
+        lying flat.
       </p>
 
       {/* VITALS */}
       <div style={{ marginTop: "24px" }}>
-        <h3 style={{ marginBottom: "10px" }}>
-          📊 Vital Signs
-        </h3>
+        <h3 style={{ marginBottom: "10px" }}>📊 Vital Signs</h3>
 
         <ul style={{ paddingLeft: "20px" }}>
           <li>Temperature: 102°F</li>
@@ -100,9 +96,7 @@ const MedicalCasePanel = () => {
 
       {/* INVESTIGATIONS */}
       <div style={{ marginTop: "24px" }}>
-        <h3 style={{ marginBottom: "10px" }}>
-          🧪 Suggested Investigations
-        </h3>
+        <h3 style={{ marginBottom: "10px" }}>🧪 Suggested Investigations</h3>
 
         <ul style={{ paddingLeft: "20px" }}>
           <li>Chest X-Ray</li>
@@ -114,13 +108,11 @@ const MedicalCasePanel = () => {
 
       {/* QUESTION */}
       <div style={{ marginTop: "24px" }}>
-        <h3 style={{ marginBottom: "10px" }}>
-          ❓ Discussion Question
-        </h3>
+        <h3 style={{ marginBottom: "10px" }}>❓ Discussion Question</h3>
 
         <p>
-          What could be the most likely diagnosis and
-          immediate treatment approach for this patient?
+          What could be the most likely diagnosis and immediate treatment
+          approach for this patient?
         </p>
       </div>
 

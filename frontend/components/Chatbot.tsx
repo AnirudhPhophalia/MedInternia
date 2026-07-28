@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
-import {
-  Fab,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Box,
-} from "@mui/material";
+import { Fab, Paper, Typography, TextField, Button, Box } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -19,9 +12,7 @@ const Chatbot = () => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
 
-  const [messages, setMessages] = useState<
-  { sender: string; text: string }[]
->([
+  const [messages, setMessages] = useState<{ sender: string; text: string }[]>([
     {
       sender: "bot",
       text: "Welcome to MedInternia! How can I help you today?",
@@ -29,22 +20,22 @@ const Chatbot = () => {
   ]);
 
   const sendMessage = () => {
-  if (!input.trim()) return;
+    if (!input.trim()) return;
 
-  const userMessage = input.toLowerCase().trim();
+    const userMessage = input.toLowerCase().trim();
 
-  const reply =
-    responses[userMessage] ||
-    "Sorry, I don't understand that. Try Jobs, Webinars, FAQ, Contact or Leaderboard.";
+    const reply =
+      responses[userMessage] ||
+      "Sorry, I don't understand that. Try Jobs, Webinars, FAQ, Contact or Leaderboard.";
 
-  setMessages((prev) => [
-    ...prev,
-    { sender: "user", text: input },
-    { sender: "bot", text: reply },
-  ]);
+    setMessages((prev) => [
+      ...prev,
+      { sender: "user", text: input },
+      { sender: "bot", text: reply },
+    ]);
 
-  setInput("");
-};
+    setInput("");
+  };
 
   return (
     <>
@@ -52,7 +43,9 @@ const Chatbot = () => {
       <Fab
         color="primary"
         onClick={() => setOpen(!open)}
-        aria-label={open ? "Close MedInternia assistant" : "Open MedInternia assistant"}
+        aria-label={
+          open ? "Close MedInternia assistant" : "Open MedInternia assistant"
+        }
         aria-expanded={open}
         aria-controls="medinternia-chatbot-panel"
         sx={{

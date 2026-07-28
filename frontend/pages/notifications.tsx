@@ -47,25 +47,30 @@ export default function NotificationsPage() {
   const [allRead, setAllRead] = useState(false);
 
   useEffect(() => {
-    api.get("/notifications")
-      .then(res => {
+    api
+      .get("/notifications")
+      .then((res) => {
         type NotificationType = keyof typeof notificationIcons;
         const now = new Date();
-        const notifList = res.data.notifications.map((n: { type: NotificationType; [key: string]: any }) => {
-          const created = new Date(n.createdAt);
-          let group = "Earlier";
-          const today = now.toDateString();
-          const yesterday = new Date(now.getTime() - 86400000).toDateString();
-          if (created.toDateString() === today) group = "Today";
-          else if (created.toDateString() === yesterday) group = "Yesterday";
-          return {
-            ...n,
-            icon: notificationIcons[n.type] || <NotificationsIcon color="info" />,
-            unread: !n.isRead,
-            timestamp: created.toLocaleString(),
-            group,
-          };
-        });
+        const notifList = res.data.notifications.map(
+          (n: { type: NotificationType; [key: string]: any }) => {
+            const created = new Date(n.createdAt);
+            let group = "Earlier";
+            const today = now.toDateString();
+            const yesterday = new Date(now.getTime() - 86400000).toDateString();
+            if (created.toDateString() === today) group = "Today";
+            else if (created.toDateString() === yesterday) group = "Yesterday";
+            return {
+              ...n,
+              icon: notificationIcons[n.type] || (
+                <NotificationsIcon color="info" />
+              ),
+              unread: !n.isRead,
+              timestamp: created.toLocaleString(),
+              group,
+            };
+          },
+        );
         setNotifications(notifList);
       })
       .catch(() => setNotifications([]));
@@ -83,8 +88,11 @@ export default function NotificationsPage() {
   // Group notifications by date
   const groupOrder = ["Today", "Yesterday", "Earlier"];
   const grouped = groupOrder
-    .map(group => ({ group, items: filtered.filter(n => n.group === group) }))
-    .filter(g => g.items.length > 0);
+    .map((group) => ({
+      group,
+      items: filtered.filter((n) => n.group === group),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <Container maxWidth="sm" sx={{ py: { xs: 2, md: 4 } }}>
@@ -155,15 +163,23 @@ export default function NotificationsPage() {
                   background: n.unread && !allRead ? "#e3f2fd" : "#fff",
                   transition: "box-shadow 0.2s, transform 0.2s",
                   cursor: n.link ? "pointer" : "default",
-                  "&:hover": n.link ? {
-                    boxShadow: "0 6px 24px #0072ff44",
-                    transform: "scale(1.02)",
-                  } : {},
+                  "&:hover": n.link
+                    ? {
+                        boxShadow: "0 6px 24px #0072ff44",
+                        transform: "scale(1.02)",
+                      }
+                    : {},
                 }}
                 onClick={async () => {
                   if (n.link) window.location.href = n.link;
                   if (n.unread) {
-                    setNotifications(prev => prev.map(notif => (notif._id || notif.id) === (n._id || n.id) ? { ...notif, unread: false, isRead: true } : notif));
+                    setNotifications((prev) =>
+                      prev.map((notif) =>
+                        (notif._id || notif.id) === (n._id || n.id)
+                          ? { ...notif, unread: false, isRead: true }
+                          : notif,
+                      ),
+                    );
                     try {
                       await api.patch(`/notifications/${n._id}/read`);
                     } catch {}

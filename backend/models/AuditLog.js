@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const auditLogSchema = new mongoose.Schema(
   {
@@ -31,13 +31,13 @@ const auditLogSchema = new mongoose.Schema(
   },
   {
     timeseries: {
-      timeField: 'timestamp',
-      metaField: 'collectionName',
-      granularity: 'seconds',
+      timeField: "timestamp",
+      metaField: "collectionName",
+      granularity: "seconds",
     },
-  }
+  },
 );
 
-const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+const AuditLog = mongoose.model("AuditLog", auditLogSchema);
 
 module.exports = AuditLog;

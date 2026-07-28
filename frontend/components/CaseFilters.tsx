@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Box,
   TextField,
@@ -7,11 +7,11 @@ import {
   InputLabel,
   Select,
   Stack,
-  Button
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import SortIcon from '@mui/icons-material/Sort';
+  Button,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SortIcon from "@mui/icons-material/Sort";
 
 export interface CaseFilterParams {
   search: string;
@@ -35,47 +35,63 @@ const specialties = [
   "Orthopedics",
   "Dermatology",
   "Psychiatry",
-  "Emergency Medicine"
+  "Emergency Medicine",
 ];
 
-const CaseFilters: React.FC<CaseFiltersProps> = ({ filters, onFilterChange, onClearFilters }) => {
+const CaseFilters: React.FC<CaseFiltersProps> = ({
+  filters,
+  onFilterChange,
+  onClearFilters,
+}) => {
   const handleChange = (field: keyof CaseFilterParams) => (e: any) => {
     onFilterChange({ ...filters, [field]: e.target.value });
   };
 
   return (
-    <Box sx={{
-      p: 3, 
-      mb: 4, 
-      borderRadius: 4, 
-      bgcolor: '#fff', 
-      boxShadow: '0 4px 20px #2193b01a',
-      border: '1px solid #e3eafc'
-    }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="center">
+    <Box
+      sx={{
+        p: 3,
+        mb: 4,
+        borderRadius: 4,
+        bgcolor: "#fff",
+        boxShadow: "0 4px 20px #2193b01a",
+        border: "1px solid #e3eafc",
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={3}
+        alignItems="center"
+      >
         <TextField
           fullWidth
           variant="outlined"
           placeholder="Search cases by title, tags, or description..."
           value={filters.search}
-          onChange={handleChange('search')}
+          onChange={handleChange("search")}
           InputProps={{
-            startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+            startAdornment: (
+              <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
+            ),
           }}
           sx={{ flex: 2 }}
         />
-        
+
         <FormControl fullWidth sx={{ flex: 1 }}>
           <InputLabel id="specialty-label">Specialty</InputLabel>
           <Select
             labelId="specialty-label"
             value={filters.specialization}
             label="Specialty"
-            onChange={handleChange('specialization')}
-            startAdornment={<FilterListIcon sx={{ color: 'text.secondary', ml: 1, mr: 1 }} />}
+            onChange={handleChange("specialization")}
+            startAdornment={
+              <FilterListIcon sx={{ color: "text.secondary", ml: 1, mr: 1 }} />
+            }
           >
-            {specialties.map(spec => (
-              <MenuItem key={spec} value={spec === 'All' ? '' : spec}>{spec}</MenuItem>
+            {specialties.map((spec) => (
+              <MenuItem key={spec} value={spec === "All" ? "" : spec}>
+                {spec}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -86,8 +102,10 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({ filters, onFilterChange, onCl
             labelId="sort-label"
             value={filters.sortBy}
             label="Sort By"
-            onChange={handleChange('sortBy')}
-            startAdornment={<SortIcon sx={{ color: 'text.secondary', ml: 1, mr: 1 }} />}
+            onChange={handleChange("sortBy")}
+            startAdornment={
+              <SortIcon sx={{ color: "text.secondary", ml: 1, mr: 1 }} />
+            }
           >
             <MenuItem value="newest">Newest</MenuItem>
             <MenuItem value="most_discussed">Most Discussed</MenuItem>
@@ -95,10 +113,12 @@ const CaseFilters: React.FC<CaseFiltersProps> = ({ filters, onFilterChange, onCl
           </Select>
         </FormControl>
 
-        {(filters.search || filters.specialization || filters.sortBy !== 'newest') && (
-          <Button 
-            variant="outlined" 
-            color="secondary" 
+        {(filters.search ||
+          filters.specialization ||
+          filters.sortBy !== "newest") && (
+          <Button
+            variant="outlined"
+            color="secondary"
             onClick={onClearFilters}
             sx={{ minWidth: 120, height: 56, borderRadius: 2 }}
           >

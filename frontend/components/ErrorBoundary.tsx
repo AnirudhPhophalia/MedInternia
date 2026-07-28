@@ -1,5 +1,5 @@
-import React, { Component, ReactNode } from 'react';
-import { Box, Typography, Button, Stack } from '@mui/material';
+import React, { Component, ReactNode } from "react";
+import { Box, Typography, Button, Stack } from "@mui/material";
 
 interface Props {
   children: ReactNode;
@@ -20,7 +20,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    console.error("ErrorBoundary caught:", error, errorInfo);
   }
 
   handleRetry = () => {

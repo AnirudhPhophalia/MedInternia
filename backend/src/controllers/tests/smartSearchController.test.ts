@@ -7,7 +7,9 @@ import { AuthRequest } from "../../middleware/auth";
 jest.mock("../../models/JobOpportunity");
 jest.mock("../../models/User");
 
-const mockedJobOpportunity = JobOpportunity as unknown as jest.Mocked<typeof JobOpportunity>;
+const mockedJobOpportunity = JobOpportunity as unknown as jest.Mocked<
+  typeof JobOpportunity
+>;
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
 
 const mockResponse = () => {
@@ -17,9 +19,10 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (query: any = {}): AuthRequest => ({
-  query,
-}) as unknown as AuthRequest;
+const mockRequest = (query: any = {}): AuthRequest =>
+  ({
+    query,
+  }) as unknown as AuthRequest;
 
 describe("Smart Search Controller", () => {
   beforeEach(() => {
@@ -47,26 +50,31 @@ describe("Smart Search Controller", () => {
       const limitMock = jest.fn().mockResolvedValue([{ _id: "job-1" }]);
       const sortMock = jest.fn().mockReturnValue({ limit: limitMock });
       const populate2Mock = jest.fn().mockReturnValue({ sort: sortMock });
-      const populate1Mock = jest.fn().mockReturnValue({ populate: populate2Mock });
-      mockedJobOpportunity.find.mockReturnValue({ populate: populate1Mock } as any);
+      const populate1Mock = jest
+        .fn()
+        .mockReturnValue({ populate: populate2Mock });
+      mockedJobOpportunity.find.mockReturnValue({
+        populate: populate1Mock,
+      } as any);
 
       await smartSearch(req as any, res as any);
 
       expect(mockedJobOpportunity.find).toHaveBeenCalled();
-      
-      const filterArg = (mockedJobOpportunity.find as jest.Mock).mock.calls[0][0];
+
+      const filterArg = (mockedJobOpportunity.find as jest.Mock).mock
+        .calls[0][0];
       expect(filterArg).toHaveProperty("isActive", true);
       expect(filterArg).toHaveProperty("applicationDeadline");
       expect(filterArg).toHaveProperty("type", "internship");
       expect(filterArg).toHaveProperty(["location.isRemote"], true);
-      
+
       // Location matching check (Mumbai)
       expect(filterArg.$or).toEqual(
         expect.arrayContaining([
           { "location.city": expect.any(RegExp) },
           { "location.state": expect.any(RegExp) },
-          { "location.country": expect.any(RegExp) }
-        ])
+          { "location.country": expect.any(RegExp) },
+        ]),
       );
 
       // Verify the response shape includes intent and searchType
@@ -79,11 +87,11 @@ describe("Smart Search Controller", () => {
               searchType: "jobs",
               jobType: "internship",
               isRemote: true,
-              location: "Mumbai"
+              location: "Mumbai",
             }),
-            results: [{ _id: "job-1" }]
-          })
-        })
+            results: [{ _id: "job-1" }],
+          }),
+        }),
       );
     });
 
@@ -99,19 +107,19 @@ describe("Smart Search Controller", () => {
       await smartSearch(req as any, res as any);
 
       expect(mockedUser.find).toHaveBeenCalled();
-      
+
       const filterArg = (mockedUser.find as jest.Mock).mock.calls[0][0];
       expect(filterArg).toHaveProperty("userType", "doctor");
       expect(filterArg).toHaveProperty("isActive", true);
       expect(filterArg).toHaveProperty("specialization", expect.any(RegExp));
-      
+
       // Check location regex array in $or
       expect(filterArg.$or).toEqual(
         expect.arrayContaining([
           { "address.city": expect.any(RegExp) },
           { "address.state": expect.any(RegExp) },
-          { "address.country": expect.any(RegExp) }
-        ])
+          { "address.country": expect.any(RegExp) },
+        ]),
       );
 
       // Verify the response shape
@@ -123,11 +131,11 @@ describe("Smart Search Controller", () => {
             intent: expect.objectContaining({
               searchType: "doctors",
               specialization: "cardiology",
-              location: "Delhi"
+              location: "Delhi",
             }),
-            results: [{ _id: "doc-1" }]
-          })
-        })
+            results: [{ _id: "doc-1" }],
+          }),
+        }),
       );
     });
 
@@ -147,9 +155,9 @@ describe("Smart Search Controller", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            searchType: "doctors"
-          })
-        })
+            searchType: "doctors",
+          }),
+        }),
       );
     });
   });

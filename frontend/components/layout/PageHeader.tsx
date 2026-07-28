@@ -1,7 +1,13 @@
-import React from 'react';
-import { Box, Typography, Breadcrumbs, Link as MuiLink, Stack } from '@mui/material';
-import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import React from "react";
+import {
+  Box,
+  Typography,
+  Breadcrumbs,
+  Link as MuiLink,
+  Stack,
+} from "@mui/material";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 export interface BreadcrumbItem {
   label: string;
@@ -28,14 +34,14 @@ export default function PageHeader({
       component="header"
       sx={{
         mb: { xs: 3, md: 4 },
-        textAlign: centered ? 'center' : 'left',
+        textAlign: centered ? "center" : "left",
       }}
     >
       {breadcrumbs && breadcrumbs.length > 0 && (
         <Breadcrumbs
           aria-label="breadcrumb"
           separator={<ChevronRight size={14} color="#94a3b8" />}
-          sx={{ mb: 1.5, justifyContent: centered ? 'center' : 'flex-start' }}
+          sx={{ mb: 1.5, justifyContent: centered ? "center" : "flex-start" }}
         >
           {breadcrumbs.map((crumb, index) => {
             const isLast = index === breadcrumbs.length - 1;
@@ -45,7 +51,7 @@ export default function PageHeader({
                   key={crumb.label}
                   variant="body2"
                   color="text.secondary"
-                  aria-current={isLast ? 'page' : undefined}
+                  aria-current={isLast ? "page" : undefined}
                 >
                   {crumb.label}
                 </Typography>
@@ -69,8 +75,8 @@ export default function PageHeader({
       )}
 
       <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        alignItems={centered ? 'center' : { xs: 'flex-start', sm: 'center' }}
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={centered ? "center" : { xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
         spacing={2}
       >
@@ -80,11 +86,11 @@ export default function PageHeader({
             component="h1"
             sx={{
               fontWeight: 800,
-              fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+              fontSize: { xs: "1.75rem", sm: "2rem", md: "2.25rem" },
               background: (theme) => theme.custom.heroGradient,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
               letterSpacing: 0,
             }}
           >
@@ -94,7 +100,11 @@ export default function PageHeader({
             <Typography
               variant="subtitle1"
               color="text.secondary"
-              sx={{ mt: 1, maxWidth: centered ? 560 : 'none', mx: centered ? 'auto' : 0 }}
+              sx={{
+                mt: 1,
+                maxWidth: centered ? 560 : "none",
+                mx: centered ? "auto" : 0,
+              }}
             >
               {subtitle}
             </Typography>

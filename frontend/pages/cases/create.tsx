@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Stethoscope, Rocket, Sparkles, Image as ImageIcon, Loader2, PenTool } from "lucide-react";
+import {
+  Stethoscope,
+  Rocket,
+  Sparkles,
+  Image as ImageIcon,
+  Loader2,
+  PenTool,
+} from "lucide-react";
 import {
   Container,
   Typography,
@@ -18,7 +25,7 @@ import {
   Grid,
   Chip,
   Switch,
-  FormControlLabel
+  FormControlLabel,
 } from "@mui/material";
 import { Close as CloseIcon } from "@mui/icons-material";
 import api from "../../utils/api";
@@ -67,7 +74,7 @@ const SPECIALTIES = [
   "Infectious Disease",
   "Pediatrics",
   "Dermatology",
-  "Oncology"
+  "Oncology",
 ];
 
 const LOADING_STEPS = [
@@ -76,7 +83,7 @@ const LOADING_STEPS = [
   "Detecting medical entities (NER)...",
   "Classifying diagnostic complexity...",
   "Generating treatment insights...",
-  "Applying AI tags and saving..."
+  "Applying AI tags and saving...",
 ];
 
 export default function CreateCase() {
@@ -91,14 +98,17 @@ export default function CreateCase() {
   });
 
   const [images, setImages] = useState<string[]>([]);
-  const [attachments, setAttachments] = useState<{ url: string, type: 'image' | 'video' | 'audio', publicId?: string }[]>([]);
+  const [attachments, setAttachments] = useState<
+    { url: string; type: "image" | "video" | "audio"; publicId?: string }[]
+  >([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingStepIndex, setLoadingStepIndex] = useState(0);
   const [annotatingIdx, setAnnotatingIdx] = useState<number | null>(null);
   const annotationImgRef = useRef<HTMLImageElement>(null);
-  const [templateMenuAnchor, setTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+  const [templateMenuAnchor, setTemplateMenuAnchor] =
+    useState<null | HTMLElement>(null);
 
   const router = useRouter();
 
@@ -106,23 +116,25 @@ export default function CreateCase() {
   useEffect(() => {
     if (annotatingIdx !== null && annotationImgRef.current) {
       const markerArea = new markerjs2.MarkerArea(annotationImgRef.current);
-      
+
       markerArea.addEventListener("render", async (event) => {
         setLoading(true);
         try {
           const blob = await (await fetch(event.dataUrl)).blob();
-          const file = new File([blob], "annotated_image.png", { type: "image/png" });
+          const file = new File([blob], "annotated_image.png", {
+            type: "image/png",
+          });
           const formData = new FormData();
           formData.append("attachment", file);
           const token = localStorage.getItem("token");
-          
+
           const res = await api.post("/cases/attachments", formData, {
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "multipart/form-data",
             },
           });
-          
+
           const newAttachment = res.data.data;
           setAttachments((prev) => {
             const newAtts = [...prev];
@@ -130,7 +142,9 @@ export default function CreateCase() {
             return newAtts;
           });
         } catch (err: any) {
-          setError(err?.response?.data?.message || "Failed to save annotated image.");
+          setError(
+            err?.response?.data?.message || "Failed to save annotated image.",
+          );
         } finally {
           setLoading(false);
           setAnnotatingIdx(null);
@@ -161,15 +175,18 @@ export default function CreateCase() {
   }, [loading]);
 
   const handleChange = (e: any) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    const value =
+      e.target.type === "checkbox" ? e.target.checked : e.target.value;
     setForm({ ...form, [e.target.name]: value });
   };
 
-  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       const token = localStorage.getItem("token");
-      
+
       setLoading(true);
       setError("");
 
@@ -178,7 +195,7 @@ export default function CreateCase() {
           files.map(async (file) => {
             const formData = new FormData();
             formData.append("attachment", file);
-            
+
             const res = await api.post("/cases/attachments", formData, {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -186,12 +203,15 @@ export default function CreateCase() {
               },
             });
             return res.data.data;
-          })
+          }),
         );
-        
+
         setAttachments((prev) => [...prev, ...uploadedAttachments]);
       } catch (err: any) {
-        setError(err?.response?.data?.message || "Failed to upload attachment. Note: Files must be under 50MB and be valid image, video, or audio files.");
+        setError(
+          err?.response?.data?.message ||
+            "Failed to upload attachment. Note: Files must be under 50MB and be valid image, video, or audio files.",
+        );
       } finally {
         setLoading(false);
       }
@@ -209,11 +229,13 @@ export default function CreateCase() {
     }
     setLoading(true);
     try {
-      const res = await api.post("/symptoms/extract", { text: form.description });
+      const res = await api.post("/symptoms/extract", {
+        text: form.description,
+      });
       if (res.data.success && res.data.data.symptoms) {
         // Use the extracted symptoms as both symptoms and tags in the frontend UI
         const extracted = res.data.data.symptoms;
-        setForm(prev => ({ ...prev, symptoms: extracted, tags: extracted }));
+        setForm((prev) => ({ ...prev, symptoms: extracted, tags: extracted }));
         setSuccess("AI successfully extracted tags and symptoms!");
       }
     } catch (err: any) {
@@ -246,14 +268,13 @@ export default function CreateCase() {
       });
 
       setSuccess("Case analyzed and created successfully!");
-      
+
       // Delay slightly for visual transition
       setTimeout(() => {
         setLoading(false);
         const newCaseId = res.data.data.case._id;
         router.push(`/cases/${newCaseId}`);
       }, 1000);
-
     } catch (err: any) {
       setLoading(false);
       setError(err?.response?.data?.message || "Failed to create case.");
@@ -275,7 +296,11 @@ export default function CreateCase() {
         <PageHeader
           title="Submit Medical Case"
           subtitle="Contribute clinical scenarios to the platform. Our Clinical AI will automatically extract symptoms, difficulty levels, and key topics from your text."
-          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Cases", href: "/cases" }, { label: "Create" }]}
+          breadcrumbs={[
+            { label: "Home", href: "/" },
+            { label: "Cases", href: "/cases" },
+            { label: "Create" },
+          ]}
         />
 
         <Card
@@ -289,13 +314,25 @@ export default function CreateCase() {
             borderColor: "divider",
           }}
         >
-          {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{success}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
+              {success}
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: "text.primary" }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={700}
+                  sx={{ mb: 1, color: "text.primary" }}
+                >
                   Case Title
                 </Typography>
                 <TextField
@@ -305,12 +342,18 @@ export default function CreateCase() {
                   onChange={handleChange}
                   fullWidth
                   required
-                  InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fdfdff' } }}
+                  InputProps={{
+                    sx: { borderRadius: "10px", bgcolor: "#fdfdff" },
+                  }}
                 />
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: "text.primary" }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={700}
+                  sx={{ mb: 1, color: "text.primary" }}
+                >
                   Specialty area
                 </Typography>
                 <TextField
@@ -321,7 +364,9 @@ export default function CreateCase() {
                   fullWidth
                   required
                   label="Select specialization"
-                  InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fdfdff' } }}
+                  InputProps={{
+                    sx: { borderRadius: "10px", bgcolor: "#fdfdff" },
+                  }}
                 >
                   {SPECIALTIES.map((spec) => (
                     <MenuItem key={spec} value={spec}>
@@ -342,13 +387,18 @@ export default function CreateCase() {
                     />
                   }
                   label={
-                    <Typography variant="body1" fontWeight={600} color="text.primary">
-                      Mark as Rare/Orphan Disease (helps specialists discover unique cases)
+                    <Typography
+                      variant="body1"
+                      fontWeight={600}
+                      color="text.primary"
+                    >
+                      Mark as Rare/Orphan Disease (helps specialists discover
+                      unique cases)
                     </Typography>
                   }
                   sx={{ mb: 2 }}
                 />
-                
+
                 <FormControlLabel
                   control={
                     <Switch
@@ -360,11 +410,16 @@ export default function CreateCase() {
                   }
                   label={
                     <Box>
-                      <Typography variant="body1" fontWeight={600} color="error.main">
+                      <Typography
+                        variant="body1"
+                        fontWeight={600}
+                        color="error.main"
+                      >
                         Restrict visibility strictly to Verified Doctors
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        For sensitive or highly graphic professional cases meant for peer review only.
+                        For sensitive or highly graphic professional cases meant
+                        for peer review only.
                       </Typography>
                     </Box>
                   }
@@ -372,13 +427,24 @@ export default function CreateCase() {
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ color: "text.primary" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight={700}
+                    sx={{ color: "text.primary" }}
+                  >
                     Clinical Case Description
                   </Typography>
-                  <Button 
-                    size="small" 
-                    variant="outlined" 
+                  <Button
+                    size="small"
+                    variant="outlined"
                     onClick={(e) => setTemplateMenuAnchor(e.currentTarget)}
                   >
                     Insert Template
@@ -388,14 +454,32 @@ export default function CreateCase() {
                     open={Boolean(templateMenuAnchor)}
                     onClose={() => setTemplateMenuAnchor(null)}
                   >
-                    <MenuItem onClick={() => {
-                      setForm(prev => ({ ...prev, description: prev.description ? prev.description + "\n\n" + SOAP_TEMPLATE : SOAP_TEMPLATE }));
-                      setTemplateMenuAnchor(null);
-                    }}>SOAP Note</MenuItem>
-                    <MenuItem onClick={() => {
-                      setForm(prev => ({ ...prev, description: prev.description ? prev.description + "\n\n" + SBAR_TEMPLATE : SBAR_TEMPLATE }));
-                      setTemplateMenuAnchor(null);
-                    }}>SBAR Format</MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          description: prev.description
+                            ? prev.description + "\n\n" + SOAP_TEMPLATE
+                            : SOAP_TEMPLATE,
+                        }));
+                        setTemplateMenuAnchor(null);
+                      }}
+                    >
+                      SOAP Note
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          description: prev.description
+                            ? prev.description + "\n\n" + SBAR_TEMPLATE
+                            : SBAR_TEMPLATE,
+                        }));
+                        setTemplateMenuAnchor(null);
+                      }}
+                    >
+                      SBAR Format
+                    </MenuItem>
                   </Menu>
                 </Box>
                 <TextField
@@ -408,13 +492,26 @@ export default function CreateCase() {
                   multiline
                   minRows={8}
                   maxRows={20}
-                  InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fdfdff' } }}
+                  InputProps={{
+                    sx: { borderRadius: "10px", bgcolor: "#fdfdff" },
+                  }}
                 />
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ color: "text.primary" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight={700}
+                    sx={{ color: "text.primary" }}
+                  >
                     AI Generated Tags & Symptoms
                   </Typography>
                   <Button
@@ -429,23 +526,53 @@ export default function CreateCase() {
                   </Button>
                 </Box>
                 {form.tags.length > 0 ? (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', p: 2, bgcolor: '#fdfdff', borderRadius: '10px', border: '1px solid', borderColor: 'divider' }}>
-                    {form.tags.map(tag => (
-                      <Chip key={tag} label={tag} color="primary" variant="outlined" onDelete={() => {
-                        const newTags = form.tags.filter(t => t !== tag);
-                        setForm(prev => ({ ...prev, tags: newTags, symptoms: newTags }));
-                      }} />
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      flexWrap: "wrap",
+                      p: 2,
+                      bgcolor: "#fdfdff",
+                      borderRadius: "10px",
+                      border: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  >
+                    {form.tags.map((tag) => (
+                      <Chip
+                        key={tag}
+                        label={tag}
+                        color="primary"
+                        variant="outlined"
+                        onDelete={() => {
+                          const newTags = form.tags.filter((t) => t !== tag);
+                          setForm((prev) => ({
+                            ...prev,
+                            tags: newTags,
+                            symptoms: newTags,
+                          }));
+                        }}
+                      />
                     ))}
                   </Box>
                 ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                    Click "Auto-Suggest Tags" to extract keywords from your description before submitting.
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontStyle: "italic" }}
+                  >
+                    Click "Auto-Suggest Tags" to extract keywords from your
+                    description before submitting.
                   </Typography>
                 )}
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: "text.primary" }}>
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={700}
+                  sx={{ mb: 1, color: "text.primary" }}
+                >
                   Supporting Materials (Images, Video, Audio)
                 </Typography>
                 <Button
@@ -499,7 +626,11 @@ export default function CreateCase() {
                           component="img"
                           image={img}
                           alt={`Uploaded thumbnail ${idx + 1}`}
-                          sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
                         />
                       </Card>
                     ))}
@@ -517,22 +648,30 @@ export default function CreateCase() {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          bgcolor: "#fdfdff"
+                          bgcolor: "#fdfdff",
                         }}
                       >
-                        {att.type === 'image' ? (
+                        {att.type === "image" ? (
                           <CardMedia
                             component="img"
                             image={att.url}
                             alt={`Attachment ${idx + 1}`}
-                            sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            sx={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
                           />
                         ) : (
-                          <Typography variant="caption" align="center" sx={{ wordBreak: 'break-all', px: 1 }}>
-                            {att.type === 'video' ? 'Video File' : 'Audio File'}
+                          <Typography
+                            variant="caption"
+                            align="center"
+                            sx={{ wordBreak: "break-all", px: 1 }}
+                          >
+                            {att.type === "video" ? "Video File" : "Audio File"}
                           </Typography>
                         )}
-                        {att.type === 'image' && (
+                        {att.type === "image" && (
                           <IconButton
                             size="small"
                             sx={{
@@ -579,10 +718,12 @@ export default function CreateCase() {
                     fontWeight: 800,
                     fontSize: "1.1rem",
                     borderRadius: 3,
-                    background: "linear-gradient(90deg, #0072ff 0%, #00c6ff 100%)",
+                    background:
+                      "linear-gradient(90deg, #0072ff 0%, #00c6ff 100%)",
                     boxShadow: "0 4px 18px rgba(0, 114, 255, 0.35)",
                     "&:hover": {
-                      background: "linear-gradient(90deg, #0056cc 0%, #0072ff 100%)",
+                      background:
+                        "linear-gradient(90deg, #0056cc 0%, #0072ff 100%)",
                       boxShadow: "0 6px 24px rgba(0, 114, 255, 0.5)",
                       transform: "translateY(-1px)",
                     },
@@ -636,7 +777,12 @@ export default function CreateCase() {
         </Box>
 
         <Stack alignItems="center" spacing={1}>
-          <Typography variant="h5" fontWeight={800} letterSpacing={0.5} sx={{ color: "white" }}>
+          <Typography
+            variant="h5"
+            fontWeight={800}
+            letterSpacing={0.5}
+            sx={{ color: "white" }}
+          >
             Analysing Case...
           </Typography>
           <Typography
@@ -645,7 +791,7 @@ export default function CreateCase() {
               color: "#94a3b8",
               fontStyle: "italic",
               animation: "fadeInOut 1.8s infinite",
-              minHeight: "24px"
+              minHeight: "24px",
             }}
           >
             {LOADING_STEPS[loadingStepIndex]}
@@ -654,38 +800,56 @@ export default function CreateCase() {
 
         <style jsx global>{`
           @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.15); opacity: 1; }
+            0%,
+            100% {
+              transform: scale(1);
+              opacity: 0.8;
+            }
+            50% {
+              transform: scale(1.15);
+              opacity: 1;
+            }
           }
           @keyframes fadeInOut {
-            0%, 100% { opacity: 0.3; transform: scale(0.98); }
-            50% { opacity: 1; transform: scale(1.02); }
+            0%,
+            100% {
+              opacity: 0.3;
+              transform: scale(0.98);
+            }
+            50% {
+              opacity: 1;
+              transform: scale(1.02);
+            }
           }
         `}</style>
       </Backdrop>
-      
+
       {/* Invisible image element strictly for markerjs2 to attach to */}
       {annotatingIdx !== null && attachments[annotatingIdx] && (
         <Box
           sx={{
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
-            width: '100vw',
-            height: '100vh',
+            width: "100vw",
+            height: "100vh",
             zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'rgba(0,0,0,0.8)'
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgba(0,0,0,0.8)",
           }}
         >
-          <img 
-            ref={annotationImgRef} 
-            src={attachments[annotatingIdx].url} 
-            crossOrigin="anonymous" 
+          <img
+            ref={annotationImgRef}
+            src={attachments[annotatingIdx].url}
+            crossOrigin="anonymous"
             alt="Annotation Target"
-            style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+            style={{
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              objectFit: "contain",
+            }}
           />
         </Box>
       )}

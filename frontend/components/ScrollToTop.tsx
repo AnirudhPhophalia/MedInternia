@@ -52,7 +52,8 @@ const ScrollToTop: React.FC<ScrollToTopProps> = ({ threshold = 300 }) => {
             background: "linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)",
             color: "#ffffff",
             boxShadow: "0 4px 14px rgba(0, 114, 255, 0.35)",
-            transition: "transform 0.2s ease-in-out, background 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+            transition:
+              "transform 0.2s ease-in-out, background 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
             "&:hover": {
               background: "linear-gradient(135deg, #0056cc 0%, #0072ff 100%)",
               transform: "scale(1.08) translateY(-2px)",

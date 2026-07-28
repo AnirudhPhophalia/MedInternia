@@ -1,6 +1,6 @@
-import mongoose, { Document, Schema } from 'mongoose';
-import bcrypt from 'bcryptjs';
-import type { AppRole } from '../middleware/permissions';
+import mongoose, { Document, Schema } from "mongoose";
+import bcrypt from "bcryptjs";
+import type { AppRole } from "../middleware/permissions";
 
 export interface IUser extends Document {
   following?: mongoose.Types.ObjectId[];
@@ -14,14 +14,14 @@ export interface IUser extends Document {
   email: string;
   password: string;
   passwordResetToken?: string;
-passwordResetExpires?: Date;
+  passwordResetExpires?: Date;
   passwordChangedAt?: Date;
   loginAttempts?: number;
   lockoutUntil?: Date | null;
   userType: AppRole;
   phone?: string;
   dateOfBirth?: Date;
-  gender?: 'male' | 'female' | 'other';
+  gender?: "male" | "female" | "other";
   address?: {
     street?: string;
     city?: string;
@@ -86,7 +86,7 @@ passwordResetExpires?: Date;
   isVerified: boolean;
   // User-selected AI model used when calling the AI service
   preferredModel?: string;
-  messagePrivacy?: 'anyone' | 'verified_only' | 'none';
+  messagePrivacy?: "anyone" | "verified_only" | "none";
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -97,288 +97,332 @@ const AddressSchema = new Schema({
   city: { type: String },
   state: { type: String },
   zipCode: { type: String },
-  country: { type: String }
+  country: { type: String },
 });
 
 const EmergencyContactSchema = new Schema({
   name: { type: String },
   phone: { type: String },
-  relationship: { type: String }
+  relationship: { type: String },
 });
 
-const UserSchema = new Schema<IUser>({
-  following: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  followers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  solvedCases: [{ type: Schema.Types.ObjectId, ref: 'Case' }],
-  savedCases: [{ type: Schema.Types.ObjectId, ref: 'Case' }],
-  savedJobs: [{ type: Schema.Types.ObjectId, ref: 'JobOpportunity' }],
-  savedWebinars: [{ type: Schema.Types.ObjectId, ref: 'Webinar' }],
-  firstName: {
-    type: String,
-    required: [true, 'First name is required'],
-    trim: true,
-    maxlength: [50, 'First name cannot be more than 50 characters']
-  },
-  lastName: {
-    type: String,
-    required: [true, 'Last name is required'],
-    trim: true,
-    maxlength: [50, 'Last name cannot be more than 50 characters']
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    lowercase: true,
-    match: [
-      /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
-      'Please add a valid email'
-    ]
-  },
-  password: {
-    type: String,
-    required: [true, 'Password is required'],
-    validate: {
-      validator: function (v: string) {
-        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(v);
+const UserSchema = new Schema<IUser>(
+  {
+    following: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    solvedCases: [{ type: Schema.Types.ObjectId, ref: "Case" }],
+    savedCases: [{ type: Schema.Types.ObjectId, ref: "Case" }],
+    savedJobs: [{ type: Schema.Types.ObjectId, ref: "JobOpportunity" }],
+    savedWebinars: [{ type: Schema.Types.ObjectId, ref: "Webinar" }],
+    firstName: {
+      type: String,
+      required: [true, "First name is required"],
+      trim: true,
+      maxlength: [50, "First name cannot be more than 50 characters"],
+    },
+    lastName: {
+      type: String,
+      required: [true, "Last name is required"],
+      trim: true,
+      maxlength: [50, "Last name cannot be more than 50 characters"],
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      lowercase: true,
+      match: [
+        /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
+        "Please add a valid email",
+      ],
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      validate: {
+        validator: function (v: string) {
+          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(
+            v,
+          );
+        },
+        message:
+          "Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character",
       },
-      message: 'Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character'
+      select: false,
     },
-    select: false
-  },
-  passwordResetToken: {
-  type: String,
-  select: false
-},
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
 
-passwordResetExpires: {
-  type: Date,
-  select: false
-},
-  passwordChangedAt: {
-    type: Date,
-    select: false
-  },
-  loginAttempts: {
-    type: Number,
-    default: 0
-  },
-  lockoutUntil: {
-    type: Date,
-    default: null
-  },
-  userType: {
-    type: String,
-    required: [true, 'User type is required'],
-    enum: ['patient', 'doctor', 'intern', 'admin', 'hospital_staff', 'moderator']
-  },
-  phone: {
-    type: String,
-    match: [/^\+?[\d\s-()]+$/, 'Please add a valid phone number']
-  },
-  dateOfBirth: {
-    type: Date
-  },
-  gender: {
-    type: String,
-    enum: ['male', 'female', 'other']
-  },
-  address: AddressSchema,
-  // Points and rating system
-  points: {
-    type: Number,
-    default: 0,
-    min: [0, 'Points cannot be negative']
-  },
-  totalRatings: {
-    type: Number,
-    default: 0,
-    min: [0, 'Total ratings cannot be negative']
-  },
-  averageRating: {
-    type: Number,
-    default: 0,
-    min: [0, 'Average rating cannot be negative'],
-    max: [5, 'Average rating cannot exceed 5']
-  },
-  // Collaboration platform fields
-  profileScore: {
-    type: Number,
-    default: 0,
-    min: [0, 'Profile score cannot be negative'],
-    max: [100, 'Profile score cannot exceed 100']
-  },
-  badges: [{ type: String }],
-  credits: {
-    type: Number,
-    default: 0,
-    min: [0, 'Credits cannot be negative']
-  },
-  streak: {
-    type: Number,
-    default: 0,
-    min: [0, 'Streak cannot be negative']
-  },
-  longestStreak: {
-    type: Number,
-    default: 0,
-    min: [0, 'Longest streak cannot be negative']
-  },
-  lastActivityDate: {
-    type: Date,
-    default: null
-  },
-  casesAnalyzed: {
-    type: Number,
-    default: 0,
-    min: [0, 'Cases analyzed cannot be negative']
-  },
-  upvotesReceived: {
-    type: Number,
-    default: 0,
-    min: [0, 'Upvotes received cannot be negative']
-  },
-  peerReviewsGiven: {
-    type: Number,
-    default: 0,
-    min: [0, 'Peer reviews given cannot be negative']
-  },
-  peerReviewsReceived: {
-    type: Number,
-    default: 0,
-    min: [0, 'Peer reviews received cannot be negative']
-  },
-  certificatesEarned: {
-    type: Number,
-    default: 0,
-    min: [0, 'Certificates earned cannot be negative']
-  },
-  badgesEarned: {
-    type: Number,
-    default: 0,
-    min: [0, 'Badges earned cannot be negative']
-  },
-  linkedInProfile: {
-    type: String,
-    match: [/^https:\/\/(www\.)?linkedin\.com\/.*/, 'Please provide a valid LinkedIn URL']
-  },
-  githubProfile: {
-    type: String,
-    match: [/^https:\/\/(www\.)?github\.com\/.*/, 'Please provide a valid GitHub URL']
-  },
-  orcidId: {
-    type: String,
-  },
-  publications: [{
-    title: { type: String },
-    year: { type: String },
-    journal: { type: String },
-    url: { type: String }
-  }],
-  bio: {
-    type: String,
-    maxlength: [500, 'Bio cannot exceed 500 characters']
-  },
-  profilePicture: {
-    type: String,
-    match: [/^https?:\/\/.+/, 'Please provide a valid profile picture URL']
-  },
-  // Doctor specific fields
-  specialization: {
-    type: String,
-    required: function (this: IUser) {
-      return this.userType === 'doctor';
-    }
-  },
-  licenseNumber: {
-    type: String,
-    required: function (this: IUser) {
-      return this.userType === 'doctor';
+    passwordResetExpires: {
+      type: Date,
+      select: false,
     },
-    sparse: true // Allow null values to be non-unique
+    passwordChangedAt: {
+      type: Date,
+      select: false,
+    },
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockoutUntil: {
+      type: Date,
+      default: null,
+    },
+    userType: {
+      type: String,
+      required: [true, "User type is required"],
+      enum: [
+        "patient",
+        "doctor",
+        "intern",
+        "admin",
+        "hospital_staff",
+        "moderator",
+      ],
+    },
+    phone: {
+      type: String,
+      match: [/^\+?[\d\s-()]+$/, "Please add a valid phone number"],
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+    },
+    address: AddressSchema,
+    // Points and rating system
+    points: {
+      type: Number,
+      default: 0,
+      min: [0, "Points cannot be negative"],
+    },
+    totalRatings: {
+      type: Number,
+      default: 0,
+      min: [0, "Total ratings cannot be negative"],
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: [0, "Average rating cannot be negative"],
+      max: [5, "Average rating cannot exceed 5"],
+    },
+    // Collaboration platform fields
+    profileScore: {
+      type: Number,
+      default: 0,
+      min: [0, "Profile score cannot be negative"],
+      max: [100, "Profile score cannot exceed 100"],
+    },
+    badges: [{ type: String }],
+    credits: {
+      type: Number,
+      default: 0,
+      min: [0, "Credits cannot be negative"],
+    },
+    streak: {
+      type: Number,
+      default: 0,
+      min: [0, "Streak cannot be negative"],
+    },
+    longestStreak: {
+      type: Number,
+      default: 0,
+      min: [0, "Longest streak cannot be negative"],
+    },
+    lastActivityDate: {
+      type: Date,
+      default: null,
+    },
+    casesAnalyzed: {
+      type: Number,
+      default: 0,
+      min: [0, "Cases analyzed cannot be negative"],
+    },
+    upvotesReceived: {
+      type: Number,
+      default: 0,
+      min: [0, "Upvotes received cannot be negative"],
+    },
+    peerReviewsGiven: {
+      type: Number,
+      default: 0,
+      min: [0, "Peer reviews given cannot be negative"],
+    },
+    peerReviewsReceived: {
+      type: Number,
+      default: 0,
+      min: [0, "Peer reviews received cannot be negative"],
+    },
+    certificatesEarned: {
+      type: Number,
+      default: 0,
+      min: [0, "Certificates earned cannot be negative"],
+    },
+    badgesEarned: {
+      type: Number,
+      default: 0,
+      min: [0, "Badges earned cannot be negative"],
+    },
+    linkedInProfile: {
+      type: String,
+      match: [
+        /^https:\/\/(www\.)?linkedin\.com\/.*/,
+        "Please provide a valid LinkedIn URL",
+      ],
+    },
+    githubProfile: {
+      type: String,
+      match: [
+        /^https:\/\/(www\.)?github\.com\/.*/,
+        "Please provide a valid GitHub URL",
+      ],
+    },
+    orcidId: {
+      type: String,
+    },
+    publications: [
+      {
+        title: { type: String },
+        year: { type: String },
+        journal: { type: String },
+        url: { type: String },
+      },
+    ],
+    bio: {
+      type: String,
+      maxlength: [500, "Bio cannot exceed 500 characters"],
+    },
+    profilePicture: {
+      type: String,
+      match: [/^https?:\/\/.+/, "Please provide a valid profile picture URL"],
+    },
+    // Doctor specific fields
+    specialization: {
+      type: String,
+      required: function (this: IUser) {
+        return this.userType === "doctor";
+      },
+    },
+    licenseNumber: {
+      type: String,
+      required: function (this: IUser) {
+        return this.userType === "doctor";
+      },
+      sparse: true, // Allow null values to be non-unique
+    },
+    experience: {
+      type: Number,
+      min: [0, "Experience cannot be negative"],
+    },
+    qualifications: [
+      {
+        type: String,
+      },
+    ],
+    isVerifiedDoctor: {
+      type: Boolean,
+      default: false,
+    },
+    verificationDocuments: [
+      {
+        type: String,
+      },
+    ],
+    mentoringCredits: {
+      type: Number,
+      default: 0,
+      min: [0, "Mentoring credits cannot be negative"],
+    },
+    // Intern specific fields
+    medicalSchool: {
+      type: String,
+      required: function (this: IUser) {
+        return this.userType === "intern";
+      },
+    },
+    yearOfStudy: {
+      type: Number,
+      min: [1, "Year of study must be at least 1"],
+      max: [7, "Year of study cannot exceed 7"],
+      required: function (this: IUser) {
+        return this.userType === "intern";
+      },
+    },
+    interests: [
+      {
+        type: String,
+      },
+    ],
+    skills: [
+      {
+        type: String,
+      },
+    ],
+    mentorDoctor: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+    academicAchievements: [
+      {
+        type: String,
+      },
+    ],
+    careerGoals: [
+      {
+        type: String,
+      },
+    ],
+    // Patient specific fields
+    emergencyContact: EmergencyContactSchema,
+    medicalHistory: [
+      {
+        type: String,
+      },
+    ],
+    allergies: [
+      {
+        type: String,
+      },
+    ],
+    // Common fields
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    preferredModel: {
+      type: String,
+      enum: [
+        "gpt-3.5-turbo",
+        "gpt-4",
+        "gpt-4o",
+        "gemini-1.5-pro",
+        "gemini-2.0-pro",
+        "claude-3.5-sonnet",
+      ],
+      default: "gpt-3.5-turbo",
+    },
+    messagePrivacy: {
+      type: String,
+      enum: ["anyone", "verified_only", "none"],
+      default: "anyone",
+    },
   },
-  experience: {
-    type: Number,
-    min: [0, 'Experience cannot be negative']
+  {
+    timestamps: true,
   },
-  qualifications: [{
-    type: String
-  }],
-  isVerifiedDoctor: {
-    type: Boolean,
-    default: false
-  },
-  verificationDocuments: [{
-    type: String
-  }],
-  mentoringCredits: {
-    type: Number,
-    default: 0,
-    min: [0, 'Mentoring credits cannot be negative']
-  },
-  // Intern specific fields
-  medicalSchool: {
-    type: String,
-    required: function (this: IUser) {
-      return this.userType === 'intern';
-    }
-  },
-  yearOfStudy: {
-    type: Number,
-    min: [1, 'Year of study must be at least 1'],
-    max: [7, 'Year of study cannot exceed 7'],
-    required: function (this: IUser) {
-      return this.userType === 'intern';
-    }
-  },
-  interests: [{
-    type: String
-  }],
-  skills: [{
-    type: String
-  }],
-  mentorDoctor: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  academicAchievements: [{
-    type: String
-  }],
-  careerGoals: [{
-    type: String
-  }],
-  // Patient specific fields
-  emergencyContact: EmergencyContactSchema,
-  medicalHistory: [{
-    type: String
-  }],
-  allergies: [{
-    type: String
-  }],
-  // Common fields
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  preferredModel: {
-    type: String,
-    enum: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4o', 'gemini-1.5-pro', 'gemini-2.0-pro', 'claude-3.5-sonnet'],
-    default: 'gpt-3.5-turbo'
-  },
-  messagePrivacy: {
-    type: String,
-    enum: ['anyone', 'verified_only', 'none'],
-    default: 'anyone'
-  }
-}, {
-  timestamps: true
-});
+);
 
 // Clamp mentoringCredits to non-negative before saving
-UserSchema.pre('save', function (next) {
+UserSchema.pre("save", function (next) {
   if (this.mentoringCredits !== undefined && this.mentoringCredits < 0) {
     this.mentoringCredits = 0;
   }
@@ -386,8 +430,8 @@ UserSchema.pre('save', function (next) {
 });
 
 // Hash password before saving
-UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
     return next();
   }
 
@@ -401,11 +445,13 @@ UserSchema.pre('save', async function (next) {
 });
 
 // Compare password method
-UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+UserSchema.methods.comparePassword = async function (
+  candidatePassword: string,
+): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, (this as any).password);
 };
 
 // Index for better performance (email and licenseNumber already indexed via unique: true)
 UserSchema.index({ userType: 1 });
 
-export default mongoose.model<IUser>('User', UserSchema);
+export default mongoose.model<IUser>("User", UserSchema);

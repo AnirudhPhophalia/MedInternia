@@ -4,7 +4,7 @@ import {
   Paper,
   Stack,
   Typography,
-  IconButton
+  IconButton,
 } from "@mui/material";
 import {
   ClipboardCheck,
@@ -12,7 +12,8 @@ import {
   UserCheck,
   Ban,
   Stethoscope,
-  RefreshCcw,X
+  RefreshCcw,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/router";
 
@@ -50,17 +51,15 @@ const sections = [
 ];
 
 export default function TermsPage() {
-   const router = useRouter(); 
+  const router = useRouter();
   return (
     <Box
       sx={{
         flex: 1,
-        background:
-          "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)",
+        background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)",
         py: { xs: 6, md: 10 },
       }}
     >
-      
       <Container maxWidth="md">
         <Paper
           elevation={0}
@@ -69,10 +68,10 @@ export default function TermsPage() {
             borderRadius: 5,
             border: "1px solid rgba(33,147,176,0.12)",
             boxShadow: "0 12px 36px rgba(33,147,176,0.14)",
-            position:'relative'
+            position: "relative",
           }}
         >
-            <IconButton
+          <IconButton
             onClick={() => router.back()}
             aria-label="close"
             sx={{
@@ -83,23 +82,16 @@ export default function TermsPage() {
               transition: "all 0.2s ease-in-out",
               "&:hover": {
                 color: "#0072ff",
-                 backgroundColor: "rgba(0, 114, 255, 0.08)",
+                backgroundColor: "rgba(0, 114, 255, 0.08)",
                 transform: "scale(1.05)",
-              
               },
             }}
           >
             <X size={22} />
           </IconButton>
-          
+
           {/* Header */}
-          <Stack
-            direction="row"
-            spacing={2}
-            alignItems="center"
-            sx={{ mb: 2 }}
-          >
-            
+          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
             <ClipboardCheck size={44} color="#0072ff" />
 
             <Typography
@@ -126,9 +118,9 @@ export default function TermsPage() {
             }}
           >
             Please read these Terms of Service carefully before using
-            MedInternia. By accessing or using the platform, you agree
-            to comply with these terms and help maintain a safe,
-            professional, and collaborative learning environment.
+            MedInternia. By accessing or using the platform, you agree to comply
+            with these terms and help maintain a safe, professional, and
+            collaborative learning environment.
           </Typography>
 
           {/* Sections */}

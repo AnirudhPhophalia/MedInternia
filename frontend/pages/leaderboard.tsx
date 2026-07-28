@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Box, Chip, CircularProgress, Container, Grid, Paper, Skeleton, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Chip,
+  CircularProgress,
+  Container,
+  Grid,
+  Paper,
+  Skeleton,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter } from "next/router";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
@@ -30,7 +40,13 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <Box sx={{ flex: 1, background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)", py: { xs: 6, md: 10 } }}>
+    <Box
+      sx={{
+        flex: 1,
+        background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)",
+        py: { xs: 6, md: 10 },
+      }}
+    >
       <Container maxWidth="lg">
         <Stack spacing={4}>
           <Paper
@@ -44,11 +60,17 @@ export default function LeaderboardPage() {
             }}
           >
             <Trophy size={54} color="#d97706" />
-            <Typography variant="h2" fontWeight={900} color="#0072ff" sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, mt: 2 }}>
+            <Typography
+              variant="h2"
+              fontWeight={900}
+              color="#0072ff"
+              sx={{ fontSize: { xs: "2.4rem", md: "4rem" }, mt: 2 }}
+            >
               Leaderboard
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1, lineHeight: 1.7 }}>
-              Track top contributors and celebrate active learning across MedInternia.
+              Track top contributors and celebrate active learning across
+              MedInternia.
             </Typography>
           </Paper>
 
@@ -77,14 +99,32 @@ export default function LeaderboardPage() {
                         justifyContent: "center",
                       }}
                     >
-                      {rank === 1 ? <Medal size={34} color="#d97706" /> : <Award size={34} color="#0072ff" />}
+                      {rank === 1 ? (
+                        <Medal size={34} color="#d97706" />
+                      ) : (
+                        <Award size={34} color="#0072ff" />
+                      )}
                     </Box>
                     <Typography variant="h5" fontWeight={900}>
                       Rank #{rank}
                     </Typography>
-                    <Skeleton variant="text" width="70%" height={28} animation="wave" />
-                    <Skeleton variant="text" width="46%" height={22} animation="wave" />
-                    <Chip label="Coming Soon" color="primary" variant="outlined" />
+                    <Skeleton
+                      variant="text"
+                      width="70%"
+                      height={28}
+                      animation="wave"
+                    />
+                    <Skeleton
+                      variant="text"
+                      width="46%"
+                      height={22}
+                      animation="wave"
+                    />
+                    <Chip
+                      label="Coming Soon"
+                      color="primary"
+                      variant="outlined"
+                    />
                   </Stack>
                 </Paper>
               </Grid>

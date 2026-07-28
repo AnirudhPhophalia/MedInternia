@@ -26,7 +26,7 @@ export interface DeadlineStatus {
  * status instead of throwing, so callers never need to pre-validate input.
  */
 export function getDeadlineStatus(
-  deadline?: string | number | Date | null
+  deadline?: string | number | Date | null,
 ): DeadlineStatus {
   if (deadline === null || deadline === undefined || deadline === "") {
     return {
@@ -113,5 +113,3 @@ export function getDeadlineStatus(
     urgency: "high",
   };
 }
-
-

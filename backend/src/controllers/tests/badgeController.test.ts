@@ -22,12 +22,18 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, body: any = {}, query: any = {}, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
-  body,
-  query,
-  params,
-}) as unknown as AuthRequest;
+const mockRequest = (
+  userId: string,
+  body: any = {},
+  query: any = {},
+  params: any = {},
+): AuthRequest =>
+  ({
+    user: { _id: userId },
+    body,
+    query,
+    params,
+  }) as unknown as AuthRequest;
 
 describe("Badge Controller", () => {
   beforeEach(() => {
@@ -42,7 +48,9 @@ describe("Badge Controller", () => {
       await getAllBadges(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Invalid query parameter format" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Invalid query parameter format" }),
+      );
       expect(mockedBadge.find).not.toHaveBeenCalled();
     });
 
@@ -53,12 +61,18 @@ describe("Badge Controller", () => {
       await getAllBadges(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Invalid query parameter format" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Invalid query parameter format" }),
+      );
       expect(mockedBadge.find).not.toHaveBeenCalled();
     });
 
     it("applies legitimate string filters to Badge.find", async () => {
-      const req = mockRequest("user-1", {}, { category: "clinical", isActive: "true" });
+      const req = mockRequest(
+        "user-1",
+        {},
+        { category: "clinical", isActive: "true" },
+      );
       const res = mockResponse();
 
       const sortMock = jest.fn().mockResolvedValue([{ _id: "badge-1" }]);
@@ -66,8 +80,13 @@ describe("Badge Controller", () => {
 
       await getAllBadges(req as any, res as any);
 
-      expect(mockedBadge.find).toHaveBeenCalledWith({ category: "clinical", isActive: true });
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, data: expect.anything() }));
+      expect(mockedBadge.find).toHaveBeenCalledWith({
+        category: "clinical",
+        isActive: true,
+      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: expect.anything() }),
+      );
     });
   });
 
@@ -79,7 +98,7 @@ describe("Badge Controller", () => {
         icon: "star",
         category: "points",
         criteria: { type: "points", threshold: 100 },
-        color: "#fff"
+        color: "#fff",
       });
       const res = mockResponse();
 
@@ -88,47 +107,69 @@ describe("Badge Controller", () => {
       // Actually, jest.mock automatically mocks constructor functions.
       // But we need to ensure `.save` exists on the returned instance.
       // Easiest way in Jest when a module exports a class model is to mock its prototype.
-      jest.spyOn(Badge.prototype, 'save').mockImplementation(saveMock);
+      jest.spyOn(Badge.prototype, "save").mockImplementation(saveMock);
 
       await createBadge(req as any, res as any);
 
       expect(saveMock).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
-      
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
+
       saveMock.mockRestore();
     });
   });
 
   describe("toggleBadgeVisibility", () => {
     it("updates visibility flag securely for matching user", async () => {
-      const req = mockRequest("user-1", { isVisible: false }, {}, { userBadgeId: "ub-1" });
+      const req = mockRequest(
+        "user-1",
+        { isVisible: false },
+        {},
+        { userBadgeId: "ub-1" },
+      );
       const res = mockResponse();
 
-      const populateMock = jest.fn().mockResolvedValue({ _id: "ub-1", isVisible: false });
-      mockedUserBadge.findOneAndUpdate.mockReturnValue({ populate: populateMock } as any);
+      const populateMock = jest
+        .fn()
+        .mockResolvedValue({ _id: "ub-1", isVisible: false });
+      mockedUserBadge.findOneAndUpdate.mockReturnValue({
+        populate: populateMock,
+      } as any);
 
       await toggleBadgeVisibility(req as any, res as any);
 
       expect(mockedUserBadge.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: "ub-1", user: "user-1" },
         { isVisible: false },
-        { new: true }
+        { new: true },
       );
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
 
     it("returns 404 if user badge not found or not owned by user", async () => {
-      const req = mockRequest("user-1", { isVisible: false }, {}, { userBadgeId: "ub-1" });
+      const req = mockRequest(
+        "user-1",
+        { isVisible: false },
+        {},
+        { userBadgeId: "ub-1" },
+      );
       const res = mockResponse();
 
       const populateMock = jest.fn().mockResolvedValue(null);
-      mockedUserBadge.findOneAndUpdate.mockReturnValue({ populate: populateMock } as any);
+      mockedUserBadge.findOneAndUpdate.mockReturnValue({
+        populate: populateMock,
+      } as any);
 
       await toggleBadgeVisibility(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Badge not found" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Badge not found" }),
+      );
     });
   });
 });

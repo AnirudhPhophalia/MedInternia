@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IUserLearningPath extends Document {
   user: mongoose.Types.ObjectId;
@@ -9,36 +9,44 @@ export interface IUserLearningPath extends Document {
   completedAt?: Date;
 }
 
-const UserLearningPathSchema = new Schema<IUserLearningPath>({
-  user: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+const UserLearningPathSchema = new Schema<IUserLearningPath>(
+  {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    learningPath: {
+      type: Schema.Types.ObjectId,
+      ref: "LearningPath",
+      required: true,
+    },
+    completedSteps: [
+      {
+        type: Number,
+      },
+    ],
+    isCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    enrolledAt: {
+      type: Date,
+      default: Date.now,
+    },
+    completedAt: {
+      type: Date,
+    },
   },
-  learningPath: {
-    type: Schema.Types.ObjectId,
-    ref: 'LearningPath',
-    required: true,
+  {
+    timestamps: true,
   },
-  completedSteps: [{
-    type: Number,
-  }],
-  isCompleted: {
-    type: Boolean,
-    default: false,
-  },
-  enrolledAt: {
-    type: Date,
-    default: Date.now,
-  },
-  completedAt: {
-    type: Date,
-  }
-}, {
-  timestamps: true,
-});
+);
 
 // Ensure a user can only enroll in a path once
 UserLearningPathSchema.index({ user: 1, learningPath: 1 }, { unique: true });
 
-export default mongoose.model<IUserLearningPath>('UserLearningPath', UserLearningPathSchema);
+export default mongoose.model<IUserLearningPath>(
+  "UserLearningPath",
+  UserLearningPathSchema,
+);

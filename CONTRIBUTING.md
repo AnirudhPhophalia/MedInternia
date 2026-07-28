@@ -7,6 +7,7 @@ Thank you for your interest in contributing to MedInternia — especially for GS
 3. Run the backend and frontend locally:
 
 Backend:
+
 ```
 cd backend
 Copy-Item .env.example .env
@@ -17,6 +18,7 @@ npm start
 ```
 
 Frontend:
+
 ```
 cd frontend
 Copy-Item .env.example .env
@@ -26,6 +28,7 @@ npm run dev
 ```
 
 RAG Service (Python AI Layer):
+
 ```
 cd rag_service
 pip install -r requirements.txt

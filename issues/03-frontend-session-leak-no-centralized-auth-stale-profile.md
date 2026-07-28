@@ -10,7 +10,7 @@ The frontend has three interconnected critical issues: (1) logging out does not 
 
 ```typescript
 const logout = () => {
-  localStorage.removeItem("authToken");   // This key is NEVER set — dead code
+  localStorage.removeItem("authToken"); // This key is NEVER set — dead code
   localStorage.removeItem("token");
   // Missing: localStorage.removeItem("userId");
   // Missing: localStorage.removeItem("user");
@@ -23,6 +23,7 @@ const logout = () => {
 ```
 
 **Problems:**
+
 1. `"authToken"` is removed but never stored — dead code
 2. `"userId"` is never removed — the next user logging in on the same machine will see the previous user's ID
 3. `"user"` (full user object including PII) is never removed — medical PII persists
@@ -33,6 +34,7 @@ const logout = () => {
 ## Bug 2: JWT and User PII Stored in localStorage — XSS-Vulnerable Pattern
 
 **Files (15+ locations):**
+
 - `frontend/utils/api.ts:22` — `localStorage.getItem('token')` for API auth headers
 - `frontend/utils/permissions.ts:106` — reads token for role decoding
 - `frontend/hooks/useNotifications.ts:32` — reads token for socket connection auth
@@ -45,6 +47,7 @@ const logout = () => {
 - And many more...
 
 **Problems:**
+
 1. JWT in localStorage is accessible to any JavaScript running on the page — an XSS vulnerability in any component exposes all user tokens
 2. Full user object (including email, phone, address, medical history) stored in plaintext in localStorage
 3. No centralized auth state — each component independently calls `localStorage.getItem('token')` and handles `null` differently
@@ -62,10 +65,11 @@ useEffect(() => {
     // fetch profile...
   };
   fetchProfile();
-}, []);  // <-- Empty dependency array — only runs on mount
+}, []); // <-- Empty dependency array — only runs on mount
 ```
 
 **Problem:** The Navbar fetches the user's profile on component mount with an empty dependency array `[]`. If the user updates their profile (e.g., changes avatar, name, or bio), the Navbar continues to show stale data until a full page reload. This affects:
+
 - `Navbar.tsx` — stale profile avatar and name
 - `ProfileDropdown.tsx` — stale user info
 - Any component reading from localStorage rather than refetching
@@ -90,6 +94,7 @@ The root component has no React Error Boundary. If any component throws during r
 ```
 
 **Problem:** Medical case studies, symptom descriptions, diagnosis information, and discussion content — the core educational material of the platform — cannot be selected, copied, or highlighted. This prevents doctors and students from:
+
 - Copying medical terms for research
 - Selecting and sharing specific case details
 - Using screen readers effectively (accessibility issue)

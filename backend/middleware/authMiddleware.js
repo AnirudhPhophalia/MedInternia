@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
-const redis = require('../config/redis');
-const { ACCESS_TOKEN_SECRET } = require('../utils/tokenUtils');
+const jwt = require("jsonwebtoken");
+const redis = require("../config/redis");
+const { ACCESS_TOKEN_SECRET } = require("../utils/tokenUtils");
 
 /**
  * Express middleware to verify Authorization header and check Redis token blacklist.
@@ -9,19 +9,19 @@ const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || req.headers.Authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: 'Access token is required in Authorization header',
+        message: "Access token is required in Authorization header",
       });
     }
 
-    const token = authHeader.split(' ')[1];
+    const token = authHeader.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Access token missing',
+        message: "Access token missing",
       });
     }
 
@@ -31,11 +31,11 @@ const authMiddleware = async (req, res, next) => {
       if (isBlacklisted) {
         return res.status(401).json({
           success: false,
-          message: 'Token has been revoked or blacklisted',
+          message: "Token has been revoked or blacklisted",
         });
       }
     } catch (redisError) {
-      console.error('[AuthMiddleware] Redis lookup error:', redisError.message);
+      console.error("[AuthMiddleware] Redis lookup error:", redisError.message);
     }
 
     // Verify access token validity and signature
@@ -43,7 +43,7 @@ const authMiddleware = async (req, res, next) => {
       if (err) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid or expired access token',
+          message: "Invalid or expired access token",
         });
       }
 
@@ -54,11 +54,14 @@ const authMiddleware = async (req, res, next) => {
           if (isJtiBlacklisted) {
             return res.status(401).json({
               success: false,
-              message: 'Token session has been revoked',
+              message: "Token session has been revoked",
             });
           }
         } catch (redisError) {
-          console.error('[AuthMiddleware] Redis JTI lookup error:', redisError.message);
+          console.error(
+            "[AuthMiddleware] Redis JTI lookup error:",
+            redisError.message,
+          );
         }
       }
 
@@ -66,10 +69,10 @@ const authMiddleware = async (req, res, next) => {
       next();
     });
   } catch (error) {
-    console.error('[AuthMiddleware Error]:', error);
+    console.error("[AuthMiddleware Error]:", error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error during authentication',
+      message: "Internal server error during authentication",
     });
   }
 };

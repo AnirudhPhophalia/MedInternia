@@ -14,11 +14,16 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, body: any = {}, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
-  body,
-  params,
-}) as unknown as AuthRequest;
+const mockRequest = (
+  userId: string,
+  body: any = {},
+  params: any = {},
+): AuthRequest =>
+  ({
+    user: { _id: userId },
+    body,
+    params,
+  }) as unknown as AuthRequest;
 
 describe("Diary Controller", () => {
   beforeEach(() => {
@@ -54,7 +59,10 @@ describe("Diary Controller", () => {
       const req = mockRequest("user-1", { title: "My Internship Journey" });
       const res = mockResponse();
 
-      mockedDiary.create.mockResolvedValue({ _id: "diary-1", title: "My Internship Journey" } as any);
+      mockedDiary.create.mockResolvedValue({
+        _id: "diary-1",
+        title: "My Internship Journey",
+      } as any);
 
       await createDiary(req as any, res as any);
 
@@ -77,21 +85,35 @@ describe("Diary Controller", () => {
 
   describe("addDiaryEntry", () => {
     it("scopes diary lookup to the logged-in user and adds the entry", async () => {
-      const req = mockRequest("user-1", { day: "Day 1", content: "Great day!" }, { diaryId: "diary-1" });
+      const req = mockRequest(
+        "user-1",
+        { day: "Day 1", content: "Great day!" },
+        { diaryId: "diary-1" },
+      );
       const res = mockResponse();
 
       const saveMock = jest.fn().mockResolvedValue(true);
-      mockedDiary.findOne.mockResolvedValue({ entries: [], save: saveMock } as any);
+      mockedDiary.findOne.mockResolvedValue({
+        entries: [],
+        save: saveMock,
+      } as any);
 
       await addDiaryEntry(req as any, res as any);
 
-      expect(mockedDiary.findOne).toHaveBeenCalledWith({ _id: "diary-1", user: "user-1" });
+      expect(mockedDiary.findOne).toHaveBeenCalledWith({
+        _id: "diary-1",
+        user: "user-1",
+      });
       expect(saveMock).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
     it("returns 404 if diary is not found or does not belong to the user", async () => {
-      const req = mockRequest("user-1", { day: "Day 1", content: "Great day!" }, { diaryId: "diary-1" });
+      const req = mockRequest(
+        "user-1",
+        { day: "Day 1", content: "Great day!" },
+        { diaryId: "diary-1" },
+      );
       const res = mockResponse();
 
       mockedDiary.findOne.mockResolvedValue(null);

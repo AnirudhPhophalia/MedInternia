@@ -39,6 +39,7 @@ await User.findByIdAndUpdate(userId, {                    // Step 2
 **File:** `backend/src/controllers/peerReviewController.ts`, lines 49–83
 
 The peer review submission performs multiple state-changing operations:
+
 1. Creates a new `PeerReview` document
 2. Updates the reviewee's average score (read → modify → save pattern)
 3. Awards points to both reviewer and reviewee
@@ -51,13 +52,13 @@ The peer review submission performs multiple state-changing operations:
 **File:** `backend/src/controllers/authController.ts`, lines 215–235
 
 ```typescript
-const webinars = await Webinar.find({});                  // Fetches ALL webinars
-const notifications = webinars.map(w => ({
+const webinars = await Webinar.find({}); // Fetches ALL webinars
+const notifications = webinars.map((w) => ({
   recipient: newUser._id,
-  type: 'webinar_reminder',
+  type: "webinar_reminder",
   message: `New webinar: ${w.title}`,
 }));
-await Notification.insertMany(notifications);             // Creates notifs for PAST webinars too
+await Notification.insertMany(notifications); // Creates notifs for PAST webinars too
 ```
 
 **Problem:** When a new intern registers, the code fetches ALL webinars (past and future) and creates notifications for each one. A user registering in 2026 would get notifications about webinars from 2025 that have already ended. The query should filter for future webinars only (`{ date: { $gte: new Date() } }`). This is also not in a transaction with the user creation.
@@ -67,19 +68,20 @@ await Notification.insertMany(notifications);             // Creates notifs for 
 **File:** `backend/src/controllers/userController.ts`, lines 362–394
 
 ```typescript
-const user = await User.findById(userId);                 // Read
+const user = await User.findById(userId); // Read
 if (todayActivity) {
-  user.streak += 1;                                       // Modify in memory
+  user.streak += 1; // Modify in memory
   if (user.streak > user.longestStreak) {
     user.longestStreak = user.streak;
   }
 } else {
   user.streak = 0;
 }
-await user.save();                                        // Write
+await user.save(); // Write
 ```
 
 **Problems:**
+
 1. **Race condition:** If two concurrent requests call this function, both read the same streak value (e.g., 5), both increment to 6, and both save. The result is streak=6 instead of streak=7. Should use `$inc: { streak: 1 }` and `$max: { longestStreak: streak }` operators atomically.
 2. **Duplicate increment bug:** The check `todayActivity` is true if there's ANY activity today. If the function is called twice on the same day, the streak increments both times (from 5 to 6 to 7) instead of remaining at the correct value. The logic should differentiate between "last activity was yesterday" (increment) vs "already active today" (maintain).
 
@@ -88,13 +90,13 @@ await user.save();                                        // Write
 **File:** `backend/src/controllers/userController.ts`, lines 654–703
 
 ```typescript
-const me = await User.findById(myId);                     // Read
-const other = await User.findById(userId);                // Read
+const me = await User.findById(myId); // Read
+const other = await User.findById(userId); // Read
 // modify arrays
 me.following.push(userId);
 other.followers.push(myId);
-await me.save();                                          // Write
-await other.save();                                       // Write
+await me.save(); // Write
+await other.save(); // Write
 ```
 
 **Problem:** If two users follow the same target simultaneously, both reads get the same followers array, both append their ID, and the second save overwrites the first. One follower's ID is lost. Should use `$addToSet`/`$pull` atomic operators.

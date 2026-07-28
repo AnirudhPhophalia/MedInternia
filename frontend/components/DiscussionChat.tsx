@@ -14,7 +14,6 @@ const DiscussionChat = () => {
     },
   ]);
 
-
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,16 +22,13 @@ const DiscussionChat = () => {
 
     const userMessage = input.trim();
 
-    setMessages((prev) => [
-      ...prev,
-      { user: "You", text: userMessage },
-    ]);
+    setMessages((prev) => [...prev, { user: "You", text: userMessage }]);
 
     setInput("");
     setLoading(true);
 
     try {
-      const { data } = await api.post('/chatbot', { message: userMessage });
+      const { data } = await api.post("/chatbot", { message: userMessage });
 
       setMessages((prev) => [
         ...prev,
@@ -76,7 +72,11 @@ const DiscussionChat = () => {
           color: "#111827",
         }}
       >
-        <MessageCircle size={20} aria-hidden style={{ verticalAlign: "middle", marginRight: 8 }} />
+        <MessageCircle
+          size={20}
+          aria-hidden
+          style={{ verticalAlign: "middle", marginRight: 8 }}
+        />
         Discussion Chat
       </h2>
 
@@ -88,11 +88,7 @@ const DiscussionChat = () => {
         }}
       >
         {messages.map((msg, index) => (
-          <ChatMessage
-            key={index}
-            user={msg.user}
-            text={msg.text}
-          />
+          <ChatMessage key={index} user={msg.user} text={msg.text} />
         ))}
         {loading && (
           <div style={{ color: "#6b7280", fontSize: "13px", padding: "8px 0" }}>

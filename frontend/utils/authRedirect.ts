@@ -16,9 +16,12 @@ export const protectedLandingPaths = [
 
 export const hasAuthToken = () => {
   if (getGlobalToken()) return true;
-  if (typeof window !== 'undefined' && localStorage.getItem('token')) return true;
-  if (typeof document === 'undefined') return false;
-  return document.cookie.split('; ').some(row => row.startsWith('auth_status='));
+  if (typeof window !== "undefined" && localStorage.getItem("token"))
+    return true;
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split("; ")
+    .some((row) => row.startsWith("auth_status="));
 };
 
 export const getLoginHref = (redirectPath: string) =>
@@ -30,7 +33,9 @@ export const getCurrentRedirectPath = () => {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 };
 
-export const getSafeRedirectPath = (redirect: string | string[] | undefined) => {
+export const getSafeRedirectPath = (
+  redirect: string | string[] | undefined,
+) => {
   const redirectPath = Array.isArray(redirect) ? redirect[0] : redirect;
 
   if (
@@ -45,6 +50,9 @@ export const getSafeRedirectPath = (redirect: string | string[] | undefined) => 
   return "/landing";
 };
 
-export const redirectToLogin = (router: NextRouter, redirectPath = getCurrentRedirectPath()) => {
+export const redirectToLogin = (
+  router: NextRouter,
+  redirectPath = getCurrentRedirectPath(),
+) => {
   router.replace(getLoginHref(redirectPath));
 };

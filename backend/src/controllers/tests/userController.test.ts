@@ -46,21 +46,41 @@ jest.mock("../badgeController");
 
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
 const mockedCase = Case as unknown as jest.Mocked<typeof Case>;
-const mockedCertificate = Certificate as unknown as jest.Mocked<typeof Certificate>;
+const mockedCertificate = Certificate as unknown as jest.Mocked<
+  typeof Certificate
+>;
 const mockedUserBadge = UserBadge as unknown as jest.Mocked<typeof UserBadge>;
 const mockedDiary = Diary as unknown as jest.Mocked<typeof Diary>;
 const mockedFlashcard = Flashcard as unknown as jest.Mocked<typeof Flashcard>;
-const mockedCollection = Collection as unknown as jest.Mocked<typeof Collection>;
-const mockedUserLearningPath = UserLearningPath as unknown as jest.Mocked<typeof UserLearningPath>;
-const mockedNotification = Notification as unknown as jest.Mocked<typeof Notification>;
+const mockedCollection = Collection as unknown as jest.Mocked<
+  typeof Collection
+>;
+const mockedUserLearningPath = UserLearningPath as unknown as jest.Mocked<
+  typeof UserLearningPath
+>;
+const mockedNotification = Notification as unknown as jest.Mocked<
+  typeof Notification
+>;
 const mockedRating = Rating as unknown as jest.Mocked<typeof Rating>;
-const mockedPeerReview = PeerReview as unknown as jest.Mocked<typeof PeerReview>;
-const mockedMentorship = Mentorship as unknown as jest.Mocked<typeof Mentorship>;
+const mockedPeerReview = PeerReview as unknown as jest.Mocked<
+  typeof PeerReview
+>;
+const mockedMentorship = Mentorship as unknown as jest.Mocked<
+  typeof Mentorship
+>;
 const mockedWebinar = Webinar as unknown as jest.Mocked<typeof Webinar>;
-const mockedJobOpportunity = JobOpportunity as unknown as jest.Mocked<typeof JobOpportunity>;
-const mockedConversation = Conversation as unknown as jest.Mocked<typeof Conversation>;
-const mockedResearchPaper = ResearchPaper as unknown as jest.Mocked<typeof ResearchPaper>;
-const mockedAICasePostSchedule = AICasePostSchedule as unknown as jest.Mocked<typeof AICasePostSchedule>;
+const mockedJobOpportunity = JobOpportunity as unknown as jest.Mocked<
+  typeof JobOpportunity
+>;
+const mockedConversation = Conversation as unknown as jest.Mocked<
+  typeof Conversation
+>;
+const mockedResearchPaper = ResearchPaper as unknown as jest.Mocked<
+  typeof ResearchPaper
+>;
+const mockedAICasePostSchedule = AICasePostSchedule as unknown as jest.Mocked<
+  typeof AICasePostSchedule
+>;
 const mockedCheckAndAwardAutoBadges = checkAndAwardAutoBadges as jest.Mock;
 
 const mockResponse = () => {
@@ -77,7 +97,9 @@ describe("User Controller", () => {
 
   describe("getLeaderboard", () => {
     it("sorts by points when an invalid metric is provided", async () => {
-      const req = { query: { userType: "intern", metric: "invalidMetric", limit: "10" } } as unknown as Request;
+      const req = {
+        query: { userType: "intern", metric: "invalidMetric", limit: "10" },
+      } as unknown as Request;
       const res = mockResponse();
 
       const limitMock = jest.fn().mockResolvedValue([]);
@@ -92,14 +114,14 @@ describe("User Controller", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ metric: "points" }),
-        })
+        }),
       );
     });
 
     it("clamps limitNum correctly when exceeding 100 or below 1", async () => {
       const res1 = mockResponse();
       const req1 = { query: { limit: "200" } } as unknown as Request;
-      
+
       const limitMock = jest.fn().mockResolvedValue([]);
       mockedUser.find.mockReturnValue({
         select: jest.fn().mockReturnValue({
@@ -117,7 +139,9 @@ describe("User Controller", () => {
     });
 
     it("handles doctor mentorScore sorting correctly", async () => {
-      const req = { query: { userType: "doctor", metric: "mentorScore" } } as unknown as Request;
+      const req = {
+        query: { userType: "doctor", metric: "mentorScore" },
+      } as unknown as Request;
       const res = mockResponse();
 
       const doc1Id = new mongoose.Types.ObjectId().toHexString();
@@ -129,27 +153,31 @@ describe("User Controller", () => {
         lastName: "Smith",
         averageRating: 4.5,
         mentoringCredits: 10,
-        toObject: () => ({ _id: doc1Id, firstName: "Alice" })
+        toObject: () => ({ _id: doc1Id, firstName: "Alice" }),
       };
-      
+
       const doctor2 = {
         _id: doc2Id,
         firstName: "Bob",
         lastName: "Jones",
         averageRating: 5.0,
         mentoringCredits: 20,
-        toObject: () => ({ _id: doc2Id, firstName: "Bob" })
+        toObject: () => ({ _id: doc2Id, firstName: "Bob" }),
       };
 
       mockedUser.find.mockReturnValue({
-        select: jest.fn().mockResolvedValue([doctor1, doctor2])
+        select: jest.fn().mockResolvedValue([doctor1, doctor2]),
       } as any);
 
       // Mock aggregate/count operations for calculateMentorStats
       mockedCase.countDocuments.mockResolvedValue(2);
       mockedUser.countDocuments.mockResolvedValue(1);
-      mockedCertificate.aggregate.mockResolvedValue([{ certificatesIssued: 3, casesReviewed: 5 }]);
-      mockedCase.aggregate.mockResolvedValue([{ discussionCount: 10, likesReceived: 20, followUpsPosted: 2 }]);
+      mockedCertificate.aggregate.mockResolvedValue([
+        { certificatesIssued: 3, casesReviewed: 5 },
+      ]);
+      mockedCase.aggregate.mockResolvedValue([
+        { discussionCount: 10, likesReceived: 20, followUpsPosted: 2 },
+      ]);
 
       await getLeaderboard(req, res);
 
@@ -157,7 +185,7 @@ describe("User Controller", () => {
       const responseData = (res.json as jest.Mock).mock.calls[0][0];
       expect(responseData.success).toBe(true);
       expect(responseData.data.metric).toBe("mentorScore");
-      
+
       // Since doctor2 has higher averageRating and mentoringCredits, they should score higher.
       // We also check if rank is assigned correctly.
       expect(responseData.data.leaderboard.length).toBe(2);
@@ -183,19 +211,23 @@ describe("User Controller", () => {
       };
 
       mockedUser.findOne.mockReturnValue({
-        select: jest.fn().mockResolvedValue(doctor)
+        select: jest.fn().mockResolvedValue(doctor),
       } as any);
 
       mockedCase.countDocuments.mockResolvedValue(5);
       mockedUser.countDocuments.mockResolvedValue(3);
-      mockedCertificate.aggregate.mockResolvedValue([{ certificatesIssued: 2, casesReviewed: 10 }]);
-      mockedCase.aggregate.mockResolvedValue([{ discussionCount: 15, likesReceived: 25, followUpsPosted: 4 }]);
+      mockedCertificate.aggregate.mockResolvedValue([
+        { certificatesIssued: 2, casesReviewed: 10 },
+      ]);
+      mockedCase.aggregate.mockResolvedValue([
+        { discussionCount: 15, likesReceived: 25, followUpsPosted: 4 },
+      ]);
 
       await getDoctorMentorSummary(req, res);
 
       const responseData = (res.json as jest.Mock).mock.calls[0][0];
       expect(responseData.success).toBe(true);
-      
+
       const stats = responseData.data.mentorStats;
       // Check interface MentorStats
       expect(stats).toHaveProperty("mentorScore");
@@ -208,7 +240,7 @@ describe("User Controller", () => {
       expect(stats).toHaveProperty("followUpsPosted", 4);
       expect(stats).toHaveProperty("averageRating", 4.5);
       expect(stats).toHaveProperty("mentoringCredits", 50);
-      
+
       expect(stats).toHaveProperty("scoreBreakdown");
       expect(stats.scoreBreakdown).toHaveProperty("casesPosted");
       expect(stats.scoreBreakdown).toHaveProperty("internsMentored");
@@ -226,7 +258,7 @@ describe("User Controller", () => {
       const res = mockResponse();
 
       mockedUser.findOne.mockReturnValue({
-        select: jest.fn().mockResolvedValue(null)
+        select: jest.fn().mockResolvedValue(null),
       } as any);
 
       await getDoctorMentorSummary(req, res);
@@ -260,34 +292,52 @@ describe("User Controller", () => {
       }) as any;
 
     beforeEach(() => {
-      jest.spyOn(mongoose, "startSession").mockResolvedValue(mockSession as any);
+      jest
+        .spyOn(mongoose, "startSession")
+        .mockResolvedValue(mockSession as any);
       mockedUser.findById.mockResolvedValue(mockUserDoc as any);
       mockedUser.findByIdAndDelete.mockResolvedValue(mockUserDoc as any);
       mockedDiary.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
       mockedFlashcard.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
       mockedCollection.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
-      mockedUserLearningPath.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedUserLearningPath.deleteMany.mockResolvedValue({
+        deletedCount: 0,
+      } as any);
       mockedUserBadge.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
-      mockedNotification.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
-      mockedAICasePostSchedule.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
+      mockedNotification.deleteMany.mockResolvedValue({
+        deletedCount: 0,
+      } as any);
+      mockedAICasePostSchedule.deleteMany.mockResolvedValue({
+        deletedCount: 0,
+      } as any);
       mockedRating.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
       mockedPeerReview.deleteMany.mockResolvedValue({ deletedCount: 0 } as any);
       mockedCase.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
       mockedWebinar.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
-      mockedJobOpportunity.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
-      mockedMentorship.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
-      mockedConversation.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
-      mockedResearchPaper.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
+      mockedJobOpportunity.updateMany.mockResolvedValue({
+        modifiedCount: 0,
+      } as any);
+      mockedMentorship.updateMany.mockResolvedValue({
+        modifiedCount: 0,
+      } as any);
+      mockedConversation.updateMany.mockResolvedValue({
+        modifiedCount: 0,
+      } as any);
+      mockedResearchPaper.updateMany.mockResolvedValue({
+        modifiedCount: 0,
+      } as any);
       mockedUser.updateMany.mockResolvedValue({ modifiedCount: 0 } as any);
     });
 
     it("returns 403 when deleting another user's account", async () => {
-      const req = mockReq({ user: { _id: "different-id", userType: "intern" } });
+      const req = mockReq({
+        user: { _id: "different-id", userType: "intern" },
+      });
       const res = mockResponse();
       await deleteAccount(req, res);
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false })
+        expect.objectContaining({ success: false }),
       );
     });
 
@@ -298,7 +348,7 @@ describe("User Controller", () => {
       await deleteAccount(req, res);
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false })
+        expect.objectContaining({ success: false }),
       );
     });
 
@@ -314,7 +364,7 @@ describe("User Controller", () => {
       expect(mockedUser.updateMany).toHaveBeenCalledWith(
         { following: expect.any(mongoose.Types.ObjectId) },
         { $pull: { following: expect.any(mongoose.Types.ObjectId) } },
-        { session: mockSession }
+        { session: mockSession },
       );
       expect(mockedDiary.deleteMany).toHaveBeenCalled();
       expect(mockedFlashcard.deleteMany).toHaveBeenCalled();
@@ -329,18 +379,18 @@ describe("User Controller", () => {
       expect(mockedCase.updateMany).toHaveBeenCalledWith(
         { doctor: expect.any(mongoose.Types.ObjectId), isActive: true },
         { $set: { isActive: false } },
-        { session: mockSession }
+        { session: mockSession },
       );
 
       expect(mockedUser.findByIdAndDelete).toHaveBeenCalledWith(
         expect.any(mongoose.Types.ObjectId),
-        { session: mockSession }
+        { session: mockSession },
       );
 
       expect(mockSession.commitTransaction).toHaveBeenCalled();
       expect(mockSession.endSession).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: true })
+        expect.objectContaining({ success: true }),
       );
     });
 
@@ -366,7 +416,7 @@ describe("User Controller", () => {
 
       expect(mockSession.commitTransaction).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: true })
+        expect.objectContaining({ success: true }),
       );
     });
   });
@@ -374,80 +424,92 @@ describe("User Controller", () => {
   describe("updateUserStreak", () => {
     it("resets streak to 0 if no activity today", async () => {
       mockedCase.findOne.mockResolvedValue(null);
-      
+
       await updateUserStreak("user-1");
 
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", { $set: { streak: 0 } });
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", {
+        $set: { streak: 0 },
+      });
     });
 
     it("does not increment streak if already incremented today", async () => {
       mockedCase.findOne.mockResolvedValue({ _id: "activity-1" });
-      
+
       const user = {
         streak: 5,
-        lastActivityDate: new Date() // today
+        lastActivityDate: new Date(), // today
       };
-      
+
       mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(user)
+        select: jest.fn().mockResolvedValue(user),
       } as any);
 
       await updateUserStreak("user-1");
 
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", {
-        $set: expect.objectContaining({ lastActivityDate: expect.any(Date) })
+        $set: expect.objectContaining({ lastActivityDate: expect.any(Date) }),
       });
       // We check that it didn't call $inc
-      const updatePayload = (mockedUser.findByIdAndUpdate as jest.Mock).mock.calls[0][1];
+      const updatePayload = (mockedUser.findByIdAndUpdate as jest.Mock).mock
+        .calls[0][1];
       expect(updatePayload).not.toHaveProperty("$inc");
     });
 
     it("increments streak if active yesterday", async () => {
       mockedCase.findOne.mockResolvedValue({ _id: "activity-1" });
-      
+
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
       const user = {
         streak: 5,
-        lastActivityDate: yesterday
+        lastActivityDate: yesterday,
       };
-      
+
       mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(user)
+        select: jest.fn().mockResolvedValue(user),
       } as any);
 
       await updateUserStreak("user-1");
 
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", expect.objectContaining({
-        $inc: { streak: 1 },
-        $max: { longestStreak: 6 },
-        $set: expect.objectContaining({ lastActivityDate: expect.any(Date) })
-      }));
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({
+          $inc: { streak: 1 },
+          $max: { longestStreak: 6 },
+          $set: expect.objectContaining({ lastActivityDate: expect.any(Date) }),
+        }),
+      );
       expect(mockedCheckAndAwardAutoBadges).toHaveBeenCalledWith("user-1");
     });
 
     it("starts new streak if last active before yesterday", async () => {
       mockedCase.findOne.mockResolvedValue({ _id: "activity-1" });
-      
+
       const lastMonth = new Date();
       lastMonth.setDate(lastMonth.getDate() - 30);
 
       const user = {
         streak: 5,
-        lastActivityDate: lastMonth
+        lastActivityDate: lastMonth,
       };
-      
+
       mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(user)
+        select: jest.fn().mockResolvedValue(user),
       } as any);
 
       await updateUserStreak("user-1");
 
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", expect.objectContaining({
-        $set: expect.objectContaining({ streak: 1, lastActivityDate: expect.any(Date) }),
-        $max: { longestStreak: 1 }
-      }));
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            streak: 1,
+            lastActivityDate: expect.any(Date),
+          }),
+          $max: { longestStreak: 1 },
+        }),
+      );
       expect(mockedCheckAndAwardAutoBadges).toHaveBeenCalledWith("user-1");
     });
   });

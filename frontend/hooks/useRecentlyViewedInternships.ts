@@ -72,7 +72,7 @@ export function useRecentlyViewedInternships() {
         return next;
       });
     },
-    []
+    [],
   );
 
   const clearRecentlyViewed = useCallback(() => {

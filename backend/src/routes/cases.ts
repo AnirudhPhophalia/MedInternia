@@ -1,4 +1,4 @@
-import express from 'express';
+import express from "express";
 import {
   createCase,
   getCases,
@@ -34,80 +34,182 @@ import {
   getFlaggedComments,
   moderateComment,
   uploadAttachment,
-  getSimilarCases
-} from '../controllers/caseController';
-import { authenticate, optionalAuthenticate } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
-import { checkPlagiarismAndAI } from '../middleware/plagiarismDetection';
-import multer from 'multer';
-import { isAllowedCaseAttachment } from '../utils/uploadValidation';
+  getSimilarCases,
+} from "../controllers/caseController";
+import { authenticate, optionalAuthenticate } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
+import { checkPlagiarismAndAI } from "../middleware/plagiarismDetection";
+import multer from "multer";
+import { isAllowedCaseAttachment } from "../utils/uploadValidation";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: (_req, file, cb) => {
     if (!isAllowedCaseAttachment(file.originalname, file.mimetype)) {
-      cb(new Error('Invalid file type for case attachment.'));
+      cb(new Error("Invalid file type for case attachment."));
       return;
     }
     cb(null, true);
-  }
+  },
 });
 
 const router = express.Router();
 
 // Authenticated case browsing routes
-router.get('/recommended', authenticate, getRecommendedCases);
-router.get('/', optionalAuthenticate, getCases);
-router.get('/my/cases', authenticate, getMyCases);
-router.get('/liked', authenticate, getLikedCases);
-router.get('/starred', authenticate, getStarredCases);
-router.post('/:id/solve', authenticate, solveCase);
-router.get('/moderation/queue', authenticate, requirePermission('comment:moderate'), getCaseModerationQueue);
-router.get('/comments/moderation/queue', authenticate, requirePermission('comment:moderate'), getFlaggedComments);
-router.get('/ai-posts/my', authenticate, getMyAICaseSchedules);
+router.get("/recommended", authenticate, getRecommendedCases);
+router.get("/", optionalAuthenticate, getCases);
+router.get("/my/cases", authenticate, getMyCases);
+router.get("/liked", authenticate, getLikedCases);
+router.get("/starred", authenticate, getStarredCases);
+router.post("/:id/solve", authenticate, solveCase);
+router.get(
+  "/moderation/queue",
+  authenticate,
+  requirePermission("comment:moderate"),
+  getCaseModerationQueue,
+);
+router.get(
+  "/comments/moderation/queue",
+  authenticate,
+  requirePermission("comment:moderate"),
+  getFlaggedComments,
+);
+router.get("/ai-posts/my", authenticate, getMyAICaseSchedules);
 
 // Upload Case Attachment
-router.post('/attachments', authenticate, upload.single('attachment'), uploadAttachment);
+router.post(
+  "/attachments",
+  authenticate,
+  upload.single("attachment"),
+  uploadAttachment,
+);
 
 // Permission-guarded case management routes
-router.post('/', authenticate, requirePermission('case:create'), checkPlagiarismAndAI, createCase);
-router.post('/ai-posts/schedule', authenticate, requirePermission('case:create'), scheduleAICasePost);
-router.patch('/ai-posts/:scheduleId/review', authenticate, requirePermission('comment:moderate'), reviewAICasePost);
-router.post('/ai-posts/publish-due', authenticate, requirePermission('comment:moderate'), publishDueAICasePosts);
-router.get('/:id', optionalAuthenticate, getCaseById);
-router.put('/:id', authenticate, requirePermission('case:update'), checkPlagiarismAndAI, updateCase);
-router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
-router.patch('/:id/moderation', authenticate, requirePermission('comment:moderate'), moderateCase);
-router.patch('/:caseId/comments/:commentId/moderation', authenticate, requirePermission('comment:moderate'), moderateComment);
+router.post(
+  "/",
+  authenticate,
+  requirePermission("case:create"),
+  checkPlagiarismAndAI,
+  createCase,
+);
+router.post(
+  "/ai-posts/schedule",
+  authenticate,
+  requirePermission("case:create"),
+  scheduleAICasePost,
+);
+router.patch(
+  "/ai-posts/:scheduleId/review",
+  authenticate,
+  requirePermission("comment:moderate"),
+  reviewAICasePost,
+);
+router.post(
+  "/ai-posts/publish-due",
+  authenticate,
+  requirePermission("comment:moderate"),
+  publishDueAICasePosts,
+);
+router.get("/:id", optionalAuthenticate, getCaseById);
+router.put(
+  "/:id",
+  authenticate,
+  requirePermission("case:update"),
+  checkPlagiarismAndAI,
+  updateCase,
+);
+router.delete(
+  "/:id",
+  authenticate,
+  requirePermission("case:delete"),
+  deleteCase,
+);
+router.patch(
+  "/:id/moderation",
+  authenticate,
+  requirePermission("comment:moderate"),
+  moderateCase,
+);
+router.patch(
+  "/:caseId/comments/:commentId/moderation",
+  authenticate,
+  requirePermission("comment:moderate"),
+  moderateComment,
+);
 
 // Permission-guarded interactive routes
-router.post('/:id/comments', authenticate, requirePermission('comment:create'), addComment);
-router.post('/:caseId/comments/:commentId/reply', authenticate, requirePermission('comment:create'), replyToComment);
-router.post('/:caseId/comments/:commentId/like', authenticate, likeComment);
-router.post('/:caseId/comments/:commentId/rate', authenticate, requirePermission('rating:create'), rateComment);
-router.post('/:id/like', authenticate, toggleLike);
-router.post('/:id/star', authenticate, toggleStar);
+router.post(
+  "/:id/comments",
+  authenticate,
+  requirePermission("comment:create"),
+  addComment,
+);
+router.post(
+  "/:caseId/comments/:commentId/reply",
+  authenticate,
+  requirePermission("comment:create"),
+  replyToComment,
+);
+router.post("/:caseId/comments/:commentId/like", authenticate, likeComment);
+router.post(
+  "/:caseId/comments/:commentId/rate",
+  authenticate,
+  requirePermission("rating:create"),
+  rateComment,
+);
+router.post("/:id/like", authenticate, toggleLike);
+router.post("/:id/star", authenticate, toggleStar);
 
 // Follow-up routes
-router.post('/:id/follow-ups', authenticate, requirePermission('case:follow_up'), addFollowUp);
-router.get('/:id/follow-ups', authenticate, getCaseFollowUps);
+router.post(
+  "/:id/follow-ups",
+  authenticate,
+  requirePermission("case:follow_up"),
+  addFollowUp,
+);
+router.get("/:id/follow-ups", authenticate, getCaseFollowUps);
 
 // AI suggestion routes
-router.post('/:id/ai-suggestions', authenticate, requirePermission('case:update'), generateAISuggestions);
-router.get('/:id/ai-suggestions', authenticate, getCaseAISuggestions);
-router.get('/:id/similar', authenticate, getSimilarCases);
+router.post(
+  "/:id/ai-suggestions",
+  authenticate,
+  requirePermission("case:update"),
+  generateAISuggestions,
+);
+router.get("/:id/ai-suggestions", authenticate, getCaseAISuggestions);
+router.get("/:id/similar", authenticate, getSimilarCases);
 
 // Comment moderation routes
-router.post('/:caseId/comments/:commentId/pin', authenticate, requirePermission('comment:moderate'), pinComment);
-router.post('/:caseId/comments/:commentId/unpin', authenticate, requirePermission('comment:moderate'), unpinComment);
+router.post(
+  "/:caseId/comments/:commentId/pin",
+  authenticate,
+  requirePermission("comment:moderate"),
+  pinComment,
+);
+router.post(
+  "/:caseId/comments/:commentId/unpin",
+  authenticate,
+  requirePermission("comment:moderate"),
+  unpinComment,
+);
 // Get all pinned comments for a case
-router.get('/:caseId/pinned-comments', authenticate, getPinnedComments);
+router.get("/:caseId/pinned-comments", authenticate, getPinnedComments);
 // Toggle repost permission (case owner only)
-router.patch('/:id/repost-permission', authenticate, requirePermission('case:update'), toggleRepostPermission);
+router.patch(
+  "/:id/repost-permission",
+  authenticate,
+  requirePermission("case:update"),
+  toggleRepostPermission,
+);
 // Repost a case (if allowed)
-router.post('/:id/repost', authenticate, requirePermission('case:repost'), repostCase);
+router.post(
+  "/:id/repost",
+  authenticate,
+  requirePermission("case:repost"),
+  repostCase,
+);
 
 export default router;

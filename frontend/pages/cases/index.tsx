@@ -12,25 +12,25 @@ import {
   useTheme,
   Paper,
   Card,
-  IconButton
+  IconButton,
 } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
-import CaseCard from '../../components/CaseCard';
-import CaseFilters, { CaseFilterParams } from '../../components/CaseFilters';
+import CloseIcon from "@mui/icons-material/Close";
+import CaseCard from "../../components/CaseCard";
+import CaseFilters, { CaseFilterParams } from "../../components/CaseFilters";
 import api from "../../utils/api";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { canUser } from "../../utils/permissions";
-import {getCurrentUserRole} from "../../utils/permissions";
+import { getCurrentUserRole } from "../../utils/permissions";
 
 import PageHeader from "../../components/layout/PageHeader";
 import EmptyState from "../../components/layout/EmptyState";
 import FilterBar from "../../components/layout/FilterBar";
 import CaseCardV2 from "../../components/layout/CaseCardV2";
 import { FileText, Plus, ArrowRight, Sparkles } from "lucide-react";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const CaseDiscussion = dynamic(() => import('./[id]'), { ssr: false });
+const CaseDiscussion = dynamic(() => import("./[id]"), { ssr: false });
 
 const SPECIALTIES = [
   "General Medicine",
@@ -43,7 +43,7 @@ const SPECIALTIES = [
   "Infectious Disease",
   "Pediatrics",
   "Dermatology",
-  "Oncology"
+  "Oncology",
 ];
 
 const DIFFICULTIES = ["beginner", "intermediate", "advanced"];
@@ -103,7 +103,7 @@ export default function Cases() {
 
     const params: any = {
       page: pageNum,
-      limit: 10
+      limit: 10,
     };
     if (search) params.search = search;
     if (specialty) params.specialization = specialty;
@@ -115,13 +115,13 @@ export default function Cases() {
       .then((res) => {
         const fetchedCases = res.data.data.cases || [];
         const pagination = res.data.data.pagination || { page: 1, pages: 1 };
-        
+
         if (append) {
           setCases((prev) => [...prev, ...fetchedCases]);
         } else {
           setCases(fetchedCases);
         }
-        
+
         setHasMore(pagination.page < pagination.pages);
         setError("");
         setLoading(false);
@@ -153,15 +153,15 @@ export default function Cases() {
   };
 
   const specialtyOptions = [
-    { value: '', label: 'All Specialties' },
-    ...SPECIALTIES.map(spec => ({ value: spec, label: spec }))
+    { value: "", label: "All Specialties" },
+    ...SPECIALTIES.map((spec) => ({ value: spec, label: spec })),
   ];
 
   const difficultyOptions = [
-    { value: '', label: 'All Levels' },
-    { value: 'beginner', label: 'Beginner' },
-    { value: 'intermediate', label: 'Intermediate' },
-    { value: 'advanced', label: 'Advanced' }
+    { value: "", label: "All Levels" },
+    { value: "beginner", label: "Beginner" },
+    { value: "intermediate", label: "Intermediate" },
+    { value: "advanced", label: "Advanced" },
   ];
 
   return (
@@ -179,16 +179,17 @@ export default function Cases() {
               component={Link}
               href="/cases/create"
               sx={{
-                borderRadius: '12px',
+                borderRadius: "12px",
                 fontWeight: 700,
-                boxShadow: '0 4px 14px rgba(0, 114, 255, 0.4)',
-                background: 'linear-gradient(90deg, #0072ff 0%, #00c6ff 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(90deg, #0056cc 0%, #0072ff 100%)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 20px rgba(0, 114, 255, 0.6)',
+                boxShadow: "0 4px 14px rgba(0, 114, 255, 0.4)",
+                background: "linear-gradient(90deg, #0072ff 0%, #00c6ff 100%)",
+                "&:hover": {
+                  background:
+                    "linear-gradient(90deg, #0056cc 0%, #0072ff 100%)",
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 6px 20px rgba(0, 114, 255, 0.6)",
                 },
-                transition: 'all 0.2s',
+                transition: "all 0.2s",
               }}
             >
               Post a Case
@@ -204,12 +205,12 @@ export default function Cases() {
             <Box
               sx={{
                 p: 0.8,
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                boxShadow: '0 2px 10px rgba(255, 215, 0, 0.3)',
+                borderRadius: "8px",
+                background: "linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)",
+                color: "white",
+                display: "flex",
+                alignItems: "center",
+                boxShadow: "0 2px 10px rgba(255, 215, 0, 0.3)",
               }}
             >
               <Sparkles size={16} />
@@ -222,25 +223,25 @@ export default function Cases() {
           {recommendedCases.length > 0 ? (
             <Box
               sx={{
-                display: 'flex',
+                display: "flex",
                 gap: 3,
-                overflowX: 'auto',
+                overflowX: "auto",
                 pb: 2,
                 px: 0.5,
-                scrollbarWidth: 'thin',
-                '&::-webkit-scrollbar': {
-                  height: '6px',
+                scrollbarWidth: "thin",
+                "&::-webkit-scrollbar": {
+                  height: "6px",
                 },
-                '&::-webkit-scrollbar-track': {
-                  background: 'transparent',
+                "&::-webkit-scrollbar-track": {
+                  background: "transparent",
                 },
-                '&::-webkit-scrollbar-thumb': {
-                  background: '#cbd5e1',
-                  borderRadius: '10px',
+                "&::-webkit-scrollbar-thumb": {
+                  background: "#cbd5e1",
+                  borderRadius: "10px",
                 },
-                '&::-webkit-scrollbar-thumb:hover': {
-                  background: '#94a3b8',
-                  borderRadius: '10px',
+                "&::-webkit-scrollbar-thumb:hover": {
+                  background: "#94a3b8",
+                  borderRadius: "10px",
                 },
               }}
             >
@@ -256,31 +257,36 @@ export default function Cases() {
                   <Card
                     sx={{
                       width: 320,
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
                       p: 2,
                       borderRadius: 4,
-                      background: 'rgba(255, 255, 255, 0.9)',
-                      backdropFilter: 'blur(10px)',
-                      border: '1.5px solid rgba(0, 114, 255, 0.08)',
-                      boxShadow: '0 4px 20px rgba(0, 114, 255, 0.04)',
-                      cursor: 'pointer',
+                      background: "rgba(255, 255, 255, 0.9)",
+                      backdropFilter: "blur(10px)",
+                      border: "1.5px solid rgba(0, 114, 255, 0.08)",
+                      boxShadow: "0 4px 20px rgba(0, 114, 255, 0.04)",
+                      cursor: "pointer",
                     }}
                     onClick={() => router.push(`/cases/${rc._id}`)}
                   >
                     <Box>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ mb: 1.5 }}
+                      >
                         <Box
                           sx={{
                             px: 1.2,
                             py: 0.4,
-                            borderRadius: '6px',
-                            fontSize: '11px',
+                            borderRadius: "6px",
+                            fontSize: "11px",
                             fontWeight: 700,
-                            bgcolor: '#ebf8ff',
-                            color: '#2b6cb0',
+                            bgcolor: "#ebf8ff",
+                            color: "#2b6cb0",
                           }}
                         >
                           🩺 {rc.specialization}
@@ -289,43 +295,92 @@ export default function Cases() {
                           sx={{
                             px: 1.2,
                             py: 0.4,
-                            borderRadius: '6px',
-                            fontSize: '11px',
+                            borderRadius: "6px",
+                            fontSize: "11px",
                             fontWeight: 700,
-                            textTransform: 'uppercase',
+                            textTransform: "uppercase",
                             ...(() => {
                               switch (rc.difficulty?.toLowerCase()) {
-                                case 'beginner':
-                                  return { bgcolor: '#e6fffa', color: '#00a389' };
-                                case 'advanced':
-                                  return { bgcolor: '#fff5f5', color: '#e53e3e' };
+                                case "beginner":
+                                  return {
+                                    bgcolor: "#e6fffa",
+                                    color: "#00a389",
+                                  };
+                                case "advanced":
+                                  return {
+                                    bgcolor: "#fff5f5",
+                                    color: "#e53e3e",
+                                  };
                                 default:
-                                  return { bgcolor: '#fffaf0', color: '#dd6b20' };
+                                  return {
+                                    bgcolor: "#fffaf0",
+                                    color: "#dd6b20",
+                                  };
                               }
-                            })()
+                            })(),
                           }}
                         >
-                          {rc.difficulty || 'Intermediate'}
+                          {rc.difficulty || "Intermediate"}
                         </Box>
                       </Stack>
 
-                      <Typography variant="h6" fontWeight={800} sx={{ mb: 1, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', color: '#0056cc' }}>
+                      <Typography
+                        variant="h6"
+                        fontWeight={800}
+                        sx={{
+                          mb: 1,
+                          lineClamp: 2,
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          color: "#0056cc",
+                        }}
+                      >
                         {rc.title}
                       </Typography>
 
-                      <Typography variant="body2" sx={{ lineClamp: 3, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 2, color: 'text.secondary' }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          lineClamp: 3,
+                          display: "-webkit-box",
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          mb: 2,
+                          color: "text.secondary",
+                        }}
+                      >
                         {rc.description}
                       </Typography>
                     </Box>
 
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ mt: 1 }}
+                    >
                       <Typography fontSize={11} color="text.disabled">
-                        By {rc.doctor?.firstName ? `Dr. ${rc.doctor.firstName}` : 'Clinical AI'}
+                        By{" "}
+                        {rc.doctor?.firstName
+                          ? `Dr. ${rc.doctor.firstName}`
+                          : "Clinical AI"}
                       </Typography>
                       <Button
                         size="small"
                         endIcon={<ArrowRight size={14} />}
-                        sx={{ p: 0, minWidth: 0, fontWeight: 700, color: 'primary.main', '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}
+                        sx={{
+                          p: 0,
+                          minWidth: 0,
+                          fontWeight: 700,
+                          color: "primary.main",
+                          "&:hover": {
+                            bgcolor: "transparent",
+                            textDecoration: "underline",
+                          },
+                        }}
                       >
                         Solve
                       </Button>
@@ -339,24 +394,41 @@ export default function Cases() {
               elevation={0}
               sx={{
                 p: 3,
-                textAlign: 'center',
+                textAlign: "center",
                 borderRadius: 4,
-                bgcolor: '#fff',
-                border: '1.5px dashed rgba(0, 114, 255, 0.15)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
+                bgcolor: "#fff",
+                border: "1.5px dashed rgba(0, 114, 255, 0.15)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
                 gap: 1.5,
               }}
             >
-              <Box sx={{ color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#e8f4ff', width: 48, height: 48, borderRadius: '50%' }}>
+              <Box
+                sx={{
+                  color: "primary.main",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  bgcolor: "#e8f4ff",
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                }}
+              >
                 <Sparkles size={22} />
               </Box>
               <Typography variant="body1" fontWeight={700} color="text.primary">
-                {recMessage || "Solve a few cases to get personalised recommendations."}
+                {recMessage ||
+                  "Solve a few cases to get personalised recommendations."}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400 }}>
-                Our recommender tracks the tags of cases you successfully solve and highlights similar clinical scenarios.
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ maxWidth: 400 }}
+              >
+                Our recommender tracks the tags of cases you successfully solve
+                and highlights similar clinical scenarios.
               </Typography>
             </Paper>
           )}
@@ -381,7 +453,14 @@ export default function Cases() {
 
       {/* Main Cases Content */}
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "40vh" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "40vh",
+          }}
+        >
           <CircularProgress size={50} thickness={4} />
         </Box>
       ) : error ? (
@@ -393,7 +472,9 @@ export default function Cases() {
             title="No cases posted yet"
             description="Be the first to submit a clinical case to MedInternia."
             actionLabel={canCreateCases ? "Post a Case" : undefined}
-            onAction={canCreateCases ? () => router.push("/cases/create") : undefined}
+            onAction={
+              canCreateCases ? () => router.push("/cases/create") : undefined
+            }
           />
         ) : (
           <EmptyState
@@ -409,7 +490,7 @@ export default function Cases() {
           <Grid container spacing={3}>
             {cases.map((c) => (
               <Grid size={{ xs: 12, md: 6 }} key={c._id}>
-                <Box sx={{ height: '100%' }}>
+                <Box sx={{ height: "100%" }}>
                   <CaseCardV2
                     caseData={c}
                     onViewDetails={(id) => router.push(`/cases/${id}`)}
@@ -418,7 +499,7 @@ export default function Cases() {
               </Grid>
             ))}
           </Grid>
-          
+
           <Stack direction="row" justifyContent="center" sx={{ mt: 5 }}>
             {hasMore && (
               <Button
@@ -427,12 +508,12 @@ export default function Cases() {
                 onClick={loadMoreCases}
                 disabled={loadingMore}
                 sx={{
-                  borderRadius: '12px',
+                  borderRadius: "12px",
                   px: 4,
                   py: 1.25,
                   fontWeight: 700,
-                  borderWidth: '2px',
-                  '&:hover': { borderWidth: '2px' }
+                  borderWidth: "2px",
+                  "&:hover": { borderWidth: "2px" },
                 }}
               >
                 {loadingMore ? <CircularProgress size={20} /> : "Load More"}
@@ -446,28 +527,37 @@ export default function Cases() {
       <Modal
         open={!!openDiscussionId}
         onClose={() => setOpenDiscussionId(null)}
-        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         <Box
           sx={{
-            width: { xs: '98vw', sm: 600 },
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            bgcolor: 'background.default',
+            width: { xs: "98vw", sm: 600 },
+            maxHeight: "90vh",
+            overflowY: "auto",
+            bgcolor: "background.default",
             borderRadius: 4,
             boxShadow: 24,
             p: 3,
-            position: 'relative'
+            position: "relative",
           }}
         >
           <IconButton
             aria-label="Close case discussion"
             onClick={() => setOpenDiscussionId(null)}
-            sx={{ position: 'absolute', top: 12, right: 12, zIndex: 10, bgcolor: 'rgba(0,0,0,0.05)', '&:hover': { bgcolor: 'rgba(0,0,0,0.1)' } }}
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              zIndex: 10,
+              bgcolor: "rgba(0,0,0,0.05)",
+              "&:hover": { bgcolor: "rgba(0,0,0,0.1)" },
+            }}
           >
             <CloseIcon />
           </IconButton>
-          {openDiscussionId && <CaseDiscussion id={openDiscussionId} modalMode hideDescription />}
+          {openDiscussionId && (
+            <CaseDiscussion id={openDiscussionId} modalMode hideDescription />
+          )}
         </Box>
       </Modal>
     </Container>

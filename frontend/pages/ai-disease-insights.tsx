@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Alert,
   Box,
@@ -11,8 +11,8 @@ import {
   Stack,
   TextField,
   Typography,
-} from '@mui/material';
-import api from '../utils/api';
+} from "@mui/material";
+import api from "../utils/api";
 
 type DiseasePrediction = {
   condition: string;
@@ -27,31 +27,31 @@ type DiseasePrediction = {
 };
 
 export default function DiseaseInsightAssistant() {
-  const [symptoms, setSymptoms] = useState('');
-  const [age, setAge] = useState('');
-  const [duration, setDuration] = useState('');
-  const [notes, setNotes] = useState('');
+  const [symptoms, setSymptoms] = useState("");
+  const [age, setAge] = useState("");
+  const [duration, setDuration] = useState("");
+  const [notes, setNotes] = useState("");
   const [predictions, setPredictions] = useState<DiseasePrediction[]>([]);
-  const [disclaimer, setDisclaimer] = useState('');
-  const [error, setError] = useState('');
+  const [disclaimer, setDisclaimer] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handlePredict = async () => {
     setLoading(true);
-    setError('');
+    setError("");
     setPredictions([]);
 
     try {
-      const response = await api.post('/ai-disease-insights/predict', {
+      const response = await api.post("/ai-disease-insights/predict", {
         symptoms,
         age: age ? Number(age) : undefined,
         duration,
         notes,
       });
       setPredictions(response.data.data.predictions || []);
-      setDisclaimer(response.data.data.disclaimer || '');
+      setDisclaimer(response.data.data.disclaimer || "");
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Unable to generate insights');
+      setError(err?.response?.data?.message || "Unable to generate insights");
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,8 @@ export default function DiseaseInsightAssistant() {
           AI Disease Insight Assistant
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Enter symptoms to generate ranked differential insights for supervised medical learning.
+          Enter symptoms to generate ranked differential insights for supervised
+          medical learning.
         </Typography>
 
         <Card sx={{ mb: 3 }}>
@@ -81,9 +82,9 @@ export default function DiseaseInsightAssistant() {
               />
               <Box
                 sx={{
-                  display: 'grid',
+                  display: "grid",
                   gap: 2,
-                  gridTemplateColumns: { xs: '1fr', md: '1fr 2fr' },
+                  gridTemplateColumns: { xs: "1fr", md: "1fr 2fr" },
                 }}
               >
                 <Box>
@@ -113,7 +114,11 @@ export default function DiseaseInsightAssistant() {
                 minRows={2}
                 fullWidth
               />
-              <Button variant="contained" onClick={handlePredict} disabled={loading}>
+              <Button
+                variant="contained"
+                onClick={handlePredict}
+                disabled={loading}
+              >
                 Generate Insights
               </Button>
             </Stack>
@@ -130,30 +135,38 @@ export default function DiseaseInsightAssistant() {
 
         <Box
           sx={{
-            display: 'grid',
+            display: "grid",
             gap: 2,
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+            gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
           }}
         >
           {predictions.map((prediction) => (
             <Box key={prediction.condition}>
               <Card variant="outlined">
                 <CardContent>
-                  <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ mb: 1 }}
+                    flexWrap="wrap"
+                  >
                     <Chip label={prediction.specialty} size="small" />
                     <Chip
                       label={`${Math.round(prediction.confidence * 100)}% confidence`}
-                      color={prediction.urgent ? 'error' : 'primary'}
+                      color={prediction.urgent ? "error" : "primary"}
                       size="small"
                     />
-                    {prediction.urgent && <Chip label="Red flag" color="error" size="small" />}
+                    {prediction.urgent && (
+                      <Chip label="Red flag" color="error" size="small" />
+                    )}
                   </Stack>
                   <Typography variant="h6" gutterBottom>
                     {prediction.condition}
                   </Typography>
                   <Typography variant="subtitle2">Matched symptoms</Typography>
                   <Typography color="text.secondary" sx={{ mb: 1 }}>
-                    {prediction.matchedSymptoms.join(', ') || 'No direct matches'}
+                    {prediction.matchedSymptoms.join(", ") ||
+                      "No direct matches"}
                   </Typography>
                   <Typography variant="subtitle2">Reasoning</Typography>
                   <ul>
@@ -167,8 +180,12 @@ export default function DiseaseInsightAssistant() {
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
-                  <Typography variant="subtitle2">Possible after-effects</Typography>
-                  <Typography color="text.secondary">{prediction.afterEffects.join(', ')}</Typography>
+                  <Typography variant="subtitle2">
+                    Possible after-effects
+                  </Typography>
+                  <Typography color="text.secondary">
+                    {prediction.afterEffects.join(", ")}
+                  </Typography>
                 </CardContent>
               </Card>
             </Box>

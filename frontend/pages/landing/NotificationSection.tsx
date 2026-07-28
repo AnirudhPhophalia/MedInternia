@@ -154,7 +154,7 @@ const NotificationSection = ({
         {notificationItems
           .filter(
             (item) =>
-              activeCategory === "All" || item.category === activeCategory
+              activeCategory === "All" || item.category === activeCategory,
           )
           .map((item, idx) => (
             <div

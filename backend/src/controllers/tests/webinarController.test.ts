@@ -16,10 +16,11 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
-  params,
-}) as unknown as AuthRequest;
+const mockRequest = (userId: string, params: any = {}): AuthRequest =>
+  ({
+    user: { _id: userId },
+    params,
+  }) as unknown as AuthRequest;
 
 describe("Webinar Controller", () => {
   beforeEach(() => {
@@ -47,7 +48,9 @@ describe("Webinar Controller", () => {
       await registerForWebinar(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Webinar is full" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Webinar is full" }),
+      );
     });
 
     it("rejects duplicate registration", async () => {
@@ -66,7 +69,11 @@ describe("Webinar Controller", () => {
       await registerForWebinar(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "You are already registered for this webinar" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "You are already registered for this webinar",
+        }),
+      );
     });
 
     it("rejects registration if registrationDeadline has passed", async () => {
@@ -87,7 +94,11 @@ describe("Webinar Controller", () => {
       await registerForWebinar(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Registration deadline has passed" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Registration deadline has passed",
+        }),
+      );
     });
 
     it("successfully registers user", async () => {
@@ -109,7 +120,9 @@ describe("Webinar Controller", () => {
       expect(webinarMock.participants).toHaveLength(1);
       expect((webinarMock.participants as any[])[0].user).toBe("user-1");
       expect(webinarMock.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
   });
 
@@ -129,7 +142,11 @@ describe("Webinar Controller", () => {
       await unregisterFromWebinar(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Cannot unregister") }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Cannot unregister"),
+        }),
+      );
     });
 
     it("rejects unregistration if webinar is scheduledAt past current time", async () => {
@@ -147,7 +164,11 @@ describe("Webinar Controller", () => {
       await unregisterFromWebinar(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Cannot unregister") }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Cannot unregister"),
+        }),
+      );
     });
 
     it("successfully unregisters user", async () => {
@@ -168,7 +189,9 @@ describe("Webinar Controller", () => {
       expect(webinarMock.participants).toHaveLength(1);
       expect(webinarMock.participants[0].user).toBe("user-2");
       expect(webinarMock.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
   });
 });

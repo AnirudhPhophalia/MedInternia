@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import { authenticate, optionalAuthenticate } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
+import { Router } from "express";
+import { authenticate, optionalAuthenticate } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import {
   createWebinar,
   getWebinars,
@@ -17,65 +17,115 @@ import {
   closePoll,
   askQuestion,
   upvoteQuestion,
-  markQuestionAnswered
-} from '../controllers/webinarController';
+  markQuestionAnswered,
+} from "../controllers/webinarController";
 
 const router = Router();
 
 // Create webinar
-router.post('/', authenticate, requirePermission('webinar:manage'), createWebinar);
+router.post(
+  "/",
+  authenticate,
+  requirePermission("webinar:manage"),
+  createWebinar,
+);
 
 // Get all webinars
-router.get('/', getWebinars);
+router.get("/", getWebinars);
 
 // Get user's webinars
-router.get('/my', authenticate, getUserWebinars);
+router.get("/my", authenticate, getUserWebinars);
 
 // Get webinar by ID (public, but with optional auth for role-based field filtering)
-router.get('/:id', optionalAuthenticate, getWebinarById);
+router.get("/:id", optionalAuthenticate, getWebinarById);
 
 // Register for webinar
-router.post('/:id/register', authenticate, requirePermission('webinar:attend'), registerForWebinar);
+router.post(
+  "/:id/register",
+  authenticate,
+  requirePermission("webinar:attend"),
+  registerForWebinar,
+);
 
 // Unregister from webinar
-router.delete('/:id/register', authenticate, requirePermission('webinar:attend'), unregisterFromWebinar);
+router.delete(
+  "/:id/register",
+  authenticate,
+  requirePermission("webinar:attend"),
+  unregisterFromWebinar,
+);
 
 // Update webinar
-router.put('/:id', authenticate, requirePermission('webinar:manage'), updateWebinar);
+router.put(
+  "/:id",
+  authenticate,
+  requirePermission("webinar:manage"),
+  updateWebinar,
+);
 
 // Mark attendance
-router.patch('/:id/attendance', authenticate, requirePermission('webinar:manage'), markAttendance);
+router.patch(
+  "/:id/attendance",
+  authenticate,
+  requirePermission("webinar:manage"),
+  markAttendance,
+);
 
 // Submit feedback
-router.post('/:id/feedback', authenticate, requirePermission('webinar:feedback'), submitFeedback);
+router.post(
+  "/:id/feedback",
+  authenticate,
+  requirePermission("webinar:feedback"),
+  submitFeedback,
+);
 
 // Generate meeting link
-router.post('/:id/meeting-link', authenticate, requirePermission('webinar:manage'), generateMeetingLink);
+router.post(
+  "/:id/meeting-link",
+  authenticate,
+  requirePermission("webinar:manage"),
+  generateMeetingLink,
+);
 
 // ------------------------------------------------------------------
 // POLLING ROUTES
 // ------------------------------------------------------------------
 
 // Create a new poll
-router.post('/:id/polls', authenticate, requirePermission('webinar:manage'), createPoll);
+router.post(
+  "/:id/polls",
+  authenticate,
+  requirePermission("webinar:manage"),
+  createPoll,
+);
 
 // Vote on a poll
-router.post('/:id/polls/:pollId/vote', authenticate, votePoll);
+router.post("/:id/polls/:pollId/vote", authenticate, votePoll);
 
 // Close a poll
-router.patch('/:id/polls/:pollId/close', authenticate, requirePermission('webinar:manage'), closePoll);
+router.patch(
+  "/:id/polls/:pollId/close",
+  authenticate,
+  requirePermission("webinar:manage"),
+  closePoll,
+);
 
 // ------------------------------------------------------------------
 // Q&A ROUTES
 // ------------------------------------------------------------------
 
 // Ask a question
-router.post('/:id/qna', authenticate, askQuestion);
+router.post("/:id/qna", authenticate, askQuestion);
 
 // Upvote a question
-router.post('/:id/qna/:qnaId/upvote', authenticate, upvoteQuestion);
+router.post("/:id/qna/:qnaId/upvote", authenticate, upvoteQuestion);
 
 // Mark a question as answered
-router.patch('/:id/qna/:qnaId/answer', authenticate, requirePermission('webinar:manage'), markQuestionAnswered);
+router.patch(
+  "/:id/qna/:qnaId/answer",
+  authenticate,
+  requirePermission("webinar:manage"),
+  markQuestionAnswered,
+);
 
 export default router;

@@ -1,22 +1,22 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const redis = require('../config/redis');
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const redis = require("../config/redis");
 const {
   generateAccessToken,
   generateRefreshToken,
   setRefreshTokenCookie,
   REFRESH_TOKEN_SECRET,
-} = require('../utils/tokenUtils');
-const { enqueueOTP } = require('../queues/emailQueue');
+} = require("../utils/tokenUtils");
+const { enqueueOTP } = require("../queues/emailQueue");
 
 let User;
 try {
-  User = require('../src/models/User');
+  User = require("../src/models/User");
   if (User && User.default) User = User.default;
 } catch (e) {
   try {
-    User = require('../models/User');
+    User = require("../models/User");
     if (User && User.default) User = User.default;
   } catch (err) {
     User = null;
@@ -33,17 +33,17 @@ const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required',
+        message: "Email and password are required",
       });
     }
 
     let user;
     if (User) {
-      user = await User.findOne({ email }).select('+password');
+      user = await User.findOne({ email }).select("+password");
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid credentials',
+          message: "Invalid credentials",
         });
       }
 
@@ -51,12 +51,12 @@ const login = async (req, res) => {
       if (!isMatch) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid credentials',
+          message: "Invalid credentials",
         });
       }
     } else {
       // Fallback object structure when model is uninitialized
-      user = { _id: 'dummy_id', email, userType: 'doctor' };
+      user = { _id: "dummy_id", email, userType: "doctor" };
     }
 
     const accessToken = generateAccessToken(user);
@@ -66,7 +66,7 @@ const login = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       accessToken,
       user: {
         id: user._id ? user._id.toString() : user.id,
@@ -77,10 +77,10 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('[authController.login Error]:', error);
+    console.error("[authController.login Error]:", error);
     return res.status(500).json({
       success: false,
-      message: 'Server error during login',
+      message: "Server error during login",
     });
   }
 };
@@ -95,7 +95,7 @@ const refresh = async (req, res) => {
     if (!refreshToken) {
       return res.status(401).json({
         success: false,
-        message: 'Refresh token missing from request cookies',
+        message: "Refresh token missing from request cookies",
       });
     }
 
@@ -105,11 +105,11 @@ const refresh = async (req, res) => {
       if (isBlacklisted) {
         return res.status(401).json({
           success: false,
-          message: 'Refresh token has been revoked',
+          message: "Refresh token has been revoked",
         });
       }
     } catch (redisErr) {
-      console.error('[authController.refresh Redis error]:', redisErr.message);
+      console.error("[authController.refresh Redis error]:", redisErr.message);
     }
 
     // Verify refresh token signature and expiration
@@ -117,7 +117,7 @@ const refresh = async (req, res) => {
       if (err) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid or expired refresh token',
+          message: "Invalid or expired refresh token",
         });
       }
 
@@ -128,11 +128,14 @@ const refresh = async (req, res) => {
           if (isJtiBlacklisted) {
             return res.status(401).json({
               success: false,
-              message: 'Session has been invalidated',
+              message: "Session has been invalidated",
             });
           }
         } catch (redisErr) {
-          console.error('[authController.refresh Redis JTI error]:', redisErr.message);
+          console.error(
+            "[authController.refresh Redis JTI error]:",
+            redisErr.message,
+          );
         }
       }
 
@@ -149,12 +152,15 @@ const refresh = async (req, res) => {
         const ttl = decoded.exp - now;
         if (ttl > 0) {
           try {
-            await redis.set(`blacklist:${refreshToken}`, 'true', 'EX', ttl);
+            await redis.set(`blacklist:${refreshToken}`, "true", "EX", ttl);
             if (decoded.jti) {
-              await redis.set(`blacklist:${decoded.jti}`, 'true', 'EX', ttl);
+              await redis.set(`blacklist:${decoded.jti}`, "true", "EX", ttl);
             }
           } catch (redisSetErr) {
-            console.error('[authController.refresh Redis set error]:', redisSetErr.message);
+            console.error(
+              "[authController.refresh Redis set error]:",
+              redisSetErr.message,
+            );
           }
         }
       }
@@ -165,10 +171,10 @@ const refresh = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error('[authController.refresh Error]:', error);
+    console.error("[authController.refresh Error]:", error);
     return res.status(500).json({
       success: false,
-      message: 'Server error during token refresh',
+      message: "Server error during token refresh",
     });
   }
 };
@@ -194,32 +200,45 @@ const logout = async (req, res) => {
 
         if (remainingTTL > 0) {
           try {
-            await redis.set(`blacklist:${refreshToken}`, 'true', 'EX', remainingTTL);
+            await redis.set(
+              `blacklist:${refreshToken}`,
+              "true",
+              "EX",
+              remainingTTL,
+            );
             if (decoded.jti) {
-              await redis.set(`blacklist:${decoded.jti}`, 'true', 'EX', remainingTTL);
+              await redis.set(
+                `blacklist:${decoded.jti}`,
+                "true",
+                "EX",
+                remainingTTL,
+              );
             }
           } catch (redisErr) {
-            console.error('[authController.logout Redis error]:', redisErr.message);
+            console.error(
+              "[authController.logout Redis error]:",
+              redisErr.message,
+            );
           }
         }
       }
     }
 
-    res.clearCookie('refreshToken', {
+    res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
     });
 
     return res.status(200).json({
       success: true,
-      message: 'Successfully logged out',
+      message: "Successfully logged out",
     });
   } catch (error) {
-    console.error('[authController.logout Error]:', error);
+    console.error("[authController.logout Error]:", error);
     return res.status(500).json({
       success: false,
-      message: 'Server error during logout',
+      message: "Server error during logout",
     });
   }
 };
@@ -236,7 +255,7 @@ const sendOTP = async (req, res) => {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Email address is required',
+        message: "Email address is required",
       });
     }
 
@@ -248,20 +267,20 @@ const sendOTP = async (req, res) => {
 
     // Store hashed OTP in Redis with a 10-minute TTL. Any prior pending OTP
     // for this email is overwritten, preventing code accumulation.
-    await redis.set(`otp:${email}`, hashedCode, 'EX', 600);
+    await redis.set(`otp:${email}`, hashedCode, "EX", 600);
 
     // Dispatch plaintext OTP to the user's inbox via BullMQ email queue.
     await enqueueOTP(email, generatedCode);
 
     return res.status(200).json({
       success: true,
-      message: 'OTP dispatch request accepted and queued successfully.',
+      message: "OTP dispatch request accepted and queued successfully.",
     });
   } catch (error) {
-    console.error('[authController.sendOTP Error]:', error);
+    console.error("[authController.sendOTP Error]:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to process OTP dispatch request',
+      message: "Failed to process OTP dispatch request",
     });
   }
 };
@@ -279,7 +298,7 @@ const verifyOTP = async (req, res) => {
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
-        message: 'Email and OTP are required',
+        message: "Email and OTP are required",
       });
     }
 
@@ -288,7 +307,7 @@ const verifyOTP = async (req, res) => {
     if (!storedHash) {
       return res.status(400).json({
         success: false,
-        message: 'OTP not found or expired. Please request a new one.',
+        message: "OTP not found or expired. Please request a new one.",
       });
     }
 
@@ -297,7 +316,7 @@ const verifyOTP = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid OTP',
+        message: "Invalid OTP",
       });
     }
 
@@ -307,21 +326,21 @@ const verifyOTP = async (req, res) => {
     // Issue a short-lived verification token. Downstream endpoints verify
     // this token to confirm email ownership without re-asking for the OTP.
     const verificationToken = jwt.sign(
-      { email, purpose: 'signup' },
+      { email, purpose: "signup" },
       process.env.JWT_SECRET,
-      { expiresIn: '30m' }
+      { expiresIn: "30m" },
     );
 
     return res.status(200).json({
       success: true,
-      message: 'OTP verified successfully',
+      message: "OTP verified successfully",
       verificationToken,
     });
   } catch (error) {
-    console.error('[authController.verifyOTP Error]:', error);
+    console.error("[authController.verifyOTP Error]:", error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to verify OTP',
+      message: "Failed to verify OTP",
     });
   }
 };

@@ -14,7 +14,7 @@ const mockData = ["Result 1", "Result 2", "Result 3"];
 
 const normalizeQueryParam = (q: string | string[] | undefined) => {
   const value = Array.isArray(q) ? q[0] : q;
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === "string" ? value.trim() : "";
 };
 
 export default function SearchPage() {
@@ -33,15 +33,21 @@ export default function SearchPage() {
       setResults([]);
       setSearched(false);
       if (syncUrl && urlQuery) {
-        router.replace({ pathname: '/search' }, undefined, { shallow: true });
+        router.replace({ pathname: "/search" }, undefined, { shallow: true });
       }
       return;
     }
-    const found = mockData.filter((item) => item.toLowerCase().includes(trimmed.toLowerCase()));
+    const found = mockData.filter((item) =>
+      item.toLowerCase().includes(trimmed.toLowerCase()),
+    );
     setResults(found);
     setSearched(true);
     if (syncUrl && urlQuery !== trimmed) {
-      router.replace({ pathname: '/search', query: { q: trimmed } }, undefined, { shallow: true });
+      router.replace(
+        { pathname: "/search", query: { q: trimmed } },
+        undefined,
+        { shallow: true },
+      );
     }
   };
 
@@ -69,7 +75,10 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady, router.query.q, lastSearched]);
 
-  const displayQuery = lastSearched.length > 50 ? `${lastSearched.substring(0, 47)}...` : lastSearched;
+  const displayQuery =
+    lastSearched.length > 50
+      ? `${lastSearched.substring(0, 47)}...`
+      : lastSearched;
 
   return (
     <Container maxWidth="md" sx={{ mt: 5 }}>
@@ -102,14 +111,20 @@ export default function SearchPage() {
             <Box key={index} flex="1 1 calc(33.33% - 16px)">
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6">{item}</Typography>
-                <Typography variant="body2">This is a preview of the search result content.</Typography>
+                <Typography variant="body2">
+                  This is a preview of the search result content.
+                </Typography>
               </Paper>
             </Box>
           ))}
         </Box>
       ) : (
         <Typography variant="body1" align="center" color="text.secondary">
-          No results found for &quot;<Box component="span" sx={{ fontWeight: 600 }}>{displayQuery}</Box>&quot;.
+          No results found for &quot;
+          <Box component="span" sx={{ fontWeight: 600 }}>
+            {displayQuery}
+          </Box>
+          &quot;.
         </Typography>
       )}
     </Container>

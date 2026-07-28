@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { predictDiseaseInsightsHandler } from "../diseaseInsightController";
-import { predictDiseaseInsights, validatePredictionInput } from "../../services/diseaseInsightService";
+import {
+  predictDiseaseInsights,
+  validatePredictionInput,
+} from "../../services/diseaseInsightService";
 
 jest.mock("../../services/diseaseInsightService");
 
@@ -35,7 +38,7 @@ describe("Disease Insight Controller", () => {
           data: expect.objectContaining({
             predictions: ["Dengue", "Malaria"],
           }),
-        })
+        }),
       );
     });
 
@@ -54,7 +57,7 @@ describe("Disease Insight Controller", () => {
         expect.objectContaining({
           success: false,
           message: "Invalid age",
-        })
+        }),
       );
     });
   });

@@ -1,21 +1,34 @@
-import { Request, Response } from 'express';
-import Mentorship from '../models/Mentorship';
-import User from '../models/User';
+import { Request, Response } from "express";
+import Mentorship from "../models/Mentorship";
+import User from "../models/User";
 
-export const requestMentorship = async (req: Request, res: Response): Promise<void> => {
+export const requestMentorship = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { mentorId, specialtyRequested, initialMessage } = req.body;
     const requesterId = (req as any).user.id;
 
     if (mentorId === requesterId) {
-      res.status(400).json({ success: false, message: 'You cannot request mentorship from yourself' });
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: "You cannot request mentorship from yourself",
+        });
       return;
     }
-    
+
     // Check if mentor exists and is a doctor
     const mentor = await User.findById(mentorId);
-    if (!mentor || mentor.userType !== 'doctor') {
-      res.status(404).json({ success: false, message: 'Mentor not found or is not a doctor' });
+    if (!mentor || mentor.userType !== "doctor") {
+      res
+        .status(404)
+        .json({
+          success: false,
+          message: "Mentor not found or is not a doctor",
+        });
       return;
     }
 
@@ -23,11 +36,17 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
     const existing = await Mentorship.findOne({
       mentor: mentorId,
       mentee: requesterId,
-      status: { $in: ['pending', 'active'] }
+      status: { $in: ["pending", "active"] },
     });
 
     if (existing) {
-      res.status(400).json({ success: false, message: 'You already have an active or pending mentorship with this doctor' });
+      res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "You already have an active or pending mentorship with this doctor",
+        });
       return;
     }
 
@@ -40,38 +59,45 @@ export const requestMentorship = async (req: Request, res: Response): Promise<vo
 
     res.status(201).json({ success: true, data: mentorship });
   } catch (error: any) {
-    console.error('Request mentorship error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Request mentorship error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-export const getMyMentorships = async (req: Request, res: Response): Promise<void> => {
+export const getMyMentorships = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const userId = (req as any).user.id;
     const userType = (req as any).user.userType;
-    
+
     // If intern, fetch where mentee = me, populate mentor
     // If doctor, fetch where mentor = me, populate mentee
-    const query = userType === 'doctor' ? { mentor: userId } : { mentee: userId };
-    
+    const query =
+      userType === "doctor" ? { mentor: userId } : { mentee: userId };
+
     const mentorships = await Mentorship.find(query)
-      .populate('mentor', 'firstName lastName profilePicture specialization')
-      .populate('mentee', 'firstName lastName profilePicture medicalSchool')
+      .populate("mentor", "firstName lastName profilePicture specialization")
+      .populate("mentee", "firstName lastName profilePicture medicalSchool")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: mentorships });
   } catch (error: any) {
-    console.error('Get mentorships error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Get mentorships error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-export const getMentorshipById = async (req: Request, res: Response): Promise<any> => {
+export const getMentorshipById = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
   try {
     const userId = (req as any).user.id;
     const mentorship = await Mentorship.findById(req.params.id)
-      .populate('mentor', 'firstName lastName profilePicture specialization')
-      .populate('mentee', 'firstName lastName profilePicture medicalSchool');
+      .populate("mentor", "firstName lastName profilePicture specialization")
+      .populate("mentee", "firstName lastName profilePicture medicalSchool");
 
     if (!mentorship) {
       return res.status(404).json({
@@ -81,18 +107,24 @@ export const getMentorshipById = async (req: Request, res: Response): Promise<an
     }
 
     // Verify authorized to view
-    if (mentorship.mentor._id.toString() !== userId && mentorship.mentee._id.toString() !== userId) {
-      res.status(403).json({ success: false, message: 'Not authorized' });
+    if (
+      mentorship.mentor._id.toString() !== userId &&
+      mentorship.mentee._id.toString() !== userId
+    ) {
+      res.status(403).json({ success: false, message: "Not authorized" });
       return;
     }
 
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-export const updateMentorshipStatus = async (req: Request, res: Response): Promise<any> => {
+export const updateMentorshipStatus = async (
+  req: Request,
+  res: Response,
+): Promise<any> => {
   try {
     const { status } = req.body;
     const userId = (req as any).user.id;
@@ -106,23 +138,28 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
     }
 
     // Only mentor can accept/reject
-    if (mentorship.mentor.toString() !== userId && status !== 'completed') {
-      res.status(403).json({ success: false, message: 'Only the mentor can update this status' });
+    if (mentorship.mentor.toString() !== userId && status !== "completed") {
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Only the mentor can update this status",
+        });
       return;
     }
 
     mentorship.status = status;
     await mentorship.save();
 
-    if (status === 'active') {
+    if (status === "active") {
       await User.findByIdAndUpdate(mentorship.mentee, {
-        mentorDoctor: mentorship.mentor
+        mentorDoctor: mentorship.mentor,
       });
     }
 
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -142,7 +179,7 @@ export const addGoal = async (req: Request, res: Response): Promise<any> => {
 
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -157,7 +194,9 @@ export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const goal = mentorship.goals.find((g: any) => g._id && g._id.toString() === goalId);
+    const goal = mentorship.goals.find(
+      (g: any) => g._id && g._id.toString() === goalId,
+    );
     if (goal) {
       goal.isCompleted = !goal.isCompleted;
       await mentorship.save();
@@ -165,7 +204,7 @@ export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
 
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -180,11 +219,16 @@ export const addMeeting = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    mentorship.meetings.push({ scheduledAt: new Date(scheduledAt), topic, link, notes } as any);
+    mentorship.meetings.push({
+      scheduledAt: new Date(scheduledAt),
+      topic,
+      link,
+      notes,
+    } as any);
     await mentorship.save();
 
     res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

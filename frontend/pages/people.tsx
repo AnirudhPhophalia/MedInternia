@@ -484,21 +484,21 @@ export default function PeoplePage() {
                 const commentsCount = Array.isArray(post.comments)
                   ? post.comments.length
                   : typeof post.comments === "object" &&
-                    post.comments !== null &&
-                    post.comments.length !== undefined
-                  ? post.comments.length
-                  : typeof post.comments === "number"
-                  ? post.comments
-                  : 0;
+                      post.comments !== null &&
+                      post.comments.length !== undefined
+                    ? post.comments.length
+                    : typeof post.comments === "number"
+                      ? post.comments
+                      : 0;
                 const likesCount = Array.isArray(post.likes)
                   ? post.likes.length
                   : typeof post.likes === "object" &&
-                    post.likes !== null &&
-                    post.likes.length !== undefined
-                  ? post.likes.length
-                  : typeof post.likes === "number"
-                  ? post.likes
-                  : 0;
+                      post.likes !== null &&
+                      post.likes.length !== undefined
+                    ? post.likes.length
+                    : typeof post.likes === "number"
+                      ? post.likes
+                      : 0;
                 const caseColors = [
                   {
                     bg: "linear-gradient(90deg, #d1fae5 100%, #10b981 100%)",
@@ -594,8 +594,8 @@ export default function PeoplePage() {
                           idx === 0
                             ? "#10b981"
                             : idx === 1
-                            ? "#38bdf8"
-                            : "#fb923c",
+                              ? "#38bdf8"
+                              : "#fb923c",
                       }}
                     >
                       {post.title || post.content?.title || "Untitled"}
@@ -621,8 +621,8 @@ export default function PeoplePage() {
                             idx === 0
                               ? "#10b981"
                               : idx === 1
-                              ? "#38bdf8"
-                              : "#fb923c",
+                                ? "#38bdf8"
+                                : "#fb923c",
                           fontWeight: 500,
                         }}
                       >

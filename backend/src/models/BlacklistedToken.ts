@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBlacklistedToken extends Document {
   token: string;
@@ -24,4 +24,7 @@ const BlacklistedTokenSchema = new Schema<IBlacklistedToken>({
 
 BlacklistedTokenSchema.index({ token: 1 });
 
-export default mongoose.model<IBlacklistedToken>('BlacklistedToken', BlacklistedTokenSchema);
+export default mongoose.model<IBlacklistedToken>(
+  "BlacklistedToken",
+  BlacklistedTokenSchema,
+);

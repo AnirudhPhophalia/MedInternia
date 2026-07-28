@@ -1,14 +1,14 @@
-import mongoose from 'mongoose';
-import { createAndEmitNotification } from './notificationController';
-import { Request, Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import Badge from '../models/Badge';
-import UserBadge from '../models/UserBadge';
-import User from '../models/User';
+import mongoose from "mongoose";
+import { createAndEmitNotification } from "./notificationController";
+import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth";
+import Badge from "../models/Badge";
+import UserBadge from "../models/UserBadge";
+import User from "../models/User";
 
 // Create a new badge (admin only)
 export const createBadge = async (req: AuthRequest, res: Response) => {
-    console.log("===== CREATE BADGE =====");
+  console.log("===== CREATE BADGE =====");
   console.log(req.body);
   try {
     const { name, description, icon, category, criteria, color } = req.body;
@@ -19,21 +19,21 @@ export const createBadge = async (req: AuthRequest, res: Response) => {
       icon,
       category,
       criteria,
-      color
+      color,
     });
 
     await badge.save();
 
     res.status(201).json({
       success: true,
-      message: 'Badge created successfully',
-      data: { badge }
+      message: "Badge created successfully",
+      data: { badge },
     });
   } catch (error) {
-    console.error('Create badge error:', error);
+    console.error("Create badge error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -42,18 +42,21 @@ export const createBadge = async (req: AuthRequest, res: Response) => {
 export const getAllBadges = async (req: Request, res: Response) => {
   try {
     const { category, isActive } = req.query;
-    
+
     // Strict typing to prevent NoSQL injection via object payloads (e.g. { $ne: null })
-    if ((category && typeof category !== 'string') || (isActive !== undefined && typeof isActive !== 'string')) {
+    if (
+      (category && typeof category !== "string") ||
+      (isActive !== undefined && typeof isActive !== "string")
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid query parameter format'
+        message: "Invalid query parameter format",
       });
     }
-    
+
     const filter: any = {};
     if (category) filter.category = category;
-    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (isActive !== undefined) filter.isActive = isActive === "true";
 
     const badges = await Badge.find(filter).sort({ createdAt: -1 });
 
@@ -61,21 +64,21 @@ export const getAllBadges = async (req: Request, res: Response) => {
       success: true,
       data: {
         badges,
-        total: badges.length
-      }
+        total: badges.length,
+      },
     });
   } catch (error) {
-    console.error('Get badges error:', error);
+    console.error("Get badges error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
 
 // Award badge to user
 export const awardBadge = async (req: AuthRequest, res: Response) => {
-    console.log("===== AWARD BADGE =====");
+  console.log("===== AWARD BADGE =====");
   console.log(req.body);
   try {
     const { userId, badgeId, caseId, commentId, metadata } = req.body;
@@ -84,13 +87,13 @@ export const awardBadge = async (req: AuthRequest, res: Response) => {
     // Check if user already has this badge
     const existingUserBadge = await UserBadge.findOne({
       user: userId,
-      badge: badgeId
+      badge: badgeId,
     });
 
     if (existingUserBadge) {
       return res.status(400).json({
         success: false,
-        message: 'User already has this badge'
+        message: "User already has this badge",
       });
     }
 
@@ -100,48 +103,57 @@ export const awardBadge = async (req: AuthRequest, res: Response) => {
     try {
       session.startTransaction();
 
-      [userBadge] = await UserBadge.create([{
-        user: userId,
-        badge: badgeId,
-        caseId,
-        commentId,
-        verifiedBy,
-        metadata
-      }], { session });
+      [userBadge] = await UserBadge.create(
+        [
+          {
+            user: userId,
+            badge: badgeId,
+            caseId,
+            commentId,
+            verifiedBy,
+            metadata,
+          },
+        ],
+        { session },
+      );
 
-      await User.findByIdAndUpdate(userId, {
-        $inc: { badgesEarned: 1 }
-      }, { session });
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $inc: { badgesEarned: 1 },
+        },
+        { session },
+      );
 
       await session.commitTransaction();
       committed = true;
 
       // Populate badge info
-      await userBadge.populate('badge');
+      await userBadge.populate("badge");
     } finally {
       if (!committed) await session.abortTransaction();
       session.endSession();
     }
-     // Notify user they earned a badge
+    // Notify user they earned a badge
     const badgeData = userBadge.badge as any;
     await createAndEmitNotification({
       recipientId: userId,
-      type:        'badge',
-      message:     `Congratulations! You earned the "${badgeData?.name || 'new'}" badge`,
-      link:        `/profile/achievements`,
-      payload:     { badgeId, userBadgeId: userBadge._id },
+      type: "badge",
+      message: `Congratulations! You earned the "${badgeData?.name || "new"}" badge`,
+      link: `/profile/achievements`,
+      payload: { badgeId, userBadgeId: userBadge._id },
     });
 
     res.status(201).json({
       success: true,
-      message: 'Badge awarded successfully',
-      data: { userBadge }
+      message: "Badge awarded successfully",
+      data: { userBadge },
     });
   } catch (error) {
-    console.error('Award badge error:', error);
+    console.error("Award badge error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -153,31 +165,34 @@ export const getUserBadges = async (req: Request, res: Response) => {
     const { isVisible } = req.query;
 
     const filter: any = { user: userId };
-    if (isVisible !== undefined) filter.isVisible = isVisible === 'true';
+    if (isVisible !== undefined) filter.isVisible = isVisible === "true";
 
     const userBadges = await UserBadge.find(filter)
-      .populate('badge')
-      .populate('verifiedBy', 'firstName lastName')
+      .populate("badge")
+      .populate("verifiedBy", "firstName lastName")
       .sort({ earnedAt: -1 });
 
     res.json({
       success: true,
       data: {
         badges: userBadges,
-        total: userBadges.length
-      }
+        total: userBadges.length,
+      },
     });
   } catch (error) {
-    console.error('Get user badges error:', error);
+    console.error("Get user badges error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
 
 // Toggle badge visibility
-export const toggleBadgeVisibility = async (req: AuthRequest, res: Response) => {
+export const toggleBadgeVisibility = async (
+  req: AuthRequest,
+  res: Response,
+) => {
   try {
     const { userBadgeId } = req.params;
     const { isVisible } = req.body;
@@ -186,26 +201,26 @@ export const toggleBadgeVisibility = async (req: AuthRequest, res: Response) => 
     const userBadge = await UserBadge.findOneAndUpdate(
       { _id: userBadgeId, user: userId },
       { isVisible },
-      { new: true }
-    ).populate('badge');
+      { new: true },
+    ).populate("badge");
 
     if (!userBadge) {
       return res.status(404).json({
         success: false,
-        message: 'Badge not found'
+        message: "Badge not found",
       });
     }
 
     res.json({
       success: true,
-      message: 'Badge visibility updated',
-      data: { userBadge }
+      message: "Badge visibility updated",
+      data: { userBadge },
     });
   } catch (error) {
-    console.error('Toggle badge visibility error:', error);
+    console.error("Toggle badge visibility error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -217,12 +232,12 @@ export const checkAndAwardAutoBadges = async (userId: string) => {
     if (!user) return;
 
     const badges = await Badge.find({ isActive: true });
-    
+
     for (const badge of badges) {
       // Check if user already has this badge
       const existingUserBadge = await UserBadge.findOne({
         user: userId,
-        badge: badge._id
+        badge: badge._id,
       });
 
       if (existingUserBadge) continue;
@@ -231,16 +246,16 @@ export const checkAndAwardAutoBadges = async (userId: string) => {
 
       // Check badge criteria
       switch (badge.criteria.type) {
-        case 'points':
+        case "points":
           shouldAward = user.points >= (badge.criteria.threshold || 0);
           break;
-        case 'cases_analyzed':
+        case "cases_analyzed":
           shouldAward = user.casesAnalyzed >= (badge.criteria.threshold || 0);
           break;
-        case 'upvotes_received':
+        case "upvotes_received":
           shouldAward = user.upvotesReceived >= (badge.criteria.threshold || 0);
           break;
-        case 'streak':
+        case "streak":
           shouldAward = user.longestStreak >= (badge.criteria.threshold || 0);
           break;
       }
@@ -250,18 +265,17 @@ export const checkAndAwardAutoBadges = async (userId: string) => {
           user: userId,
           badge: badge._id,
           metadata: {
-            pointsEarned: badge.criteria.threshold || 0
-          }
+            pointsEarned: badge.criteria.threshold || 0,
+          },
         });
 
         await userBadge.save();
         await User.findByIdAndUpdate(userId, {
-          $inc: { badgesEarned: 1 }
+          $inc: { badgesEarned: 1 },
         });
-        
       }
     }
   } catch (error) {
-    console.error('Auto-award badges error:', error);
+    console.error("Auto-award badges error:", error);
   }
 };

@@ -114,11 +114,16 @@ function FloatIcon({
   bottom,
   delay = 0,
   reduce,
-}: FloatIconProps) {  return (
+}: FloatIconProps) {
+  return (
     <Box
       component={motion.div}
       animate={reduce ? undefined : { y: [0, -10, 0] }}
-      transition={reduce ? undefined : { duration: 4.5, delay, repeat: Infinity, ease: "easeInOut" }}
+      transition={
+        reduce
+          ? undefined
+          : { duration: 4.5, delay, repeat: Infinity, ease: "easeInOut" }
+      }
       sx={{
         position: "absolute",
         top,
@@ -146,7 +151,14 @@ export default function AboutPage() {
   const heroRef = useRef(null);
 
   return (
-    <Box sx={{ flex: 1, background: "#fbfdff", fontFamily: FONT_BODY, overflowX: "clip" }}>
+    <Box
+      sx={{
+        flex: 1,
+        background: "#fbfdff",
+        fontFamily: FONT_BODY,
+        overflowX: "clip",
+      }}
+    >
       {/* ---------------------------------------------------------------- HERO */}
       <Box
         ref={heroRef}
@@ -244,7 +256,13 @@ export default function AboutPage() {
                   experiences — all in one focused platform.
                 </Typography>
 
-                <Stack direction="row" spacing={2} sx={{ mt: 5 }} flexWrap="wrap" useFlexGap>
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{ mt: 5 }}
+                  flexWrap="wrap"
+                  useFlexGap
+                >
                   <Button
                     component={Link}
                     href="/contact"
@@ -322,7 +340,15 @@ export default function AboutPage() {
                     <Box
                       component={motion.div}
                       animate={reduce ? undefined : { scale: [1, 1.06, 1] }}
-                      transition={reduce ? undefined : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                      transition={
+                        reduce
+                          ? undefined
+                          : {
+                              duration: 2.6,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            }
+                      }
                       sx={{
                         width: "56%",
                         height: "56%",
@@ -338,9 +364,36 @@ export default function AboutPage() {
                     </Box>
                   </Box>
 
-                  <FloatIcon Icon={BookOpen} size={72} color={BLUE} bg="#ffffff" top="2%" left="0%" delay={0} reduce={reduce ?? undefined} />
-                  <FloatIcon Icon={Users} size={64} color={BLUE} bg="#ffffff" bottom="6%" left="4%" delay={0.6} reduce={reduce ?? undefined} />
-                  <FloatIcon Icon={BriefcaseMedical} size={68} color={BLUE} bg="#ffffff" bottom="0%" right="2%" delay={1.1} reduce={reduce ?? undefined} />
+                  <FloatIcon
+                    Icon={BookOpen}
+                    size={72}
+                    color={BLUE}
+                    bg="#ffffff"
+                    top="2%"
+                    left="0%"
+                    delay={0}
+                    reduce={reduce ?? undefined}
+                  />
+                  <FloatIcon
+                    Icon={Users}
+                    size={64}
+                    color={BLUE}
+                    bg="#ffffff"
+                    bottom="6%"
+                    left="4%"
+                    delay={0.6}
+                    reduce={reduce ?? undefined}
+                  />
+                  <FloatIcon
+                    Icon={BriefcaseMedical}
+                    size={68}
+                    color={BLUE}
+                    bg="#ffffff"
+                    bottom="0%"
+                    right="2%"
+                    delay={1.1}
+                    reduce={reduce ?? undefined}
+                  />
 
                   <Box
                     aria-hidden="true"
@@ -368,7 +421,14 @@ export default function AboutPage() {
       {/* ------------------------------------------------------------- JOURNEY */}
       <Box id="journey" sx={{ py: { xs: 8, md: 12 } }}>
         <Container maxWidth="lg">
-          <Box sx={{ textAlign: "center", maxWidth: 640, mx: "auto", mb: { xs: 6, md: 9 } }}>
+          <Box
+            sx={{
+              textAlign: "center",
+              maxWidth: 640,
+              mx: "auto",
+              mb: { xs: 6, md: 9 },
+            }}
+          >
             <Typography
               sx={{
                 fontFamily: FONT_DISPLAY,
@@ -380,7 +440,14 @@ export default function AboutPage() {
             >
               A learning path, not a feature list
             </Typography>
-            <Typography sx={{ mt: 2, color: "#64748b", fontSize: "1.05rem", lineHeight: 1.7 }}>
+            <Typography
+              sx={{
+                mt: 2,
+                color: "#64748b",
+                fontSize: "1.05rem",
+                lineHeight: 1.7,
+              }}
+            >
               Every part of MedInternia supports the same arc: learn from real
               cases, connect with the people around you, and move your career
               forward.
@@ -420,10 +487,20 @@ export default function AboutPage() {
                       container
                       spacing={4}
                       alignItems="center"
-                      direction={{ xs: "row", md: reverse ? "row-reverse" : "row" }}
+                      direction={{
+                        xs: "row",
+                        md: reverse ? "row-reverse" : "row",
+                      }}
                     >
                       <Grid size={{ xs: 12, md: 5 }}>
-                        <Box sx={{ textAlign: { xs: "left", md: reverse ? "left" : "right" } }}>
+                        <Box
+                          sx={{
+                            textAlign: {
+                              xs: "left",
+                              md: reverse ? "left" : "right",
+                            },
+                          }}
+                        >
                           <Typography
                             sx={{
                               fontFamily: FONT_DISPLAY,
@@ -448,7 +525,9 @@ export default function AboutPage() {
                           >
                             {item.title}
                           </Typography>
-                          <Typography sx={{ color: "#64748b", lineHeight: 1.75 }}>
+                          <Typography
+                            sx={{ color: "#64748b", lineHeight: 1.75 }}
+                          >
                             {item.text}
                           </Typography>
                         </Box>
@@ -458,7 +537,9 @@ export default function AboutPage() {
                         <Box sx={{ display: "flex", justifyContent: "center" }}>
                           <Box
                             component={motion.div}
-                            whileHover={reduce ? undefined : { rotate: 8, scale: 1.06 }}
+                            whileHover={
+                              reduce ? undefined : { rotate: 8, scale: 1.06 }
+                            }
                             transition={{ duration: 0.3 }}
                             sx={{
                               width: 84,
@@ -478,7 +559,10 @@ export default function AboutPage() {
                       </Grid>
 
                       {/* spacer to balance the row on desktop */}
-                      <Grid size={{ xs: 0, md: 5 }} sx={{ display: { xs: "none", md: "block" } }} />
+                      <Grid
+                        size={{ xs: 0, md: 5 }}
+                        sx={{ display: { xs: "none", md: "block" } }}
+                      />
                     </Grid>
                   </motion.div>
                 );
@@ -532,7 +616,11 @@ export default function AboutPage() {
                     initial={reduce ? false : { opacity: 0, y: 24 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, amount: 0.4 }}
-                    transition={{ duration: 0.6, delay: i * 0.12, ease: "easeOut" }}
+                    transition={{
+                      duration: 0.6,
+                      delay: i * 0.12,
+                      ease: "easeOut",
+                    }}
                     style={{ height: "100%" }}
                   >
                     <Paper
@@ -571,7 +659,12 @@ export default function AboutPage() {
                       >
                         {block.label}
                       </Typography>
-                      <Typography sx={{ color: "rgba(255,255,255,0.78)", lineHeight: 1.8 }}>
+                      <Typography
+                        sx={{
+                          color: "rgba(255,255,255,0.78)",
+                          lineHeight: 1.8,
+                        }}
+                      >
                         {block.text}
                       </Typography>
                     </Paper>

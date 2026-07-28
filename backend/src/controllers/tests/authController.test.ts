@@ -6,7 +6,7 @@ import {
   resetPassword,
   changePassword,
   forgotPassword,
-  sendOtp
+  sendOtp,
 } from "../authController";
 import User from "../../models/User";
 import Otp from "../../models/Otp";
@@ -23,7 +23,12 @@ jest.mock("../../models/User");
 jest.mock("../../models/Otp");
 jest.mock("bcryptjs");
 jest.mock("jsonwebtoken", () => ({
-  verify: jest.fn().mockImplementation((token: string) => ({ email: token, purpose: 'signup' }))
+  verify: jest
+    .fn()
+    .mockImplementation((token: string) => ({
+      email: token,
+      purpose: "signup",
+    })),
 }));
 jest.mock("../../utils/mailer", () => ({
   sendMail: jest.fn(),
@@ -63,7 +68,7 @@ describe("Auth Controller", () => {
   describe("register", () => {
     it("rejects registration if duplicate email exists", async () => {
       mockedUser.findOne.mockResolvedValue({ email: "test@test.com" } as any);
-      
+
       const req = mockRequest({
         email: "test@test.com",
         userType: "patient",
@@ -72,12 +77,14 @@ describe("Auth Controller", () => {
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(register(req as any, res as any, next)).rejects.toThrow("User with this email already exists");
+      await expect(register(req as any, res as any, next)).rejects.toThrow(
+        "User with this email already exists",
+      );
     });
 
     it("registers user and sets cookies", async () => {
       mockedUser.findOne.mockResolvedValue(null);
-      
+
       const req = mockRequest({
         email: "new@test.com",
         userType: "patient",
@@ -89,13 +96,21 @@ describe("Auth Controller", () => {
 
       const save = jest.fn().mockResolvedValue(undefined);
       const toObject = jest.fn().mockReturnValue({ email: "new@test.com" });
-      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "new-user-id" }) as any);
+      (mockedUser as unknown as jest.Mock).mockImplementation(
+        () => ({ save, toObject, _id: "new-user-id" }) as any,
+      );
 
       await register(req as any, res as any, next);
 
-      expect(res.cookie).toHaveBeenCalledWith("token", "mock-token", expect.any(Object));
+      expect(res.cookie).toHaveBeenCalledWith(
+        "token",
+        "mock-token",
+        expect.any(Object),
+      );
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
   });
 
@@ -106,10 +121,10 @@ describe("Auth Controller", () => {
         email: "test@test.com",
         isActive: true,
         loginAttempts: 2,
-        comparePassword: jest.fn().mockResolvedValue(false)
+        comparePassword: jest.fn().mockResolvedValue(false),
       };
       mockedUser.findOne.mockReturnValue({
-        select: jest.fn().mockResolvedValue(userMock)
+        select: jest.fn().mockResolvedValue(userMock),
       } as any);
       mockedUser.findByIdAndUpdate.mockResolvedValue({} as any);
 
@@ -117,10 +132,15 @@ describe("Auth Controller", () => {
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(login(req as any, res as any, next)).rejects.toThrow("Invalid email or password");
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", expect.objectContaining({
-        $inc: { loginAttempts: 1 }
-      }));
+      await expect(login(req as any, res as any, next)).rejects.toThrow(
+        "Invalid email or password",
+      );
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({
+          $inc: { loginAttempts: 1 },
+        }),
+      );
     });
 
     it("triggers lockout when attempts exceed 5", async () => {
@@ -129,20 +149,25 @@ describe("Auth Controller", () => {
         email: "test@test.com",
         isActive: true,
         loginAttempts: 4, // it increments to 5 inside the block and sets lockout
-        comparePassword: jest.fn().mockResolvedValue(false)
+        comparePassword: jest.fn().mockResolvedValue(false),
       };
       mockedUser.findOne.mockReturnValue({
-        select: jest.fn().mockResolvedValue(userMock)
+        select: jest.fn().mockResolvedValue(userMock),
       } as any);
 
       const req = mockRequest({ email: "test@test.com", password: "wrong" });
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(login(req as any, res as any, next)).rejects.toThrow("Invalid email or password");
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", expect.objectContaining({
-        $set: expect.objectContaining({ lockoutUntil: expect.any(Date) })
-      }));
+      await expect(login(req as any, res as any, next)).rejects.toThrow(
+        "Invalid email or password",
+      );
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({
+          $set: expect.objectContaining({ lockoutUntil: expect.any(Date) }),
+        }),
+      );
     });
 
     it("rejects login if user is locked out", async () => {
@@ -150,17 +175,19 @@ describe("Auth Controller", () => {
       const userMock = {
         _id: "user-1",
         isActive: true,
-        lockoutUntil: futureDate
+        lockoutUntil: futureDate,
       };
       mockedUser.findOne.mockReturnValue({
-        select: jest.fn().mockResolvedValue(userMock)
+        select: jest.fn().mockResolvedValue(userMock),
       } as any);
 
       const req = mockRequest({ email: "test@test.com", password: "pwd" });
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(login(req as any, res as any, next)).rejects.toThrow(/Account is locked/);
+      await expect(login(req as any, res as any, next)).rejects.toThrow(
+        /Account is locked/,
+      );
     });
 
     it("successfully logs in and resets attempts", async () => {
@@ -169,10 +196,10 @@ describe("Auth Controller", () => {
         email: "test@test.com",
         isActive: true,
         comparePassword: jest.fn().mockResolvedValue(true),
-        toObject: jest.fn().mockReturnValue({ email: "test@test.com" })
+        toObject: jest.fn().mockReturnValue({ email: "test@test.com" }),
       };
       mockedUser.findOne.mockReturnValue({
-        select: jest.fn().mockResolvedValue(userMock)
+        select: jest.fn().mockResolvedValue(userMock),
       } as any);
 
       const req = mockRequest({ email: "test@test.com", password: "pwd" });
@@ -180,12 +207,18 @@ describe("Auth Controller", () => {
       const next = jest.fn();
 
       await login(req as any, res as any, next);
-      
+
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", {
-        $set: { loginAttempts: 0, lockoutUntil: null }
+        $set: { loginAttempts: 0, lockoutUntil: null },
       });
-      expect(res.cookie).toHaveBeenCalledWith("token", "mock-token", expect.any(Object));
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.cookie).toHaveBeenCalledWith(
+        "token",
+        "mock-token",
+        expect.any(Object),
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
   });
 
@@ -197,7 +230,9 @@ describe("Auth Controller", () => {
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(verifyOtp(req as any, res as any, next)).rejects.toThrow("OTP not found");
+      await expect(verifyOtp(req as any, res as any, next)).rejects.toThrow(
+        "OTP not found",
+      );
     });
 
     it("rejects OTP on mismatch and increments attempts", async () => {
@@ -206,7 +241,7 @@ describe("Auth Controller", () => {
         expiresAt: new Date(Date.now() + 10000),
         attempts: 1,
         otpHash: "hash",
-        save: jest.fn()
+        save: jest.fn(),
       };
       mockedOtp.findOne.mockResolvedValue(otpMock as any);
       (mockedBcrypt.compare as jest.Mock).mockResolvedValue(false);
@@ -215,15 +250,21 @@ describe("Auth Controller", () => {
         attempts: 2,
       });
 
-      const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "newpwd" });
+      const req = mockRequest({
+        email: "test@test.com",
+        otp: "wrong",
+        newPassword: "newpwd",
+      });
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(resetPassword(req as any, res as any, next)).rejects.toThrow("Invalid OTP");
+      await expect(resetPassword(req as any, res as any, next)).rejects.toThrow(
+        "Invalid OTP",
+      );
       expect(mockedOtp.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: "otp-1", attempts: { $lt: 5 } },
         { $inc: { attempts: 1 } },
-        { new: true }
+        { new: true },
       );
     });
 
@@ -242,16 +283,19 @@ describe("Auth Controller", () => {
       });
       mockedOtp.deleteOne.mockResolvedValue({} as any);
 
-      const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "newpwd" });
+      const req = mockRequest({
+        email: "test@test.com",
+        otp: "wrong",
+        newPassword: "newpwd",
+      });
       const res = mockResponse();
       const next = jest.fn();
 
       await expect(resetPassword(req as any, res as any, next)).rejects.toThrow(
-        "Too many incorrect attempts"
+        "Too many incorrect attempts",
       );
       expect(mockedOtp.deleteOne).toHaveBeenCalledWith({ _id: "otp-1" });
     });
-
 
     it("resets password successfully on valid OTP", async () => {
       const otpMock = {
@@ -266,11 +310,15 @@ describe("Auth Controller", () => {
 
       const userMock = {
         _id: "user-1",
-        save: jest.fn().mockResolvedValue(undefined)
+        save: jest.fn().mockResolvedValue(undefined),
       };
       mockedUser.findOne.mockResolvedValue(userMock as any);
 
-      const req = mockRequest({ email: "test@test.com", otp: "123456", newPassword: "newpassword" });
+      const req = mockRequest({
+        email: "test@test.com",
+        otp: "123456",
+        newPassword: "newpassword",
+      });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -278,7 +326,9 @@ describe("Auth Controller", () => {
 
       expect(userMock.save).toHaveBeenCalled();
       expect(mockedOtp.deleteOne).toHaveBeenCalledWith({ _id: "otp-1" });
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
   });
 
@@ -286,36 +336,46 @@ describe("Auth Controller", () => {
     it("rejects change if current password is wrong", async () => {
       const userMock = {
         _id: "user-1",
-        comparePassword: jest.fn().mockResolvedValue(false)
+        comparePassword: jest.fn().mockResolvedValue(false),
       };
       mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(userMock)
+        select: jest.fn().mockResolvedValue(userMock),
       } as any);
 
-      const req = mockRequest({ currentPassword: "wrong", newPassword: "newpassword" }, { _id: "user-1" });
+      const req = mockRequest(
+        { currentPassword: "wrong", newPassword: "newpassword" },
+        { _id: "user-1" },
+      );
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(changePassword(req as any, res as any, next)).rejects.toThrow("Current password is incorrect");
+      await expect(
+        changePassword(req as any, res as any, next),
+      ).rejects.toThrow("Current password is incorrect");
     });
 
     it("successfully changes password", async () => {
       const userMock = {
         _id: "user-1",
         comparePassword: jest.fn().mockResolvedValue(true),
-        save: jest.fn().mockResolvedValue(undefined)
+        save: jest.fn().mockResolvedValue(undefined),
       };
       mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(userMock)
+        select: jest.fn().mockResolvedValue(userMock),
       } as any);
 
-      const req = mockRequest({ currentPassword: "correct", newPassword: "newpassword" }, { _id: "user-1" });
+      const req = mockRequest(
+        { currentPassword: "correct", newPassword: "newpassword" },
+        { _id: "user-1" },
+      );
       const res = mockResponse();
       const next = jest.fn();
 
       await changePassword(req as any, res as any, next);
       expect(userMock.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true }),
+      );
     });
   });
 });

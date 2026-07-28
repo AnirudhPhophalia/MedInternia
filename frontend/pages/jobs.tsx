@@ -23,15 +23,15 @@ import {
   IconButton,
   Divider,
   TextField,
-  InputAdornment
+  InputAdornment,
 } from "@mui/material";
-import BookmarkButton from '../components/BookmarkButton';
-import WorkIcon from '@mui/icons-material/Work';
-import BusinessIcon from '@mui/icons-material/Business';
-import RoomIcon from '@mui/icons-material/Room';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import SearchIcon from '@mui/icons-material/Search';
-import CloseIcon from '@mui/icons-material/Close';
+import BookmarkButton from "../components/BookmarkButton";
+import WorkIcon from "@mui/icons-material/Work";
+import BusinessIcon from "@mui/icons-material/Business";
+import RoomIcon from "@mui/icons-material/Room";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import { useRouter } from "next/router";
 import api from "../utils/api";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
@@ -49,36 +49,44 @@ interface JobApplication {
   title: string;
   company: string;
   location: string;
-  status: 'Applied' | 'Interviewing' | 'Offered' | 'Closed';
+  status: "Applied" | "Interviewing" | "Offered" | "Closed";
   appliedDate: string;
 }
 
 // Format a structured location object into a readable string.
 const formatJobLocation = (location: any): string => {
-  if (!location || typeof location !== 'object') {
-    return typeof location === 'string' ? location : 'Location not specified';
+  if (!location || typeof location !== "object") {
+    return typeof location === "string" ? location : "Location not specified";
   }
-  if (location.isRemote) return 'Remote';
-  const parts = [location.city, location.state, location.country]
-    .filter((p) => typeof p === 'string' && p.trim().length > 0);
-  return parts.length > 0 ? parts.join(', ') : 'Location not specified';
+  if (location.isRemote) return "Remote";
+  const parts = [location.city, location.state, location.country].filter(
+    (p) => typeof p === "string" && p.trim().length > 0,
+  );
+  return parts.length > 0 ? parts.join(", ") : "Location not specified";
 };
 
 // Format a structured salary object into a readable range string.
 const formatJobSalary = (salary: any): string | null => {
-  if (!salary || typeof salary !== 'object') return null;
+  if (!salary || typeof salary !== "object") return null;
   const { min, max, currency } = salary;
-  const cur = typeof currency === 'string' && currency.trim() ? currency : 'USD';
-  if (typeof min === 'number' && typeof max === 'number') {
+  const cur =
+    typeof currency === "string" && currency.trim() ? currency : "USD";
+  if (typeof min === "number" && typeof max === "number") {
     return `${cur} ${min.toLocaleString()}-${max.toLocaleString()}`;
   }
-  if (typeof min === 'number') return `${cur} ${min.toLocaleString()}+`;
-  if (typeof max === 'number') return `Up to ${cur} ${max.toLocaleString()}`;
+  if (typeof min === "number") return `${cur} ${min.toLocaleString()}+`;
+  if (typeof max === "number") return `Up to ${cur} ${max.toLocaleString()}`;
   return null;
 };
 
 const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
-  <Card sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+  <Card
+    sx={{
+      borderRadius: 4,
+      border: "1px solid #e3eafc",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+    }}
+  >
     <CardContent sx={{ p: 3 }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
         <WorkIcon color="primary" />
@@ -90,22 +98,42 @@ const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
         Career matches based on your medical profile and interests:
       </Typography>
       {recommendedJobs.length === 0 ? (
-        <Typography variant="caption" color="text.secondary">No recommended positions available.</Typography>
+        <Typography variant="caption" color="text.secondary">
+          No recommended positions available.
+        </Typography>
       ) : (
         <Stack spacing={2.5}>
           {recommendedJobs.map((j: any) => (
-            <Box key={j._id} sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0' }}>
-              <Typography variant="body2" fontWeight={700} color="primary" gutterBottom>
+            <Box
+              key={j._id}
+              sx={{
+                p: 2,
+                bgcolor: "#f8fafc",
+                borderRadius: 3,
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <Typography
+                variant="body2"
+                fontWeight={700}
+                color="primary"
+                gutterBottom
+              >
                 {j.title}
               </Typography>
-              <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1.5 }}>
+              <Typography
+                variant="caption"
+                display="block"
+                color="text.secondary"
+                sx={{ mb: 1.5 }}
+              >
                 {formatJobLocation(j.location)}
               </Typography>
-              <Button 
-                variant="outlined" 
-                size="small" 
+              <Button
+                variant="outlined"
+                size="small"
                 onClick={() => setActiveTab(0)}
-                sx={{ borderRadius: 2, textTransform: 'none', fontSize: 11 }}
+                sx={{ borderRadius: 2, textTransform: "none", fontSize: 11 }}
               >
                 View Opportunity
               </Button>
@@ -153,14 +181,17 @@ export default function Jobs() {
 
     try {
       const res = await api.get("/search/smart", {
-        params: { q: smartQuery, type: "jobs" }
+        params: { q: smartQuery, type: "jobs" },
       });
       const results = res.data?.data?.results || [];
       setJobs(results);
       setSmartSearchActive(true);
     } catch (err: any) {
       console.error(err);
-      setSmartSearchError(err.response?.data?.message || "AI smart search failed. Please try again.");
+      setSmartSearchError(
+        err.response?.data?.message ||
+          "AI smart search failed. Please try again.",
+      );
     } finally {
       setIsSmartSearching(false);
     }
@@ -189,7 +220,10 @@ export default function Jobs() {
 
     let storedUser = null;
     try {
-      storedUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "null") : null;
+      storedUser =
+        typeof window !== "undefined"
+          ? JSON.parse(localStorage.getItem("user") || "null")
+          : null;
     } catch {
       storedUser = null;
     }
@@ -201,7 +235,7 @@ export default function Jobs() {
 
     // Load applied jobs from localstorage (bookmarks are now handled server-side)
     try {
-      const apps = JSON.parse(localStorage.getItem('jobApplications') || '[]');
+      const apps = JSON.parse(localStorage.getItem("jobApplications") || "[]");
       setApplications(apps);
     } catch (e) {
       console.error(e);
@@ -225,14 +259,24 @@ export default function Jobs() {
     api
       .get("/jobs", { params })
       .then((res) => {
-        const fetchedJobs = res.data.data.jobOpportunities || res.data.data.jobs || [];
+        const fetchedJobs =
+          res.data.data.jobOpportunities || res.data.data.jobs || [];
         const sortedJobs = [...fetchedJobs].sort((a: any, b: any) => {
-          const scoreA = a.matchPercentage !== undefined ? a.matchPercentage : -1;
-          const scoreB = b.matchPercentage !== undefined ? b.matchPercentage : -1;
+          const scoreA =
+            a.matchPercentage !== undefined ? a.matchPercentage : -1;
+          const scoreB =
+            b.matchPercentage !== undefined ? b.matchPercentage : -1;
           return scoreB - scoreA;
         });
         setJobs(sortedJobs);
-        if (!filterSearch.trim() && !filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa && !filterLocation.trim()) {
+        if (
+          !filterSearch.trim() &&
+          !filterSpecialty.length &&
+          !filterExperience &&
+          !filterRemote &&
+          !filterVisa &&
+          !filterLocation.trim()
+        ) {
           setOriginalJobs(sortedJobs);
         }
         setLoading(false);
@@ -242,22 +286,32 @@ export default function Jobs() {
         setOriginalJobs([]);
         setLoading(false);
       });
-  }, [authChecked, filterSearch, filterSpecialty, filterExperience, filterLocation, filterRemote, filterVisa, smartSearchActive]);
+  }, [
+    authChecked,
+    filterSearch,
+    filterSpecialty,
+    filterExperience,
+    filterLocation,
+    filterRemote,
+    filterVisa,
+    smartSearchActive,
+  ]);
 
   useEffect(() => {
-  if (!currentUserId) return;
-  api.get(`/users/${currentUserId}/saved`)
-    .then(res => {
-      const savedJobs = res.data?.data?.savedJobs || [];
-      // savedJobs come back populated (full job objects) from this endpoint
-      setSavedJobIds(savedJobs.map((j: any) => j._id));
-    })
-    .catch(() => setSavedJobIds([]));
-}, [currentUserId]);
+    if (!currentUserId) return;
+    api
+      .get(`/users/${currentUserId}/saved`)
+      .then((res) => {
+        const savedJobs = res.data?.data?.savedJobs || [];
+        // savedJobs come back populated (full job objects) from this endpoint
+        setSavedJobIds(savedJobs.map((j: any) => j._id));
+      })
+      .catch(() => setSavedJobIds([]));
+  }, [currentUserId]);
 
   const handleApply = async (job: any) => {
     // Add to applications list in localstorage
-    const exists = applications.find(app => app.id === job._id);
+    const exists = applications.find((app) => app.id === job._id);
     if (exists) return;
 
     try {
@@ -266,17 +320,17 @@ export default function Jobs() {
       const newApp: JobApplication = {
         id: job._id,
         title: job.title,
-        company: job.company || 'MedInternia Hospital Group',
+        company: job.company || "MedInternia Hospital Group",
         location: formatJobLocation(job.location),
-        status: 'Applied',
-        appliedDate: new Date().toLocaleDateString()
+        status: "Applied",
+        appliedDate: new Date().toLocaleDateString(),
       };
 
       const updated = [newApp, ...applications];
       setApplications(updated);
-      localStorage.setItem('jobApplications', JSON.stringify(updated));
+      localStorage.setItem("jobApplications", JSON.stringify(updated));
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to apply for this job');
+      setError(err.response?.data?.message || "Failed to apply for this job");
     }
   };
 
@@ -284,7 +338,14 @@ export default function Jobs() {
 
   if (loading)
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
+        }}
+      >
         <CircularProgress aria-label="Loading job opportunities" />
       </Box>
     );
@@ -295,12 +356,10 @@ export default function Jobs() {
       </Container>
     );
   }
-  const savedJobs = jobs.filter(j => savedJobIds.includes(j._id));
+  const savedJobs = jobs.filter((j) => savedJobIds.includes(j._id));
 
   // Career recommendations based on user role
-  const recommendedJobs = jobs
-    .filter(j => j.status === 'Open')
-    .slice(0, 2);
+  const recommendedJobs = jobs.filter((j) => j.status === "Open").slice(0, 2);
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, minHeight: "80vh" }}>
@@ -321,7 +380,7 @@ export default function Jobs() {
       )}
 
       {isPatient ? (
-        <Card sx={{ p: 4, textAlign: 'center', borderRadius: 4 }}>
+        <Card sx={{ p: 4, textAlign: "center", borderRadius: 4 }}>
           <Typography color="text.secondary">
             Patients do not see job opportunities on this platform.
           </Typography>
@@ -332,11 +391,17 @@ export default function Jobs() {
             value={activeTab}
             onChange={(e, val) => setActiveTab(val)}
             centered
-            sx={{ mb: 4, borderBottom: '1px solid #e3eafc' }}
+            sx={{ mb: 4, borderBottom: "1px solid #e3eafc" }}
           >
             <Tab label="Explore Jobs" sx={{ fontWeight: 600 }} />
-            <Tab label={`Saved (${savedJobs.length})`} sx={{ fontWeight: 600 }} />
-            <Tab label={`Application Tracker (${applications.length})`} sx={{ fontWeight: 600 }} />
+            <Tab
+              label={`Saved (${savedJobs.length})`}
+              sx={{ fontWeight: 600 }}
+            />
+            <Tab
+              label={`Application Tracker (${applications.length})`}
+              sx={{ fontWeight: 600 }}
+            />
           </Tabs>
 
           {activeTab === 0 ? (
@@ -356,10 +421,10 @@ export default function Jobs() {
                   location={filterLocation}
                   onLocationChange={setFilterLocation}
                   onClear={() => {
-                    setFilterSearch('');
+                    setFilterSearch("");
                     setFilterSpecialty([]);
-                    setFilterExperience('');
-                    setFilterLocation('');
+                    setFilterExperience("");
+                    setFilterLocation("");
                     setFilterRemote(false);
                     setFilterVisa(false);
                   }}
@@ -367,22 +432,49 @@ export default function Jobs() {
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
                 <Stack spacing={3}>
-                  <Card sx={{ p: 3, borderRadius: 4, background: 'linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)', border: '1px solid #cce3ff', boxShadow: '0 4px 15px rgba(0, 114, 255, 0.05)' }}>
+                  <Card
+                    sx={{
+                      p: 3,
+                      borderRadius: 4,
+                      background:
+                        "linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)",
+                      border: "1px solid #cce3ff",
+                      boxShadow: "0 4px 15px rgba(0, 114, 255, 0.05)",
+                    }}
+                  >
                     <form onSubmit={handleSmartSearch}>
                       <Stack spacing={2}>
                         <Stack direction="row" spacing={1} alignItems="center">
                           <AutoAwesomeIcon color="primary" />
-                          <Typography variant="subtitle1" fontWeight={700} color="primary">
+                          <Typography
+                            variant="subtitle1"
+                            fontWeight={700}
+                            color="primary"
+                          >
                             AI-Powered Smart Search
                           </Typography>
-                          <Chip label="Gemini AI" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }} />
+                          <Chip
+                            label="Gemini AI"
+                            size="small"
+                            color="primary"
+                            sx={{
+                              height: 18,
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                            }}
+                          />
                         </Stack>
-                        
+
                         <Typography variant="body2" color="text.secondary">
-                          Describe what you're looking for in plain English. We'll automatically filter by specialization, location, type, and more.
+                          Describe what you're looking for in plain English.
+                          We'll automatically filter by specialization,
+                          location, type, and more.
                         </Typography>
 
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={2}
+                        >
                           <TextField
                             fullWidth
                             size="small"
@@ -398,36 +490,73 @@ export default function Jobs() {
                               ),
                               endAdornment: smartQuery && (
                                 <InputAdornment position="end">
-                                  <IconButton size="small" onClick={handleClearSmartSearch} disabled={isSmartSearching}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={handleClearSmartSearch}
+                                    disabled={isSmartSearching}
+                                  >
                                     <CloseIcon fontSize="small" />
                                   </IconButton>
                                 </InputAdornment>
-                              )
+                              ),
                             }}
-                            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                            sx={{
+                              bgcolor: "#fff",
+                              borderRadius: 2,
+                              "& .MuiOutlinedInput-root": { borderRadius: 2 },
+                            }}
                           />
                           <Button
                             variant="contained"
                             type="submit"
                             disabled={isSmartSearching || !smartQuery.trim()}
-                            sx={{ minWidth: 120, textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+                            sx={{
+                              minWidth: 120,
+                              textTransform: "none",
+                              fontWeight: 600,
+                              borderRadius: 2,
+                            }}
                           >
-                            {isSmartSearching ? <CircularProgress size={20} color="inherit" /> : 'Search'}
+                            {isSmartSearching ? (
+                              <CircularProgress size={20} color="inherit" />
+                            ) : (
+                              "Search"
+                            )}
                           </Button>
                         </Stack>
 
                         {smartSearchError && (
-                          <Alert severity="error" sx={{ borderRadius: 2, py: 0.5 }}>
+                          <Alert
+                            severity="error"
+                            sx={{ borderRadius: 2, py: 0.5 }}
+                          >
                             {smartSearchError}
                           </Alert>
                         )}
 
                         {smartSearchActive && (
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="caption" fontWeight={600} color="primary">
-                              Showing {jobs.length} smart search result{jobs.length !== 1 ? 's' : ''}
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                          >
+                            <Typography
+                              variant="caption"
+                              fontWeight={600}
+                              color="primary"
+                            >
+                              Showing {jobs.length} smart search result
+                              {jobs.length !== 1 ? "s" : ""}
                             </Typography>
-                            <Button size="small" onClick={handleClearSmartSearch} sx={{ textTransform: 'none', fontWeight: 600, p: 0 }}>
+                            <Button
+                              size="small"
+                              onClick={handleClearSmartSearch}
+                              sx={{
+                                textTransform: "none",
+                                fontWeight: 600,
+                                p: 0,
+                              }}
+                            >
                               Clear Search
                             </Button>
                           </Stack>
@@ -437,10 +566,14 @@ export default function Jobs() {
                   </Card>
 
                   {jobs.length === 0 ? (
-                    <Typography align="center" color="text.secondary">No job opportunities found.</Typography>
+                    <Typography align="center" color="text.secondary">
+                      No job opportunities found.
+                    </Typography>
                   ) : (
                     jobs.map((j) => {
-                      const isApplied = applications.some(app => app.id === j._id);
+                      const isApplied = applications.some(
+                        (app) => app.id === j._id,
+                      );
 
                       return (
                         <InternshipCard
@@ -455,151 +588,260 @@ export default function Jobs() {
                 </Stack>
               </Grid>
               <Grid size={{ xs: 12, md: 3 }}>
-                <RecommendationsWidget recommendedJobs={recommendedJobs} setActiveTab={setActiveTab} />
+                <RecommendationsWidget
+                  recommendedJobs={recommendedJobs}
+                  setActiveTab={setActiveTab}
+                />
               </Grid>
             </Grid>
           ) : (
             <Grid container spacing={4}>
               <Grid size={{ xs: 12, md: 8 }}>
                 {activeTab === 1 && (
-                <Stack spacing={3}>
-                  {savedJobs.length === 0 ? (
-                    <Alert severity="info" sx={{ borderRadius: 3 }}>
-                      No saved opportunities. Go to 'Explore Jobs' and click the bookmark icon to save job postings!
-                    </Alert>
-                  ) : (
-                    savedJobs.map((j) => {
-                      const isApplied = applications.some(app => app.id === j._id);
-                      return (
-                        <Card key={j._id} sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                          <CardContent sx={{ p: 3 }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                              <Box>
-                                <Typography variant="h6" fontWeight={700} color="primary">
-                                  {j.title}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">{formatJobLocation(j.location)}</Typography>
-                              </Box>
-                              <BookmarkButton itemType="job" itemId={j._id} />
-                            </Stack>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 3 }}>
-                              <Stack direction="row" spacing={1} alignItems="center">
-                                <Chip label={j.status} color={j.status === 'Open' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700 }} />
-                                {j.matchPercentage !== undefined && (
-                                  <Chip
-                                    icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important', color: 'inherit !important' }} />}
-                                    label={`${j.matchPercentage}% Match`}
-                                    size="small"
-                                    sx={{
-                                      borderRadius: '6px',
-                                      fontWeight: 700,
-                                      fontSize: '0.75rem',
-                                      backgroundColor: j.matchPercentage >= 80 
-                                        ? '#e6f4ea' 
-                                        : (j.matchPercentage >= 50 ? '#fef7e0' : '#fce8e6'),
-                                      color: j.matchPercentage >= 80 
-                                        ? '#137333' 
-                                        : (j.matchPercentage >= 50 ? '#b06000' : '#c5221f'),
-                                      '& .MuiChip-icon': {
-                                        color: 'inherit !important'
-                                      }
-                                    }}
-                                  />
-                                )}
-                              </Stack>
-                              <Stack direction="row" spacing={1}>
-                                {j.postedBy && (typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id) !== currentUserId && (
-                                  <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    onClick={() => router.push(`/messages?userId=${typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id}`)}
-                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                                  >
-                                    Message Recruiter
-                                  </Button>
-                                )}
-                                {j.status === "Open" ? (
-                                  <Button 
-                                    variant="contained" 
-                                    color={isApplied ? "success" : "primary"}
-                                    onClick={() => handleApply(j)}
-                                    disabled={isApplied}
-                                    sx={{ borderRadius: 2, textTransform: 'none' }}
-                                  >
-                                    {isApplied ? "Applied" : "Apply"}
-                                  </Button>
-                                ) : (
-                                  <Button variant="outlined" disabled sx={{ borderRadius: 2 }}>Closed</Button>
-                                )}
-                              </Stack>
-                            </Stack>
-                          </CardContent>
-                        </Card>
-                      );
-                    })
-                  )}
-                </Stack>
-              )}
-
-              {activeTab === 2 && (
-                <Card sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                      Submitted Applications
-                    </Typography>
-                    {applications.length === 0 ? (
+                  <Stack spacing={3}>
+                    {savedJobs.length === 0 ? (
                       <Alert severity="info" sx={{ borderRadius: 3 }}>
-                        No applications tracked yet. Click 'Apply' on any open job to add it to the tracker.
+                        No saved opportunities. Go to 'Explore Jobs' and click
+                        the bookmark icon to save job postings!
                       </Alert>
                     ) : (
-                      <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3 }}>
-                        <Table aria-label="application tracker table">
-                          <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                            <TableRow>
-                              <TableCell><strong>Position / Company</strong></TableCell>
-                              <TableCell><strong>Applied Date</strong></TableCell>
-                              <TableCell><strong>Status</strong></TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {applications.map((app) => (
-                              <TableRow key={app.id}>
-                                <TableCell>
-                                  <Typography variant="body2" fontWeight={700}>{app.title}</Typography>
-                                  <Typography variant="caption" color="text.secondary">{app.company} - {app.location}</Typography>
-                                </TableCell>
-                                <TableCell>{app.appliedDate}</TableCell>
-                                <TableCell>
-                                  <Chip 
-                                    label={app.status} 
-                                    size="small" 
+                      savedJobs.map((j) => {
+                        const isApplied = applications.some(
+                          (app) => app.id === j._id,
+                        );
+                        return (
+                          <Card
+                            key={j._id}
+                            sx={{
+                              borderRadius: 4,
+                              border: "1px solid #e3eafc",
+                              boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+                            }}
+                          >
+                            <CardContent sx={{ p: 3 }}>
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                alignItems="flex-start"
+                              >
+                                <Box>
+                                  <Typography
+                                    variant="h6"
+                                    fontWeight={700}
+                                    color="primary"
+                                  >
+                                    {j.title}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                  >
+                                    {formatJobLocation(j.location)}
+                                  </Typography>
+                                </Box>
+                                <BookmarkButton itemType="job" itemId={j._id} />
+                              </Stack>
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                alignItems="center"
+                                sx={{ mt: 3 }}
+                              >
+                                <Stack
+                                  direction="row"
+                                  spacing={1}
+                                  alignItems="center"
+                                >
+                                  <Chip
+                                    label={j.status}
                                     color={
-                                      app.status === 'Offered' ? 'success' : 
-                                      app.status === 'Interviewing' ? 'warning' : 'primary'
+                                      j.status === "Open"
+                                        ? "success"
+                                        : "default"
                                     }
+                                    size="small"
                                     sx={{ fontWeight: 700 }}
                                   />
+                                  {j.matchPercentage !== undefined && (
+                                    <Chip
+                                      icon={
+                                        <AutoAwesomeIcon
+                                          sx={{
+                                            fontSize: "14px !important",
+                                            color: "inherit !important",
+                                          }}
+                                        />
+                                      }
+                                      label={`${j.matchPercentage}% Match`}
+                                      size="small"
+                                      sx={{
+                                        borderRadius: "6px",
+                                        fontWeight: 700,
+                                        fontSize: "0.75rem",
+                                        backgroundColor:
+                                          j.matchPercentage >= 80
+                                            ? "#e6f4ea"
+                                            : j.matchPercentage >= 50
+                                              ? "#fef7e0"
+                                              : "#fce8e6",
+                                        color:
+                                          j.matchPercentage >= 80
+                                            ? "#137333"
+                                            : j.matchPercentage >= 50
+                                              ? "#b06000"
+                                              : "#c5221f",
+                                        "& .MuiChip-icon": {
+                                          color: "inherit !important",
+                                        },
+                                      }}
+                                    />
+                                  )}
+                                </Stack>
+                                <Stack direction="row" spacing={1}>
+                                  {j.postedBy &&
+                                    (typeof j.postedBy === "string"
+                                      ? j.postedBy
+                                      : j.postedBy._id) !== currentUserId && (
+                                      <Button
+                                        variant="outlined"
+                                        color="primary"
+                                        onClick={() =>
+                                          router.push(
+                                            `/messages?userId=${typeof j.postedBy === "string" ? j.postedBy : j.postedBy._id}`,
+                                          )
+                                        }
+                                        sx={{
+                                          borderRadius: 2,
+                                          textTransform: "none",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        Message Recruiter
+                                      </Button>
+                                    )}
+                                  {j.status === "Open" ? (
+                                    <Button
+                                      variant="contained"
+                                      color={isApplied ? "success" : "primary"}
+                                      onClick={() => handleApply(j)}
+                                      disabled={isApplied}
+                                      sx={{
+                                        borderRadius: 2,
+                                        textTransform: "none",
+                                      }}
+                                    >
+                                      {isApplied ? "Applied" : "Apply"}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outlined"
+                                      disabled
+                                      sx={{ borderRadius: 2 }}
+                                    >
+                                      Closed
+                                    </Button>
+                                  )}
+                                </Stack>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </Stack>
+                )}
+
+                {activeTab === 2 && (
+                  <Card
+                    sx={{
+                      borderRadius: 4,
+                      border: "1px solid #e3eafc",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                        Submitted Applications
+                      </Typography>
+                      {applications.length === 0 ? (
+                        <Alert severity="info" sx={{ borderRadius: 3 }}>
+                          No applications tracked yet. Click 'Apply' on any open
+                          job to add it to the tracker.
+                        </Alert>
+                      ) : (
+                        <TableContainer
+                          component={Paper}
+                          elevation={0}
+                          sx={{ border: "1px solid #e2e8f0", borderRadius: 3 }}
+                        >
+                          <Table aria-label="application tracker table">
+                            <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                              <TableRow>
+                                <TableCell>
+                                  <strong>Position / Company</strong>
+                                </TableCell>
+                                <TableCell>
+                                  <strong>Applied Date</strong>
+                                </TableCell>
+                                <TableCell>
+                                  <strong>Status</strong>
                                 </TableCell>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </Grid>
+                            </TableHead>
+                            <TableBody>
+                              {applications.map((app) => (
+                                <TableRow key={app.id}>
+                                  <TableCell>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={700}
+                                    >
+                                      {app.title}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                    >
+                                      {app.company} - {app.location}
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell>{app.appliedDate}</TableCell>
+                                  <TableCell>
+                                    <Chip
+                                      label={app.status}
+                                      size="small"
+                                      color={
+                                        app.status === "Offered"
+                                          ? "success"
+                                          : app.status === "Interviewing"
+                                            ? "warning"
+                                            : "primary"
+                                      }
+                                      sx={{ fontWeight: 700 }}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </Grid>
 
-            {/* Sidebar: Recommendations Widget */}
-            <Grid size={{ xs: 12, md: 4 }}>
-              <RecommendationsWidget recommendedJobs={recommendedJobs} setActiveTab={setActiveTab} />
+              {/* Sidebar: Recommendations Widget */}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <RecommendationsWidget
+                  recommendedJobs={recommendedJobs}
+                  setActiveTab={setActiveTab}
+                />
+              </Grid>
             </Grid>
-          </Grid>
           )}
         </Box>
       )}
     </Container>
   );
 }
-

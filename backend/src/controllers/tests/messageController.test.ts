@@ -1,5 +1,5 @@
 jest.mock("../../utils/asyncHandler", () => ({
-  asyncHandler: (fn: any) => fn
+  asyncHandler: (fn: any) => fn,
 }));
 
 import { Response } from "express";
@@ -7,7 +7,7 @@ import {
   getConversations,
   getMessages,
   sendMessage,
-  markAsRead
+  markAsRead,
 } from "../messageController";
 import Conversation from "../../models/Conversation";
 import Message from "../../models/Message";
@@ -19,7 +19,9 @@ jest.mock("../../models/Message");
 jest.mock("../../models/User");
 jest.mock("../../utils/socket");
 
-const mockedConversation = Conversation as unknown as jest.Mocked<typeof Conversation>;
+const mockedConversation = Conversation as unknown as jest.Mocked<
+  typeof Conversation
+>;
 const mockedMessage = Message as unknown as jest.Mocked<typeof Message>;
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
 
@@ -30,12 +32,18 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, body: any = {}, query: any = {}, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
-  body,
-  query,
-  params,
-}) as unknown as AuthRequest;
+const mockRequest = (
+  userId: string,
+  body: any = {},
+  query: any = {},
+  params: any = {},
+): AuthRequest =>
+  ({
+    user: { _id: userId },
+    body,
+    query,
+    params,
+  }) as unknown as AuthRequest;
 
 describe("Message Controller", () => {
   beforeEach(() => {
@@ -48,19 +56,29 @@ describe("Message Controller", () => {
       const res = mockResponse();
 
       const populateMock = jest.fn().mockReturnValue({
-        sort: jest.fn().mockResolvedValue([{ _id: "conv-1", participants: ["user-1", "user-2"] }])
+        sort: jest
+          .fn()
+          .mockResolvedValue([
+            { _id: "conv-1", participants: ["user-1", "user-2"] },
+          ]),
       });
-      mockedConversation.find.mockReturnValue({ populate: populateMock } as any);
+      mockedConversation.find.mockReturnValue({
+        populate: populateMock,
+      } as any);
 
       await getConversations(req, res, () => {});
 
-      expect(mockedConversation.find).toHaveBeenCalledWith({ participants: "user-1" });
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: true,
-        data: expect.objectContaining({
-          conversations: expect.any(Array)
-        })
-      }));
+      expect(mockedConversation.find).toHaveBeenCalledWith({
+        participants: "user-1",
+      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            conversations: expect.any(Array),
+          }),
+        }),
+      );
     });
   });
 
@@ -71,11 +89,15 @@ describe("Message Controller", () => {
 
       mockedConversation.findOne.mockResolvedValue({
         _id: "conv-1",
-        participants: ["user-1", "user-2"]
+        participants: ["user-1", "user-2"],
       } as any);
 
       const populateMock = jest.fn().mockReturnValue({
-        sort: jest.fn().mockResolvedValue([{ _id: "msg-1", sender: "user-2", content: "hello" }])
+        sort: jest
+          .fn()
+          .mockResolvedValue([
+            { _id: "msg-1", sender: "user-2", content: "hello" },
+          ]),
       });
       mockedMessage.find.mockReturnValue({ populate: populateMock } as any);
 
@@ -86,19 +108,23 @@ describe("Message Controller", () => {
 
       expect(mockedConversation.findOne).toHaveBeenCalledWith({
         _id: "conv-1",
-        participants: "user-1"
+        participants: "user-1",
       });
-      expect(mockedMessage.find).toHaveBeenCalledWith({ conversationId: "conv-1" });
+      expect(mockedMessage.find).toHaveBeenCalledWith({
+        conversationId: "conv-1",
+      });
       expect(mockedMessage.updateMany).toHaveBeenCalledWith(
         { conversationId: "conv-1", sender: { $ne: "user-1" }, readAt: null },
-        { readAt: expect.any(Date) }
+        { readAt: expect.any(Date) },
       );
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: true,
-        data: expect.objectContaining({
-          messages: expect.any(Array)
-        })
-      }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            messages: expect.any(Array),
+          }),
+        }),
+      );
     });
 
     it("throws 404 if conversation not found", async () => {
@@ -108,13 +134,18 @@ describe("Message Controller", () => {
       mockedConversation.findOne.mockResolvedValue(null);
 
       const next = jest.fn();
-      await expect(getMessages(req, res, next)).rejects.toThrow("Conversation not found");
+      await expect(getMessages(req, res, next)).rejects.toThrow(
+        "Conversation not found",
+      );
     });
   });
 
   describe("sendMessage", () => {
     it("creates message, updates lastMessage, and emits to user if privacy settings allow", async () => {
-      const req = mockRequest("user-1", { receiverId: "user-2", content: "hello" });
+      const req = mockRequest("user-1", {
+        receiverId: "user-2",
+        content: "hello",
+      });
       const res = mockResponse();
 
       (mockedUser.findById as any).mockImplementation(async (id: any) => {
@@ -129,31 +160,31 @@ describe("Message Controller", () => {
       mockedConversation.create.mockResolvedValue({
         _id: "conv-1",
         participants: ["user-1", "user-2"],
-        save: mockSave
+        save: mockSave,
       } as any);
 
       const mockPopulate = jest.fn().mockResolvedValue({
         _id: "msg-1",
         sender: { _id: "user-1", firstName: "Sender" },
-        content: "hello"
+        content: "hello",
       });
       mockedMessage.create.mockResolvedValue({
         _id: "msg-1",
         conversationId: "conv-1",
         sender: "user-1",
         content: "hello",
-        populate: mockPopulate
+        populate: mockPopulate,
       } as any);
 
       await sendMessage(req, res, () => {});
 
       expect(mockedConversation.create).toHaveBeenCalledWith({
-        participants: ["user-1", "user-2"]
+        participants: ["user-1", "user-2"],
       });
       expect(mockedMessage.create).toHaveBeenCalledWith({
         conversationId: "conv-1",
         sender: "user-1",
-        content: "hello"
+        content: "hello",
       });
       expect(res.status).toHaveBeenCalledWith(201);
     });
@@ -166,7 +197,7 @@ describe("Message Controller", () => {
 
       mockedConversation.findOne.mockResolvedValue({
         _id: "conv-1",
-        participants: ["user-1", "user-2"]
+        participants: ["user-1", "user-2"],
       } as any);
 
       mockedMessage.updateMany.mockResolvedValue({ modifiedCount: 1 } as any);
@@ -175,12 +206,14 @@ describe("Message Controller", () => {
 
       expect(mockedMessage.updateMany).toHaveBeenCalledWith(
         { conversationId: "conv-1", sender: { $ne: "user-1" }, readAt: null },
-        { readAt: expect.any(Date) }
+        { readAt: expect.any(Date) },
       );
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        success: true,
-        message: "Messages marked as read"
-      }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: "Messages marked as read",
+        }),
+      );
     });
   });
 });

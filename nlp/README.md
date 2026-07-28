@@ -10,17 +10,41 @@ checkpoints to extract structured medical entities from clinical case text.
 Given free-text like:
 
 > "A 45-year-old male presented with **fever** and **chest pain**.
->  He was diagnosed with **STEMI**. **Aspirin 300 mg** was administered."
+> He was diagnosed with **STEMI**. **Aspirin 300 mg** was administered."
 
 it returns:
 
 ```json
 {
   "entities": [
-    { "text": "fever",      "label": "SYMPTOM",    "score": 0.91, "start": 42, "end": 47 },
-    { "text": "chest pain", "label": "SYMPTOM",    "score": 0.89, "start": 52, "end": 62 },
-    { "text": "STEMI",      "label": "DISEASE",    "score": 0.98, "start": 91, "end": 96 },
-    { "text": "Aspirin",    "label": "MEDICATION", "score": 0.97, "start": 98, "end": 105 }
+    {
+      "text": "fever",
+      "label": "SYMPTOM",
+      "score": 0.91,
+      "start": 42,
+      "end": 47
+    },
+    {
+      "text": "chest pain",
+      "label": "SYMPTOM",
+      "score": 0.89,
+      "start": 52,
+      "end": 62
+    },
+    {
+      "text": "STEMI",
+      "label": "DISEASE",
+      "score": 0.98,
+      "start": 91,
+      "end": 96
+    },
+    {
+      "text": "Aspirin",
+      "label": "MEDICATION",
+      "score": 0.97,
+      "start": 98,
+      "end": 105
+    }
   ],
   "entity_counts": { "SYMPTOM": 2, "DISEASE": 1, "MEDICATION": 1 }
 }
@@ -30,10 +54,10 @@ it returns:
 
 ## Models used
 
-| Purpose | Checkpoint | Notes |
-|---------|-----------|-------|
-| Disease/Diagnosis | [`pruas/BENT-PubMedBERT-NER-Disease`](https://huggingface.co/pruas/BENT-PubMedBERT-NER-Disease) | Fine-tuned on NCBI Disease corpus |
-| Symptoms + Medications | [`d4data/biomedical-ner-all`](https://huggingface.co/d4data/biomedical-ner-all) | Multi-entity biomedical NER |
+| Purpose                | Checkpoint                                                                                      | Notes                             |
+| ---------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------- |
+| Disease/Diagnosis      | [`pruas/BENT-PubMedBERT-NER-Disease`](https://huggingface.co/pruas/BENT-PubMedBERT-NER-Disease) | Fine-tuned on NCBI Disease corpus |
+| Symptoms + Medications | [`d4data/biomedical-ner-all`](https://huggingface.co/d4data/biomedical-ner-all)                 | Multi-entity biomedical NER       |
 
 Both run with `aggregation_strategy="simple"` so token fragments are merged
 into clean word spans automatically. **No fine-tuning required.**
@@ -61,7 +85,7 @@ nlp/
 
 ## Quick start (local)
 
-```bash
+````bash
 # 1 — clone & enter the directory
 cd nlp_service
 
@@ -79,7 +103,7 @@ Linux/macOS:
 
 ```bash
 cp .env.example .env
-```
+````
 
 Windows (Command Prompt):
 
@@ -94,8 +118,10 @@ Copy-Item .env.example .env
 ```
 
 # 6 — start the server
+
 uvicorn app.main:app --reload --port 8001
-```
+
+````
 
 The service is now live at **http://localhost:8001**.
 
@@ -111,7 +137,7 @@ docker build -t medinternia-ner:latest .
 
 # Run
 docker run -p 8001:8001 medinternia-ner:latest
-```
+````
 
 ---
 
@@ -122,7 +148,12 @@ docker run -p 8001:8001 medinternia-ner:latest
 Returns `200 OK` when both models are loaded and ready.
 
 ```json
-{ "status": "ok", "disease_model": "...", "general_model": "...", "device": "CPU" }
+{
+  "status": "ok",
+  "disease_model": "...",
+  "general_model": "...",
+  "device": "CPU"
+}
 ```
 
 Returns `503` while models are still loading.
@@ -135,10 +166,10 @@ Extract entities from a single case description.
 
 **Request body**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `text` | string | ✅ | Clinical text (5–4 000 chars) |
-| `case_id` | string | ❌ | Arbitrary ID, echoed back |
+| Field     | Type   | Required | Description                   |
+| --------- | ------ | -------- | ----------------------------- |
+| `text`    | string | ✅       | Clinical text (5–4 000 chars) |
+| `case_id` | string | ❌       | Arbitrary ID, echoed back     |
 
 **Response**
 
@@ -196,7 +227,7 @@ export interface NERResult {
 
 export async function extractEntities(
   text: string,
-  caseId?: string
+  caseId?: string,
 ): Promise<NERResult> {
   const res = await fetch(`${NER_SERVICE_URL}/extract`, {
     method: "POST",
@@ -229,13 +260,13 @@ test suite.
 
 ## Environment variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DISEASE_MODEL` | `pruas/BENT-PubMedBERT-NER-Disease` | HF Hub checkpoint for diseases |
-| `GENERAL_BIO_MODEL` | `d4data/biomedical-ner-all` | HF Hub checkpoint for symptoms & meds |
-| `PORT` | `8001` | Uvicorn listen port |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |
-| `MAX_CHARS` | `4000` | Maximum input text length |
+| Variable            | Default                             | Description                           |
+| ------------------- | ----------------------------------- | ------------------------------------- |
+| `DISEASE_MODEL`     | `pruas/BENT-PubMedBERT-NER-Disease` | HF Hub checkpoint for diseases        |
+| `GENERAL_BIO_MODEL` | `d4data/biomedical-ner-all`         | HF Hub checkpoint for symptoms & meds |
+| `PORT`              | `8001`                              | Uvicorn listen port                   |
+| `CORS_ORIGINS`      | `http://localhost:3000`             | Comma-separated allowed origins       |
+| `MAX_CHARS`         | `4000`                              | Maximum input text length             |
 
 ---
 
@@ -260,6 +291,7 @@ test suite.
 ```
 
 **Workflow on case creation:**
+
 1. Doctor submits case description via the frontend.
 2. The Node.js backend calls `POST /extract` with the description text.
 3. Returned entities are stored in a new `entities` field on the `Case` model.

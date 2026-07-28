@@ -1,11 +1,11 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 import {
   AI_CASE_POSTING_INTERVALS,
   AI_CASE_REVIEW_STATUSES,
   AICasePostingInterval,
   AICaseReviewStatus,
-  GeneratedAICase
-} from '../services/aiCasePostingService';
+  GeneratedAICase,
+} from "../services/aiCasePostingService";
 
 export interface IAICasePostSchedule extends Document {
   author: mongoose.Types.ObjectId;
@@ -30,132 +30,142 @@ const GeneratedCaseSchema = new Schema<GeneratedAICase>(
       type: String,
       required: true,
       trim: true,
-      maxlength: 200
+      maxlength: 200,
     },
     description: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 5000
+      maxlength: 5000,
     },
-    symptoms: [{
-      type: String,
-      trim: true
-    }],
+    symptoms: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     patientInfo: {
       age: Number,
       gender: {
         type: String,
-        enum: ['male', 'female', 'other']
+        enum: ["male", "female", "other"],
       },
-      medicalHistory: [{
-        type: String,
-        trim: true
-      }],
-      currentMedications: [{
-        type: String,
-        trim: true
-      }]
+      medicalHistory: [
+        {
+          type: String,
+          trim: true,
+        },
+      ],
+      currentMedications: [
+        {
+          type: String,
+          trim: true,
+        },
+      ],
     },
     diagnosis: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 1000
+      maxlength: 1000,
     },
     treatment: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 1000
+      maxlength: 1000,
     },
-    tags: [{
-      type: String,
-      trim: true,
-      lowercase: true
-    }],
+    tags: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
     difficulty: {
       type: String,
-      enum: ['beginner', 'intermediate', 'advanced'],
-      required: true
+      enum: ["beginner", "intermediate", "advanced"],
+      required: true,
     },
     specialization: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
     aiSummary: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 1500
+      maxlength: 1500,
     },
-    reviewChecklist: [{
-      type: String,
-      trim: true
-    }]
+    reviewChecklist: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
   },
-  { _id: false }
+  { _id: false },
 );
 
 const AICasePostScheduleSchema = new Schema<IAICasePostSchedule>(
   {
     author: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
-      index: true
+      index: true,
     },
     generatedCase: {
       type: GeneratedCaseSchema,
-      required: true
+      required: true,
     },
     interval: {
       type: String,
       enum: AI_CASE_POSTING_INTERVALS,
-      default: 'weekly'
+      default: "weekly",
     },
     scheduledFor: {
       type: Date,
-      required: true
+      required: true,
     },
     nextRunAt: {
       type: Date,
       required: true,
-      index: true
+      index: true,
     },
     reviewStatus: {
       type: String,
       enum: AI_CASE_REVIEW_STATUSES,
-      default: 'pending',
-      index: true
+      default: "pending",
+      index: true,
     },
     reviewNotes: {
       type: String,
       trim: true,
-      maxlength: 1000
+      maxlength: 1000,
     },
     reviewedBy: {
       type: Schema.Types.ObjectId,
-      ref: 'User'
+      ref: "User",
     },
     reviewedAt: Date,
     publishedCase: {
       type: Schema.Types.ObjectId,
-      ref: 'Case'
+      ref: "Case",
     },
     lastPublishedAt: Date,
     isActive: {
       type: Boolean,
-      default: true
-    }
+      default: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 AICasePostScheduleSchema.index({ reviewStatus: 1, nextRunAt: 1, isActive: 1 });
 
 export default mongoose.model<IAICasePostSchedule>(
-  'AICasePostSchedule',
-  AICasePostScheduleSchema
+  "AICasePostSchedule",
+  AICasePostScheduleSchema,
 );

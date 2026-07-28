@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   AppBar,
   Toolbar,
@@ -19,36 +19,36 @@ import {
   CssBaseline,
   Menu,
   MenuItem,
-} from '@mui/material';
-import BookIcon from '@mui/icons-material/Book';
-import DatasetIcon from '@mui/icons-material/Dataset';
-import Image from 'next/image';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import TranscriptIcon from '@mui/icons-material/DescriptionOutlined';
-import WorkIcon from '@mui/icons-material/Work';
-import VideocamIcon from '@mui/icons-material/Videocam';
-import MenuIcon from '@mui/icons-material/Menu';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import ProfileDropdown from './ProfileDropdown';
-import NotificationBell from './NotificationBell';
-import LanguageSwitcher from './LanguageSwitcher';
-import { useAuth } from '../context/AuthContext';
-import { useTranslation } from 'react-i18next';
-import SearchIcon from '@mui/icons-material/Search';
-import ArticleIcon from '@mui/icons-material/Article';
-import HelpIcon from '@mui/icons-material/Help';
-import CloseIcon from '@mui/icons-material/Close';
-import LightModeIcon from '@mui/icons-material/LightMode';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import { ThemeContext } from '../context/ThemeContext';
-import { useContext } from 'react';
+} from "@mui/material";
+import BookIcon from "@mui/icons-material/Book";
+import DatasetIcon from "@mui/icons-material/Dataset";
+import Image from "next/image";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import TranscriptIcon from "@mui/icons-material/DescriptionOutlined";
+import WorkIcon from "@mui/icons-material/Work";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import MenuIcon from "@mui/icons-material/Menu";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import ProfileDropdown from "./ProfileDropdown";
+import NotificationBell from "./NotificationBell";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "react-i18next";
+import SearchIcon from "@mui/icons-material/Search";
+import ArticleIcon from "@mui/icons-material/Article";
+import HelpIcon from "@mui/icons-material/Help";
+import CloseIcon from "@mui/icons-material/Close";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import { ThemeContext } from "../context/ThemeContext";
+import { useContext } from "react";
 
-import { getCurrentUserRole } from '../utils/permissions';
+import { getCurrentUserRole } from "../utils/permissions";
 import { getAuthToken } from "../utils/api";
-import { useScroll, useSpring, motion } from 'framer-motion';
+import { useScroll, useSpring, motion } from "framer-motion";
 
 interface NavButtonProps {
   href: string;
@@ -66,7 +66,7 @@ const NavButton: React.FC<NavButtonProps> = ({
   onNavigate,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), { noSsr: true });
 
   if (isMobile) {
     return (
@@ -76,22 +76,26 @@ const NavButton: React.FC<NavButtonProps> = ({
           href={href}
           onClick={onNavigate}
           sx={{
-            justifyContent: 'flex-start',
-            backgroundColor: isActive ? 'rgba(255, 255, 255, 0.18)' : 'transparent',
-            '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.12)' },
+            justifyContent: "flex-start",
+            backgroundColor: isActive
+              ? "rgba(255, 255, 255, 0.18)"
+              : "transparent",
+            "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.12)" },
             borderRadius: 2,
             mx: 1.5,
             mb: 0.5,
             py: 1.25,
           }}
         >
-          <ListItemIcon sx={{ color: 'text.primary', minWidth: 40 }}>{icon}</ListItemIcon>
+          <ListItemIcon sx={{ color: "text.primary", minWidth: 40 }}>
+            {icon}
+          </ListItemIcon>
           <ListItemText
             primary={label}
             primaryTypographyProps={{
-              color: 'text.primary',
+              color: "text.primary",
               fontWeight: isActive ? 700 : 500,
-              fontSize: '0.95rem',
+              fontSize: "0.95rem",
             }}
           />
         </ListItemButton>
@@ -106,14 +110,14 @@ const NavButton: React.FC<NavButtonProps> = ({
         component={Link}
         href={href}
         aria-label={label}
-        aria-current={isActive ? 'page' : undefined}
+        aria-current={isActive ? "page" : undefined}
         sx={{
           mx: 0.25,
           p: 1.2,
           borderRadius: 2,
-          backgroundColor: isActive ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
-          transition: 'background-color 0.2s ease',
-          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          backgroundColor: isActive ? "rgba(0, 0, 0, 0.05)" : "transparent",
+          transition: "background-color 0.2s ease",
+          "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
         }}
       >
         {icon}
@@ -123,30 +127,32 @@ const NavButton: React.FC<NavButtonProps> = ({
 };
 
 export default function Navbar({ route }: { route?: string }) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const router = useRouter();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), { noSsr: true });
   const { mode, toggleColorMode } = useContext(ThemeContext);
   const { isAuthenticated, userId: authUserId, user: authUser } = useAuth();
   const [mounted, setMounted] = React.useState(false);
 
   const handleHomeNav = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const token = getAuthToken();
       if (token) {
-        router.push('/landing');
+        router.push("/landing");
         return;
       }
     }
-    router.push('/');
+    router.push("/");
   };
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const closeDrawer = () => setDrawerOpen(false);
   const toggleDrawer = (open: boolean) => () => setDrawerOpen(open);
 
-  const [anchorElMore, setAnchorElMore] = React.useState<null | HTMLElement>(null);
+  const [anchorElMore, setAnchorElMore] = React.useState<null | HTMLElement>(
+    null,
+  );
   const open = Boolean(anchorElMore);
   const handleMoreClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElMore(event.currentTarget);
@@ -157,19 +163,21 @@ export default function Navbar({ route }: { route?: string }) {
 
   const [showSuggestions, setShowSuggestions] = React.useState(false);
   const [recentSearches] = React.useState<string[]>([
-    'Cardiology',
-    'Internships',
-    'Webinar on Diabetes',
+    "Cardiology",
+    "Internships",
+    "Webinar on Diabetes",
   ]);
-  const [search, setSearch] = React.useState('');
+  const [search, setSearch] = React.useState("");
   const [isFocused, setIsFocused] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const showHint = !search && !isFocused;
-  const [profileImageUrl, setProfileImageUrl] = React.useState<string | undefined>(undefined);
-  const [firstName, setFirstName] = React.useState<string>('');
-  const [lastName, setLastName] = React.useState<string>('');
-  const [userType, setUserType] = React.useState<string>('');
+  const [profileImageUrl, setProfileImageUrl] = React.useState<
+    string | undefined
+  >(undefined);
+  const [firstName, setFirstName] = React.useState<string>("");
+  const [lastName, setLastName] = React.useState<string>("");
+  const [userType, setUserType] = React.useState<string>("");
   const isLoggedIn = isAuthenticated;
 
   React.useEffect(() => {
@@ -179,37 +187,37 @@ export default function Navbar({ route }: { route?: string }) {
   React.useEffect(() => {
     if (!isAuthenticated || !authUserId) {
       setProfileImageUrl(undefined);
-      setFirstName('');
-      setLastName('');
-      setUserType('');
+      setFirstName("");
+      setLastName("");
+      setUserType("");
       return;
     }
 
     try {
       if (authUser) {
         setProfileImageUrl(authUser.profilePicture || undefined);
-        setFirstName(authUser.firstName || authUser.name || '');
-        setLastName(authUser.lastName || '');
-        setUserType(authUser.userType || authUser.role || '');
+        setFirstName(authUser.firstName || authUser.name || "");
+        setLastName(authUser.lastName || "");
+        setUserType(authUser.userType || authUser.role || "");
       }
     } catch (e) {
       console.error("Failed to read user from auth context", e);
     }
 
-    import('../utils/api').then((apiModule) => {
+    import("../utils/api").then((apiModule) => {
       apiModule.default
         .get(`/users/${authUserId}/profile`)
         .then((res) => {
           const userData = res.data?.data?.user || res.data?.user || res.data;
           setProfileImageUrl(userData.profilePicture || undefined);
-          setFirstName(userData.firstName || userData.name || '');
-          setLastName(userData.lastName || '');
-          setUserType(userData.userType || '');
+          setFirstName(userData.firstName || userData.name || "");
+          setLastName(userData.lastName || "");
+          setUserType(userData.userType || "");
         })
         .catch(() => {
           setProfileImageUrl(undefined);
-          setFirstName('');
-          setLastName('');
+          setFirstName("");
+          setLastName("");
         });
     });
   }, [isAuthenticated, authUserId, authUser]);
@@ -230,7 +238,7 @@ export default function Navbar({ route }: { route?: string }) {
         <Toolbar
           sx={{
             minHeight: theme.custom.navbarHeight,
-            visibility: 'hidden',
+            visibility: "hidden",
           }}
         />
       </>
@@ -244,75 +252,108 @@ export default function Navbar({ route }: { route?: string }) {
       setShowSuggestions(false);
       router.push(`/search?q=${encodeURIComponent(q)}`);
     } else {
-      router.push('/search');
+      router.push("/search");
     }
   };
 
   const visibleNavItems = [
     ...(isLoggedIn
-      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases', 'Cases') }]
+      ? [
+          {
+            href: "/cases",
+            icon: <FolderOpenIcon />,
+            label: t("navbar.cases", "Cases"),
+          },
+        ]
       : []),
-    { href: '/webinars', icon: <VideocamIcon />, label: t('navbar.webinars') },
-    { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
-    { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
-    { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
+    { href: "/webinars", icon: <VideocamIcon />, label: t("navbar.webinars") },
+    { href: "/jobs", icon: <WorkIcon />, label: "Jobs" },
+    { href: "/diaries", icon: <BookIcon />, label: "Diaries" },
+    { href: "/research_paper", icon: <ArticleIcon />, label: "Research Paper" },
   ];
 
   const overflowNavItems = [
-    { href: '/webinar-demo', icon: <TranscriptIcon />, label: 'Webinar Transcripts' },
-    { href: '/learning-paths', icon: <BookIcon />, label: t('navbar.learningPaths') },
-    { href: '/patients', icon: <DatasetIcon />, label: t('navbar.patients') },
-    { href: '/doctors', icon: <WorkIcon />, label: t('navbar.doctors') },
-    { href: '/upload-raw', icon: <DatasetIcon />, label: 'Upload Raw' },
-    { href: '/flashcards', icon: <BookIcon />, label: 'Flashcards' },
-    { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
-    { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
+    {
+      href: "/webinar-demo",
+      icon: <TranscriptIcon />,
+      label: "Webinar Transcripts",
+    },
+    {
+      href: "/learning-paths",
+      icon: <BookIcon />,
+      label: t("navbar.learningPaths"),
+    },
+    { href: "/patients", icon: <DatasetIcon />, label: t("navbar.patients") },
+    { href: "/doctors", icon: <WorkIcon />, label: t("navbar.doctors") },
+    { href: "/upload-raw", icon: <DatasetIcon />, label: "Upload Raw" },
+    { href: "/flashcards", icon: <BookIcon />, label: "Flashcards" },
+    { href: "/mentorship", icon: <ArticleIcon />, label: "Mentorship" },
+    { href: "/faq", icon: <HelpIcon />, label: "FAQ" },
   ];
 
   const isMoreActive = overflowNavItems.some(
-    (item) => router.pathname === item.href || router.pathname.startsWith(`${item.href}/`)
+    (item) =>
+      router.pathname === item.href ||
+      router.pathname.startsWith(`${item.href}/`),
   );
 
   const mobileNavItems = [
     ...(isLoggedIn
-      ? [{ href: '/cases', icon: <FolderOpenIcon />, label: t('navbar.cases', 'Cases') }]
+      ? [
+          {
+            href: "/cases",
+            icon: <FolderOpenIcon />,
+            label: t("navbar.cases", "Cases"),
+          },
+        ]
       : []),
-    { href: '/webinar-demo', icon: <TranscriptIcon />, label: 'Webinar Transcripts' },
-    { href: '/learning-paths', icon: <BookIcon />, label: t('navbar.learningPaths') },
-    { href: '/patients', icon: <DatasetIcon />, label: t('navbar.patients') },
-    { href: '/doctors', icon: <WorkIcon />, label: t('navbar.doctors') },
-    { href: '/jobs', icon: <WorkIcon />, label: 'Jobs' },
-    { href: '/webinars', icon: <VideocamIcon />, label: t('navbar.webinars') },
-    { href: '/flashcards', icon: <BookIcon />, label: 'Flashcards' },
-    { href: '/mentorship', icon: <ArticleIcon />, label: 'Mentorship' },
-    { href: '/research_paper', icon: <ArticleIcon />, label: 'Research Paper' },
-    { href: '/diaries', icon: <BookIcon />, label: 'Diaries' },
-    { href: '/faq', icon: <HelpIcon />, label: 'FAQ' },
+    {
+      href: "/webinar-demo",
+      icon: <TranscriptIcon />,
+      label: "Webinar Transcripts",
+    },
+    {
+      href: "/learning-paths",
+      icon: <BookIcon />,
+      label: t("navbar.learningPaths"),
+    },
+    { href: "/patients", icon: <DatasetIcon />, label: t("navbar.patients") },
+    { href: "/doctors", icon: <WorkIcon />, label: t("navbar.doctors") },
+    { href: "/jobs", icon: <WorkIcon />, label: "Jobs" },
+    { href: "/webinars", icon: <VideocamIcon />, label: t("navbar.webinars") },
+    { href: "/flashcards", icon: <BookIcon />, label: "Flashcards" },
+    { href: "/mentorship", icon: <ArticleIcon />, label: "Mentorship" },
+    { href: "/research_paper", icon: <ArticleIcon />, label: "Research Paper" },
+    { href: "/diaries", icon: <BookIcon />, label: "Diaries" },
+    { href: "/faq", icon: <HelpIcon />, label: "FAQ" },
   ];
 
   const searchBar = (
-    <Box sx={{ width: '100%', position: 'relative' }}>
+    <Box sx={{ width: "100%", position: "relative" }}>
       <Paper
         component="form"
         onSubmit={handleSearchSubmit}
         elevation={0}
         sx={{
-          p: '4px 8px',
-          display: 'flex',
-          alignItems: 'center',
-          width: '100%',
+          p: "4px 8px",
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
           borderRadius: 24,
-          bgcolor: 'background.paper',
-          border: '1px solid',
-          borderColor: 'divider',
-          transition: 'box-shadow 0.2s',
-          '&:focus-within': {
-            boxShadow: '0 0 0 3px rgba(0, 114, 255, 0.15)',
-            borderColor: 'primary.main',
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          transition: "box-shadow 0.2s",
+          "&:focus-within": {
+            boxShadow: "0 0 0 3px rgba(0, 114, 255, 0.15)",
+            borderColor: "primary.main",
           },
         }}
       >
-        <SearchIcon sx={{ color: 'text.secondary', ml: 1, mr: 0.5 }} fontSize="small" />
+        <SearchIcon
+          sx={{ color: "text.secondary", ml: 1, mr: 0.5 }}
+          fontSize="small"
+        />
         <input
           ref={searchInputRef}
           type="text"
@@ -329,28 +370,43 @@ export default function Navbar({ route }: { route?: string }) {
             setIsFocused(false);
             setTimeout(() => setShowSuggestions(false), 150);
           }}
-          placeholder={!showHint ? t('navbar.searchPlaceholder') : ''}
+          placeholder={!showHint ? t("navbar.searchPlaceholder") : ""}
           aria-label="Search medical content"
           style={{
-            border: 'none',
+            border: "none",
             flexGrow: 1,
-            outline: 'none',
+            outline: "none",
             height: 36,
-            fontSize: '0.9rem',
-            background: 'transparent',
+            fontSize: "0.9rem",
+            background: "transparent",
             color: theme.palette.text.primary,
-            fontFamily: 'inherit',
+            fontFamily: "inherit",
           }}
         />
         {showHint && !isMobile && (
-          <Typography variant="caption" sx={{ color: 'text.disabled', pr: 1, whiteSpace: 'nowrap' }}>
-            Press <kbd style={{ fontFamily: 'monospace', fontWeight: 600, padding: '1px 4px', borderRadius: 4, border: '1px solid #e2e8f0' }}>/</kbd> to search
+          <Typography
+            variant="caption"
+            sx={{ color: "text.disabled", pr: 1, whiteSpace: "nowrap" }}
+          >
+            Press{" "}
+            <kbd
+              style={{
+                fontFamily: "monospace",
+                fontWeight: 600,
+                padding: "1px 4px",
+                borderRadius: 4,
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              /
+            </kbd>{" "}
+            to search
           </Typography>
         )}
         {search && (
           <IconButton
-            onClick={() => setSearch('')}
-            sx={{ p: 0.5, color: 'text.secondary' }}
+            onClick={() => setSearch("")}
+            sx={{ p: 0.5, color: "text.secondary" }}
             aria-label="Clear search"
             size="small"
           >
@@ -363,19 +419,24 @@ export default function Navbar({ route }: { route?: string }) {
         <Paper
           elevation={4}
           sx={{
-            position: 'absolute',
+            position: "absolute",
             top: 48,
             left: 0,
-            width: '100%',
+            width: "100%",
             zIndex: 10,
             borderRadius: 2,
             mt: 0.5,
             p: 1,
-            border: '1px solid',
-            borderColor: 'divider',
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
-          <Typography variant="caption" fontWeight={600} color="primary" sx={{ px: 1, display: 'block', mb: 0.5 }}>
+          <Typography
+            variant="caption"
+            fontWeight={600}
+            color="primary"
+            sx={{ px: 1, display: "block", mb: 0.5 }}
+          >
             Recent Searches
           </Typography>
           {recentSearches.map((item) => (
@@ -387,9 +448,9 @@ export default function Navbar({ route }: { route?: string }) {
                 px: 1.5,
                 py: 0.75,
                 borderRadius: 1.5,
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                '&:hover': { bgcolor: 'action.hover' },
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                "&:hover": { bgcolor: "action.hover" },
               }}
               onMouseDown={() => {
                 setSearch(item);
@@ -413,13 +474,13 @@ export default function Navbar({ route }: { route?: string }) {
           top: 0,
           left: 0,
           right: 0,
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.1)',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
+          background: "rgba(255, 255, 255, 0.9)",
+          backdropFilter: "blur(10px)",
+          boxShadow: "0 2px 8px -2px rgba(0, 0, 0, 0.1)",
+          borderBottom: "1px solid",
+          borderColor: "divider",
           zIndex: theme.zIndex.drawer + 1,
-          color: 'text.primary',
+          color: "text.primary",
         }}
       >
         <Toolbar
@@ -442,19 +503,24 @@ export default function Navbar({ route }: { route?: string }) {
           )}
 
           <Box
-            sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
             onClick={handleHomeNav}
             role="button"
             tabIndex={0}
             aria-label="Go to home"
-            onKeyDown={(e) => e.key === 'Enter' && handleHomeNav()}
+            onKeyDown={(e) => e.key === "Enter" && handleHomeNav()}
           >
             <Image
               src="/med-internia-logo.jpg"
               alt="MedInternia logo"
               width={32}
               height={32}
-              style={{ marginRight: 8, borderRadius: '50%' }}
+              style={{ marginRight: 8, borderRadius: "50%" }}
             />
             <Typography
               variant="h6"
@@ -462,29 +528,40 @@ export default function Navbar({ route }: { route?: string }) {
               sx={{
                 fontWeight: 700,
                 letterSpacing: 0.5,
-                display: { xs: 'none', sm: 'block' },
+                display: { xs: "none", sm: "block" },
                 color: "#12355B",
               }}
             >
-              {t('navbar.brand', 'MedInternia')}
+              {t("navbar.brand", "MedInternia")}
             </Typography>
           </Box>
 
           {!isMobile && isLoggedIn && (
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', maxWidth: 420, mx: 'auto' }}>
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                justifyContent: "center",
+                maxWidth: 420,
+                mx: "auto",
+              }}
+            >
               {searchBar}
             </Box>
           )}
 
           {!isMobile && isLoggedIn && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               {visibleNavItems.map((item) => (
                 <NavButton
                   key={item.href}
                   href={item.href}
                   icon={item.icon}
                   label={item.label}
-                  isActive={router.pathname === item.href || router.pathname.startsWith(`${item.href}/`)}
+                  isActive={
+                    router.pathname === item.href ||
+                    router.pathname.startsWith(`${item.href}/`)
+                  }
                 />
               ))}
 
@@ -492,17 +569,19 @@ export default function Navbar({ route }: { route?: string }) {
                 <IconButton
                   color="inherit"
                   aria-label="More navigation links"
-                  aria-controls={open ? 'more-menu' : undefined}
+                  aria-controls={open ? "more-menu" : undefined}
                   aria-haspopup="true"
-                  aria-expanded={open ? 'true' : undefined}
+                  aria-expanded={open ? "true" : undefined}
                   onClick={handleMoreClick}
                   sx={{
                     mx: 0.25,
                     p: 1.2,
                     borderRadius: 2,
-                    backgroundColor: isMoreActive ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
-                    transition: 'background-color 0.2s ease',
-                    '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+                    backgroundColor: isMoreActive
+                      ? "rgba(0, 0, 0, 0.05)"
+                      : "transparent",
+                    transition: "background-color 0.2s ease",
+                    "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
                   }}
                 >
                   <MoreHorizIcon />
@@ -515,20 +594,22 @@ export default function Navbar({ route }: { route?: string }) {
                 open={open}
                 onClose={handleMoreClose}
                 MenuListProps={{
-                  'aria-labelledby': 'more-button',
+                  "aria-labelledby": "more-button",
                 }}
                 PaperProps={{
                   sx: {
                     minWidth: 200,
                     borderRadius: 3,
-                    boxShadow: '0px 4px 20px rgba(0,0,0,0.1)',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                  }
+                    boxShadow: "0px 4px 20px rgba(0,0,0,0.1)",
+                    border: "1px solid",
+                    borderColor: "divider",
+                  },
                 }}
               >
                 {overflowNavItems.map((item) => {
-                  const isActive = router.pathname === item.href || router.pathname.startsWith(`${item.href}/`);
+                  const isActive =
+                    router.pathname === item.href ||
+                    router.pathname.startsWith(`${item.href}/`);
                   return (
                     <MenuItem
                       key={item.href}
@@ -540,17 +621,31 @@ export default function Navbar({ route }: { route?: string }) {
                         px: 2,
                         gap: 1.5,
                         fontWeight: isActive ? 700 : 500,
-                        color: isActive ? 'primary.main' : 'text.primary',
-                        bgcolor: isActive ? 'rgba(0, 114, 255, 0.08)' : 'transparent',
-                        '&:hover': {
-                          bgcolor: isActive ? 'rgba(0, 114, 255, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                        color: isActive ? "primary.main" : "text.primary",
+                        bgcolor: isActive
+                          ? "rgba(0, 114, 255, 0.08)"
+                          : "transparent",
+                        "&:hover": {
+                          bgcolor: isActive
+                            ? "rgba(0, 114, 255, 0.12)"
+                            : "rgba(0, 0, 0, 0.04)",
                         },
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', color: isActive ? 'primary.main' : 'text.secondary', mr: 1.5 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          color: isActive ? "primary.main" : "text.secondary",
+                          mr: 1.5,
+                        }}
+                      >
                         {item.icon}
                       </Box>
-                      <Typography variant="body2" sx={{ fontWeight: 'inherit' }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: "inherit" }}
+                      >
                         {item.label}
                       </Typography>
                     </MenuItem>
@@ -562,11 +657,19 @@ export default function Navbar({ route }: { route?: string }) {
             </Box>
           )}
 
-          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}
+          >
             <LanguageSwitcher />
-            <Tooltip title={mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'} placement="bottom" arrow>
+            <Tooltip
+              title={
+                mode === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
+              }
+              placement="bottom"
+              arrow
+            >
               <IconButton onClick={toggleColorMode} color="inherit">
-                {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+                {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
               </IconButton>
             </Tooltip>
             <ProfileDropdown
@@ -588,7 +691,8 @@ export default function Navbar({ route }: { route?: string }) {
             width: "100%",
             height: "3px",
             background: "linear-gradient(90deg,#2563EB,#06B6D4,#3B82F6)",
-            boxShadow: "0 0 12px rgba(37,99,235,.45), 0 0 24px rgba(6,182,212,.25)",
+            boxShadow:
+              "0 0 12px rgba(37,99,235,.45), 0 0 24px rgba(6,182,212,.25)",
             zIndex: 1200,
           }}
         />
@@ -597,7 +701,7 @@ export default function Navbar({ route }: { route?: string }) {
       <Toolbar
         sx={{
           minHeight: theme.custom.navbarHeight,
-          visibility: 'hidden',
+          visibility: "hidden",
         }}
       />
 
@@ -608,37 +712,45 @@ export default function Navbar({ route }: { route?: string }) {
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: {
-            background: 'background.paper',
-            color: 'text.primary',
+            background: "background.paper",
+            color: "text.primary",
             width: 280,
           },
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
           <Box
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
               px: 2,
               py: 2,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
+              borderBottom: "1px solid",
+              borderColor: "divider",
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Image
                 src="/med-internia-logo.jpg"
                 alt="MedInternia logo"
                 width={28}
                 height={28}
-                style={{ borderRadius: '50%' }}
+                style={{ borderRadius: "50%" }}
               />
-              <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+              <Typography
+                variant="subtitle1"
+                fontWeight={700}
+                color="text.primary"
+              >
                 MedInternia
               </Typography>
             </Box>
-            <IconButton color="inherit" onClick={closeDrawer} aria-label="Close navigation menu">
+            <IconButton
+              color="inherit"
+              onClick={closeDrawer}
+              aria-label="Close navigation menu"
+            >
               <CloseIcon />
             </IconButton>
           </Box>
@@ -652,7 +764,10 @@ export default function Navbar({ route }: { route?: string }) {
                 href={item.href}
                 icon={item.icon}
                 label={item.label}
-                isActive={router.pathname === item.href || router.pathname.startsWith(`${item.href}/`)}
+                isActive={
+                  router.pathname === item.href ||
+                  router.pathname.startsWith(`${item.href}/`)
+                }
                 onNavigate={closeDrawer}
               />
             ))}
@@ -660,7 +775,7 @@ export default function Navbar({ route }: { route?: string }) {
 
           <Divider />
           <Box sx={{ p: 2 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               Medical learning & collaboration
             </Typography>
           </Box>

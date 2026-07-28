@@ -30,7 +30,9 @@ export interface InternshipOpportunity {
   specialty?: string;
   specialization?: string;
   duration?: string;
-  location?: string | { city?: string; state?: string; country?: string; isRemote?: boolean };
+  location?:
+    | string
+    | { city?: string; state?: string; country?: string; isRemote?: boolean };
   salary?: string | { min?: number; max?: number; currency?: string };
   applicationDeadline?: string;
   status?: string;
@@ -56,7 +58,9 @@ export default function InternshipCard({
   const id = internship._id || internship.id || "sample-internship-1";
   const title = internship.title || "Clinical Cardiology Internship";
   const hospitalName =
-    internship.hospitalName || internship.company || "Metropolitan General Hospital";
+    internship.hospitalName ||
+    internship.company ||
+    "Metropolitan General Hospital";
   const specialty =
     internship.specialty || internship.specialization || "Cardiology";
   const duration = internship.duration || "6 Months";
@@ -248,7 +252,11 @@ export default function InternshipCard({
               gap: 2,
             }}
           >
-            <Typography variant="caption" color="text.secondary" fontWeight={500}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              fontWeight={500}
+            >
               Status:{" "}
               <Box
                 component="span"
@@ -266,14 +274,16 @@ export default function InternshipCard({
               variant="contained"
               onClick={handleApplyClick}
               disabled={isApplied || status !== "Open"}
-              component={onApply || isApplied || status !== "Open" ? "button" : Link}
-              href={onApply || isApplied || status !== "Open" ? undefined : `/jobs/${id}`}
+              component={
+                onApply || isApplied || status !== "Open" ? "button" : Link
+              }
+              href={
+                onApply || isApplied || status !== "Open"
+                  ? undefined
+                  : `/jobs/${id}`
+              }
               endIcon={
-                isApplied ? (
-                  <CheckCircle size={16} />
-                ) : (
-                  <ArrowRight size={16} />
-                )
+                isApplied ? <CheckCircle size={16} /> : <ArrowRight size={16} />
               }
               sx={{
                 borderRadius: "12px",

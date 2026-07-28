@@ -1,4 +1,4 @@
-import { Server } from 'socket.io';
+import { Server } from "socket.io";
 
 let io: Server;
 
@@ -8,7 +8,7 @@ export const setSocketIO = (socketServer: Server): void => {
 
 export const getSocketIO = (): Server => {
   if (!io) {
-    throw new Error('Socket.io not initialized. Call setSocketIO first.');
+    throw new Error("Socket.io not initialized. Call setSocketIO first.");
   }
   return io;
 };

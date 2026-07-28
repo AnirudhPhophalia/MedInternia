@@ -73,7 +73,7 @@ export const addDiaryEntry = async (req: AuthRequest, res: Response) => {
       });
     }
 
-   const { diaryId } = req.params;
+    const { diaryId } = req.params;
     const {
       day,
       content,

@@ -1,6 +1,6 @@
-import { IJobOpportunity } from '../models/JobOpportunity';
-import { IUser } from '../models/User';
-import UserBadge from '../models/UserBadge';
+import { IJobOpportunity } from "../models/JobOpportunity";
+import { IUser } from "../models/User";
+import UserBadge from "../models/UserBadge";
 
 export interface JobEligibility {
   isEligible: boolean;
@@ -22,7 +22,7 @@ const getDocumentId = (document: any): string =>
 
 export const calculateJobEligibility = async (
   jobOpportunity: IJobOpportunity,
-  user: IUser
+  user: IUser,
 ): Promise<JobEligibility> => {
   const requiredPoints = jobOpportunity.requirements.minimumPoints || 0;
   const eligibility: JobEligibility = {
@@ -31,9 +31,9 @@ export const calculateJobEligibility = async (
     pointsRequirement: {
       required: requiredPoints,
       current: user.points,
-      meets: user.points >= requiredPoints
+      meets: user.points >= requiredPoints,
     },
-    badgeRequirements: []
+    badgeRequirements: [],
   };
 
   if (!eligibility.pointsRequirement.meets) {
@@ -46,9 +46,11 @@ export const calculateJobEligibility = async (
     const requiredBadgeIds = requiredBadges.map(getDocumentId);
     const userBadges = await UserBadge.find({
       user: user._id,
-      badge: { $in: requiredBadgeIds }
-    }).select('badge');
-    const userBadgeIds = new Set(userBadges.map(userBadge => getDocumentId(userBadge.badge)));
+      badge: { $in: requiredBadgeIds },
+    }).select("badge");
+    const userBadgeIds = new Set(
+      userBadges.map((userBadge) => getDocumentId(userBadge.badge)),
+    );
 
     for (const requiredBadge of requiredBadges) {
       const badgeId = getDocumentId(requiredBadge);
@@ -57,7 +59,7 @@ export const calculateJobEligibility = async (
       eligibility.badgeRequirements.push({
         badge: requiredBadge,
         required: true,
-        hasIt: hasBadge
+        hasIt: hasBadge,
       });
 
       if (!hasBadge) {

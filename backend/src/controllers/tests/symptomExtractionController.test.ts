@@ -26,7 +26,11 @@ describe("Symptom Extraction Controller", () => {
       extractSymptomsFromText(req, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Text must be provided as a string" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Text must be provided as a string",
+        }),
+      );
     });
 
     it("returns 400 if text is empty whitespace", () => {
@@ -45,18 +49,29 @@ describe("Symptom Extraction Controller", () => {
       extractSymptomsFromText(req, res as any);
 
       expect(res.status).toHaveBeenCalledWith(413);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Text cannot exceed") }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Text cannot exceed"),
+        }),
+      );
     });
 
     it("extracts symptoms successfully on valid payload", () => {
-      const req = { body: { text: "Patient has high fever and cough." } } as Request;
+      const req = {
+        body: { text: "Patient has high fever and cough." },
+      } as Request;
       const res = mockResponse();
 
-      mockedExtract.mockReturnValue([{ symptom: "fever" }, { symptom: "cough" }]);
+      mockedExtract.mockReturnValue([
+        { symptom: "fever" },
+        { symptom: "cough" },
+      ]);
 
       extractSymptomsFromText(req, res as any);
 
-      expect(mockedExtract).toHaveBeenCalledWith("Patient has high fever and cough.");
+      expect(mockedExtract).toHaveBeenCalledWith(
+        "Patient has high fever and cough.",
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -64,7 +79,7 @@ describe("Symptom Extraction Controller", () => {
           data: expect.objectContaining({
             symptoms: ["fever", "cough"],
           }),
-        })
+        }),
       );
     });
   });

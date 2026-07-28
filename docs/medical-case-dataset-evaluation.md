@@ -21,26 +21,26 @@ case discussions while respecting privacy and licensing boundaries.
 
 ## Recommended Shortlist
 
-| Dataset | Best Use | Access / License Notes | Fit for MedInternia |
-| --- | --- | --- | --- |
-| PubMedQA | Evidence-grounded biomedical question answering and evaluation | Public research dataset; the commonly used annotated benchmark is distributed with an MIT-style license in several dataset hubs. Verify the exact mirror before use. | Good first evaluation set for medical reasoning because each item has a research question, context, and yes/no/maybe answer. It is less like a bedside case, so it should be used for AI answer grounding rather than case creation. |
-| MedMCQA | Multi-specialty medical exam reasoning | Public benchmark described in the MedMCQA paper and mirrored on Hugging Face. Confirm the selected mirror license before redistribution. | Strong for specialty classification and multiple-choice reasoning. It has explanations in many records, but it is exam-oriented rather than patient-case-oriented. |
-| MedQA / USMLE-style datasets | Clinical vignette reasoning | Multiple mirrors exist; license clarity varies by mirror. Use only a mirror with explicit reuse terms. | Useful for case-vignette evaluation because many prompts include age, symptoms, history, and answer choices. Not ideal for direct training unless licensing is reviewed. |
-| MIMIC-IV / MIMIC-IV-Note | Real clinical EHR events and notes | Requires PhysioNet credentialing, CITI training, and a signed data-use agreement. Do not commit raw rows or derived patient text to the repo. | Highest clinical realism, but access restrictions make it unsuitable for open repo samples. Best for a future private research pipeline or synthetic aggregate statistics after compliance review. |
-| Synthetic MedInternia seed cases | Demo, UI testing, and safe local development | Project-owned content can be MIT-compatible if authored from scratch. Avoid copying protected clinical notes. | Best immediate option for repository fixtures because it avoids licensing and privacy risk while matching the product schema exactly. |
+| Dataset                          | Best Use                                                       | Access / License Notes                                                                                                                                               | Fit for MedInternia                                                                                                                                                                                                                  |
+| -------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PubMedQA                         | Evidence-grounded biomedical question answering and evaluation | Public research dataset; the commonly used annotated benchmark is distributed with an MIT-style license in several dataset hubs. Verify the exact mirror before use. | Good first evaluation set for medical reasoning because each item has a research question, context, and yes/no/maybe answer. It is less like a bedside case, so it should be used for AI answer grounding rather than case creation. |
+| MedMCQA                          | Multi-specialty medical exam reasoning                         | Public benchmark described in the MedMCQA paper and mirrored on Hugging Face. Confirm the selected mirror license before redistribution.                             | Strong for specialty classification and multiple-choice reasoning. It has explanations in many records, but it is exam-oriented rather than patient-case-oriented.                                                                   |
+| MedQA / USMLE-style datasets     | Clinical vignette reasoning                                    | Multiple mirrors exist; license clarity varies by mirror. Use only a mirror with explicit reuse terms.                                                               | Useful for case-vignette evaluation because many prompts include age, symptoms, history, and answer choices. Not ideal for direct training unless licensing is reviewed.                                                             |
+| MIMIC-IV / MIMIC-IV-Note         | Real clinical EHR events and notes                             | Requires PhysioNet credentialing, CITI training, and a signed data-use agreement. Do not commit raw rows or derived patient text to the repo.                        | Highest clinical realism, but access restrictions make it unsuitable for open repo samples. Best for a future private research pipeline or synthetic aggregate statistics after compliance review.                                   |
+| Synthetic MedInternia seed cases | Demo, UI testing, and safe local development                   | Project-owned content can be MIT-compatible if authored from scratch. Avoid copying protected clinical notes.                                                        | Best immediate option for repository fixtures because it avoids licensing and privacy risk while matching the product schema exactly.                                                                                                |
 
 ## Field Mapping
 
-| MedInternia Need | PubMedQA | MedMCQA | MedQA / USMLE | MIMIC-IV | Synthetic Seed Cases |
-| --- | --- | --- | --- | --- | --- |
-| Clinical presentation | Partial: research question and abstract context | Partial: exam stem | Strong: vignette-style stems | Strong: real notes and events | Strong if authored deliberately |
-| Symptoms | Often implicit | Often present in stems | Often present | Present but may require extraction | Explicit |
-| Diagnosis | Usually not a diagnosis label | Often represented by correct option | Often represented by correct option | Requires mapping from ICD / notes | Explicit |
-| Differential diagnosis | Limited | Answer options can act as candidates | Answer options can act as candidates | Requires clinical modeling | Explicit |
-| Treatment / intervention | Sometimes in abstract context | Sometimes in explanation | Sometimes in stem/explanation | Strong but compliance-restricted | Explicit |
-| Outcome / follow-up | Sometimes in abstract context | Limited | Limited | Strong but compliance-restricted | Explicit |
-| Specialty | Needs classifier or metadata mapping | Often inferable from subject | Often inferable | Can be mapped from services / ICD | Explicit |
-| Licensing clarity | Good when using documented benchmark mirrors | Mirror-dependent | Mirror-dependent | Clear but restricted | Project-controlled |
+| MedInternia Need         | PubMedQA                                        | MedMCQA                              | MedQA / USMLE                        | MIMIC-IV                           | Synthetic Seed Cases            |
+| ------------------------ | ----------------------------------------------- | ------------------------------------ | ------------------------------------ | ---------------------------------- | ------------------------------- |
+| Clinical presentation    | Partial: research question and abstract context | Partial: exam stem                   | Strong: vignette-style stems         | Strong: real notes and events      | Strong if authored deliberately |
+| Symptoms                 | Often implicit                                  | Often present in stems               | Often present                        | Present but may require extraction | Explicit                        |
+| Diagnosis                | Usually not a diagnosis label                   | Often represented by correct option  | Often represented by correct option  | Requires mapping from ICD / notes  | Explicit                        |
+| Differential diagnosis   | Limited                                         | Answer options can act as candidates | Answer options can act as candidates | Requires clinical modeling         | Explicit                        |
+| Treatment / intervention | Sometimes in abstract context                   | Sometimes in explanation             | Sometimes in stem/explanation        | Strong but compliance-restricted   | Explicit                        |
+| Outcome / follow-up      | Sometimes in abstract context                   | Limited                              | Limited                              | Strong but compliance-restricted   | Explicit                        |
+| Specialty                | Needs classifier or metadata mapping            | Often inferable from subject         | Often inferable                      | Can be mapped from services / ICD  | Explicit                        |
+| Licensing clarity        | Good when using documented benchmark mirrors    | Mirror-dependent                     | Mirror-dependent                     | Clear but restricted               | Project-controlled              |
 
 ## Recommended Data Strategy
 
@@ -97,11 +97,11 @@ case discussions while respecting privacy and licensing boundaries.
 
 ## Minimal Seed Dataset Preview
 
-| case_id | specialty | presentation | diagnosis | missing_fields |
-| --- | --- | --- | --- | --- |
-| case_seed_001 | Internal Medicine | Fatigue, thirst, and frequent urination | Type 2 diabetes mellitus | None |
-| case_seed_002 | Pediatrics | Fever, sore throat, and sandpaper-like rash | Scarlet fever | Outcome follow-up optional |
-| case_seed_003 | Emergency Medicine | Sudden chest pain radiating to left arm | Acute coronary syndrome rule-out | Final diagnosis depends on troponin/ECG |
+| case_id       | specialty          | presentation                                | diagnosis                        | missing_fields                          |
+| ------------- | ------------------ | ------------------------------------------- | -------------------------------- | --------------------------------------- |
+| case_seed_001 | Internal Medicine  | Fatigue, thirst, and frequent urination     | Type 2 diabetes mellitus         | None                                    |
+| case_seed_002 | Pediatrics         | Fever, sore throat, and sandpaper-like rash | Scarlet fever                    | Outcome follow-up optional              |
+| case_seed_003 | Emergency Medicine | Sudden chest pain radiating to left arm     | Acute coronary syndrome rule-out | Final diagnosis depends on troponin/ECG |
 
 These rows are intentionally synthetic. They are safe for development fixtures
 but should stay clearly labeled as educational examples.

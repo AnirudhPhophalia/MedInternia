@@ -18,8 +18,12 @@ describe("InternshipCard Component", () => {
     render(<InternshipCard />);
 
     // Default placeholders
-    expect(screen.getByText("Clinical Cardiology Internship")).toBeInTheDocument();
-    expect(screen.getByText("Metropolitan General Hospital")).toBeInTheDocument();
+    expect(
+      screen.getByText("Clinical Cardiology Internship"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Metropolitan General Hospital"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Cardiology")).toBeInTheDocument();
     expect(screen.getByText("6 Months")).toBeInTheDocument();
     expect(screen.getByText("Apply Now")).toBeInTheDocument();
@@ -38,8 +42,12 @@ describe("InternshipCard Component", () => {
 
     render(<InternshipCard internship={customInternship} />);
 
-    expect(screen.getByText("Pediatric Surgery Internship")).toBeInTheDocument();
-    expect(screen.getByText("St. Jude Children's Hospital")).toBeInTheDocument();
+    expect(
+      screen.getByText("Pediatric Surgery Internship"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("St. Jude Children's Hospital"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Pediatrics")).toBeInTheDocument();
     expect(screen.getByText("12 Months")).toBeInTheDocument();
     expect(screen.getByText("Chicago, IL")).toBeInTheDocument();
@@ -52,7 +60,9 @@ describe("InternshipCard Component", () => {
       title: "Neurology Internship",
     };
 
-    render(<InternshipCard internship={customInternship} onApply={handleApply} />);
+    render(
+      <InternshipCard internship={customInternship} onApply={handleApply} />,
+    );
 
     const applyButton = screen.getByRole("button", { name: /apply now/i });
     fireEvent.click(applyButton);

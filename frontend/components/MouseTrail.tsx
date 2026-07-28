@@ -20,7 +20,21 @@ const MouseTrail = () => {
     return () => window.removeEventListener("mousemove", handleMove);
   }, []);
 
-  return <div ref={trailRef} className="mouse-trail" style={{ position: "fixed", left: 0, top: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: 9999 }} />;
+  return (
+    <div
+      ref={trailRef}
+      className="mouse-trail"
+      style={{
+        position: "fixed",
+        left: 0,
+        top: 0,
+        width: "100vw",
+        height: "100vh",
+        pointerEvents: "none",
+        zIndex: 9999,
+      }}
+    />
+  );
 };
 
 export default MouseTrail;

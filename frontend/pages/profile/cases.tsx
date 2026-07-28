@@ -15,7 +15,7 @@ const cases = [
 ];
 
 export default function CasesPage() {
-  const router = require('next/router').useRouter();
+  const router = require("next/router").useRouter();
   return (
     <Box maxWidth={600} mx="auto" my={4}>
       <Card sx={{ p: 4, borderRadius: 4 }}>
@@ -27,7 +27,10 @@ export default function CasesPage() {
             <ListItem
               key={c.id}
               secondaryAction={
-                <Button variant="outlined" onClick={() => router.push(`/cases/${c.id}`)}>
+                <Button
+                  variant="outlined"
+                  onClick={() => router.push(`/cases/${c.id}`)}
+                >
                   View
                 </Button>
               }

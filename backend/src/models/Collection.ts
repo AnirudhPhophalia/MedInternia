@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface ICollection extends Document {
   name: string;
@@ -10,12 +10,16 @@ export interface ICollection extends Document {
   updatedAt: Date;
 }
 
-const CollectionSchema = new Schema<ICollection>({
-  name: { type: String, required: true },
-  description: { type: String },
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  isPublic: { type: Boolean, default: false },
-  cases: [{ type: Schema.Types.ObjectId, ref: 'Case' }]
-}, { timestamps: true });
+const CollectionSchema = new Schema<ICollection>(
+  {
+    name: { type: String, required: true },
+    description: { type: String },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    isPublic: { type: Boolean, default: false },
+    cases: [{ type: Schema.Types.ObjectId, ref: "Case" }],
+  },
+  { timestamps: true },
+);
 
-export default mongoose.models.Collection || mongoose.model<ICollection>('Collection', CollectionSchema);
+export default mongoose.models.Collection ||
+  mongoose.model<ICollection>("Collection", CollectionSchema);

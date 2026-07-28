@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 /**
  * Custom hook to fetch case discussions from backend API.
@@ -6,12 +6,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  */
 export const useGetDiscussions = (caseId) => {
   return useQuery({
-    queryKey: ['discussions', caseId],
+    queryKey: ["discussions", caseId],
     queryFn: async () => {
       if (!caseId) return [];
       const res = await fetch(`/api/cases/${caseId}/discussions`);
       if (!res.ok) {
-        throw new Error('Failed to fetch case discussions');
+        throw new Error("Failed to fetch case discussions");
       }
       const data = await res.json();
       return data.discussions || data;
@@ -30,16 +30,18 @@ export const useAddDiscussion = (caseId) => {
   return useMutation({
     mutationFn: async (newComment) => {
       const res = await fetch(`/api/cases/${caseId}/discussions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(newComment),
       });
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to submit discussion reply');
+        throw new Error(
+          errorData.message || "Failed to submit discussion reply",
+        );
       }
 
       return res.json();
@@ -48,13 +50,16 @@ export const useAddDiscussion = (caseId) => {
     // Optimistic UI updates
     onMutate: async (newComment) => {
       // Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: ['discussions', caseId] });
+      await queryClient.cancelQueries({ queryKey: ["discussions", caseId] });
 
       // Snapshot the previous discussions value
-      const previousDiscussions = queryClient.getQueryData(['discussions', caseId]);
+      const previousDiscussions = queryClient.getQueryData([
+        "discussions",
+        caseId,
+      ]);
 
       // Optimistically update the cache with the new comment
-      queryClient.setQueryData(['discussions', caseId], (old = []) => {
+      queryClient.setQueryData(["discussions", caseId], (old = []) => {
         const optimisticComment = {
           _id: `temp-${Date.now()}`,
           id: `temp-${Date.now()}`,
@@ -62,7 +67,9 @@ export const useAddDiscussion = (caseId) => {
           isOptimistic: true,
           ...newComment,
         };
-        return Array.isArray(old) ? [...old, optimisticComment] : [optimisticComment];
+        return Array.isArray(old)
+          ? [...old, optimisticComment]
+          : [optimisticComment];
       });
 
       // Return context containing snapshot for rollback on error
@@ -72,13 +79,16 @@ export const useAddDiscussion = (caseId) => {
     // If the mutation fails, roll back to the snapshotted state
     onError: (err, newComment, context) => {
       if (context?.previousDiscussions) {
-        queryClient.setQueryData(['discussions', caseId], context.previousDiscussions);
+        queryClient.setQueryData(
+          ["discussions", caseId],
+          context.previousDiscussions,
+        );
       }
     },
 
     // Always refetch after error or success to ensure cache matches server state
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['discussions', caseId] });
+      queryClient.invalidateQueries({ queryKey: ["discussions", caseId] });
     },
   });
 };

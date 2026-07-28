@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Guards a page behind authentication.
@@ -25,9 +25,11 @@ export function useRequireAuth() {
 
     if (!isAuthenticated) {
       const redirectPath = `${router.pathname}${
-        typeof window !== 'undefined' ? window.location.search : ''
+        typeof window !== "undefined" ? window.location.search : ""
       }`;
-      router.replace(`/auth/login?redirect=${encodeURIComponent(redirectPath)}`);
+      router.replace(
+        `/auth/login?redirect=${encodeURIComponent(redirectPath)}`,
+      );
       return;
     }
 

@@ -1,13 +1,17 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import { Request, Response } from 'express';
-import User, { IUser } from '../models/User';
-import Otp from '../models/Otp';
-import transporter from '../utils/mailer';
-import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
-import { AuthRequest, blacklistToken } from '../middleware/auth';
-import { uploadProfileImage } from '../utils/cloudinary';
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { Request, Response } from "express";
+import User, { IUser } from "../models/User";
+import Otp from "../models/Otp";
+import transporter from "../utils/mailer";
+import {
+  generateToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "../utils/jwt";
+import { AuthRequest, blacklistToken } from "../middleware/auth";
+import { uploadProfileImage } from "../utils/cloudinary";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 
@@ -22,7 +26,7 @@ const generateOtpCode = () => crypto.randomInt(100000, 999999).toString();
 const normalizeEmail = (value?: string): string =>
   (value ?? "").toString().trim().toLowerCase();
 
-const issueOtp = async (email: string, purpose: 'signup' | 'reset') => {
+const issueOtp = async (email: string, purpose: "signup" | "reset") => {
   const otp = generateOtpCode();
   const otpHash = await bcrypt.hash(otp, 10);
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -30,7 +34,7 @@ const issueOtp = async (email: string, purpose: 'signup' | 'reset') => {
   await Otp.findOneAndUpdate(
     { email, purpose },
     { otpHash, expiresAt, attempts: 0 },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
   return otp;
@@ -38,23 +42,32 @@ const issueOtp = async (email: string, purpose: 'signup' | 'reset') => {
 
 const consumeOtp = async (
   email: string,
-  purpose: 'signup' | 'reset',
-  submittedOtp: string
+  purpose: "signup" | "reset",
+  submittedOtp: string,
 ): Promise<{ valid: boolean; message?: string }> => {
   const record = await Otp.findOne({ email, purpose });
 
   if (!record) {
-    return { valid: false, message: 'OTP not found or already used. Please request a new one.' };
+    return {
+      valid: false,
+      message: "OTP not found or already used. Please request a new one.",
+    };
   }
 
   if (record.expiresAt.getTime() < Date.now()) {
     await Otp.deleteOne({ _id: record._id });
-    return { valid: false, message: 'OTP has expired. Please request a new one.' };
+    return {
+      valid: false,
+      message: "OTP has expired. Please request a new one.",
+    };
   }
 
   if (record.attempts >= OTP_MAX_ATTEMPTS) {
     await Otp.deleteOne({ _id: record._id });
-    return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
+    return {
+      valid: false,
+      message: "Too many incorrect attempts. Please request a new OTP.",
+    };
   }
 
   const isMatch = await bcrypt.compare(submittedOtp, record.otpHash);
@@ -64,23 +77,25 @@ const consumeOtp = async (
     const updated = await Otp.findOneAndUpdate(
       { _id: record._id, attempts: { $lt: OTP_MAX_ATTEMPTS } },
       { $inc: { attempts: 1 } },
-      { new: true }
+      { new: true },
     );
 
     const attemptsNow = updated ? updated.attempts : OTP_MAX_ATTEMPTS;
 
     if (attemptsNow >= OTP_MAX_ATTEMPTS) {
       await Otp.deleteOne({ _id: record._id });
-      return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
+      return {
+        valid: false,
+        message: "Too many incorrect attempts. Please request a new OTP.",
+      };
     }
 
-    return { valid: false, message: 'Invalid OTP' };
+    return { valid: false, message: "Invalid OTP" };
   }
 
   await Otp.deleteOne({ _id: record._id });
   return { valid: true };
 };
-
 
 // Upload profile picture
 export const uploadProfilePicture = asyncHandler(
@@ -166,20 +181,33 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   let verifiedEmail: string;
   try {
-    const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET as string) as {
+    const decoded = jwt.verify(
+      verificationToken,
+      process.env.JWT_SECRET as string,
+    ) as {
       email?: string;
       purpose?: string;
     };
-    if (!decoded?.email || decoded.purpose !== "signup" || normalizeEmail(decoded.email) !== normalizedEmail) {
+    if (
+      !decoded?.email ||
+      decoded.purpose !== "signup" ||
+      normalizeEmail(decoded.email) !== normalizedEmail
+    ) {
       throw new Error("invalid token payload");
     }
     verifiedEmail = decoded.email;
   } catch {
-    throw new AppError("Invalid or expired verification token. Please verify your email again.", 400);
+    throw new AppError(
+      "Invalid or expired verification token. Please verify your email again.",
+      400,
+    );
   }
 
   if (normalizeEmail(verifiedEmail) !== normalizedEmail) {
-    throw new AppError("Verification token does not match the provided email", 400);
+    throw new AppError(
+      "Verification token does not match the provided email",
+      400,
+    );
   }
 
   // 2. Check if user already exists
@@ -208,12 +236,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       );
     }
 
-    if (typeof licenseNumber !== 'string') {
+    if (typeof licenseNumber !== "string") {
       throw new AppError("Invalid license number format", 400);
     }
 
     // Check if license number already exists
-    const existingLicense = await User.findOne({ licenseNumber: licenseNumber.trim() });
+    const existingLicense = await User.findOne({
+      licenseNumber: licenseNumber.trim(),
+    });
     if (existingLicense) {
       throw new AppError("Doctor with this license number already exists", 409);
     }
@@ -285,14 +315,17 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  res.cookie('token', token, cookieOptions);
-  res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
-  res.cookie('refresh_token', refreshToken, cookieOptions);
+  res.cookie("token", token, cookieOptions);
+  res.cookie("auth_status", "authenticated", {
+    ...cookieOptions,
+    httpOnly: false,
+  });
+  res.cookie("refresh_token", refreshToken, cookieOptions);
 
   res.status(201).json({
     success: true,
@@ -309,25 +342,25 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email) {
-    throw new AppError('Email required', 400);
+    throw new AppError("Email required", 400);
   }
 
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
-    throw new AppError('Email required', 400);
+    throw new AppError("Email required", 400);
   }
-  const otp = await issueOtp(normalizedEmail, 'signup');
+  const otp = await issueOtp(normalizedEmail, "signup");
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: normalizedEmail,
-      subject: 'MedInternia Email Verification OTP',
-      text: `Your OTP is: ${otp}. It will expire in 10 minutes.`
+      subject: "MedInternia Email Verification OTP",
+      text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
     });
-    res.json({ success: true, message: 'OTP sent successfully!' });
+    res.json({ success: true, message: "OTP sent successfully!" });
   } catch (err) {
-    console.error('Send OTP email error:', err);
-    throw new AppError('Failed to send OTP email setup error', 500);
+    console.error("Send OTP email error:", err);
+    throw new AppError("Failed to send OTP email setup error", 500);
   }
 });
 
@@ -335,22 +368,22 @@ export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email, otp } = req.body;
   if (!email || !otp) {
-    throw new AppError('Email and OTP required', 400);
+    throw new AppError("Email and OTP required", 400);
   }
 
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
-    throw new AppError('Email and OTP required', 400);
+    throw new AppError("Email and OTP required", 400);
   }
-  const result = await consumeOtp(normalizedEmail, 'signup', otp);
+  const result = await consumeOtp(normalizedEmail, "signup", otp);
   if (!result.valid) {
-    throw new AppError(result.message || 'Invalid OTP', 400);
+    throw new AppError(result.message || "Invalid OTP", 400);
   }
 
   const verificationToken = jwt.sign(
-    { email: normalizedEmail, purpose: 'signup' },
+    { email: normalizedEmail, purpose: "signup" },
     process.env.JWT_SECRET as string,
-    { expiresIn: '30m' }
+    { expiresIn: "30m" },
   );
 
   res.json({ success: true, verificationToken, email: normalizedEmail });
@@ -365,12 +398,14 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Email and password are required", 400);
   }
 
-  if (typeof email !== 'string') {
+  if (typeof email !== "string") {
     throw new AppError("Invalid email format", 400);
   }
 
   // Find user and include password for comparison
-  const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password +loginAttempts +lockoutUntil");
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+    "+password +loginAttempts +lockoutUntil",
+  );
 
   if (!user) {
     throw new AppError("Invalid email or password", 401);
@@ -385,7 +420,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   if (user.lockoutUntil && user.lockoutUntil > new Date()) {
     const remainingMs = user.lockoutUntil.getTime() - Date.now();
     const remainingMin = Math.ceil(remainingMs / 60000);
-    throw new AppError(`Account is locked. Try again in ${remainingMin} minute(s).`, 429);
+    throw new AppError(
+      `Account is locked. Try again in ${remainingMin} minute(s).`,
+      429,
+    );
   }
 
   // Compare password
@@ -403,7 +441,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   // Reset login attempts on success
   await User.findByIdAndUpdate(user._id, {
-    $set: { loginAttempts: 0, lockoutUntil: null }
+    $set: { loginAttempts: 0, lockoutUntil: null },
   });
 
   // Generate JWT tokens
@@ -421,14 +459,17 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  res.cookie('token', token, cookieOptions);
-  res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
-  res.cookie('refresh_token', refreshToken, cookieOptions);
+  res.cookie("token", token, cookieOptions);
+  res.cookie("auth_status", "authenticated", {
+    ...cookieOptions,
+    httpOnly: false,
+  });
+  res.cookie("refresh_token", refreshToken, cookieOptions);
 
   res.json({
     success: true,
@@ -460,12 +501,30 @@ export const getProfile = asyncHandler(
 );
 
 const ALLOWED_UPDATE_FIELDS = [
-  'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
-  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile', 'orcidId',
-  'specialization', 'experience', 'qualifications',
-  'medicalSchool', 'yearOfStudy', 'interests',
-  'academicAchievements', 'careerGoals',
-  'emergencyContact', 'medicalHistory', 'allergies', 'messagePrivacy', 'preferredModel'
+  "firstName",
+  "lastName",
+  "phone",
+  "dateOfBirth",
+  "gender",
+  "address",
+  "bio",
+  "profilePicture",
+  "linkedInProfile",
+  "githubProfile",
+  "orcidId",
+  "specialization",
+  "experience",
+  "qualifications",
+  "medicalSchool",
+  "yearOfStudy",
+  "interests",
+  "academicAchievements",
+  "careerGoals",
+  "emergencyContact",
+  "medicalHistory",
+  "allergies",
+  "messagePrivacy",
+  "preferredModel",
 ];
 
 // Update user profile
@@ -558,7 +617,7 @@ export const forgotPassword = asyncHandler(
     if (!email) {
       throw new AppError("Email required", 400);
     }
-    if (typeof email !== 'string') {
+    if (typeof email !== "string") {
       throw new AppError("Invalid email format", 400);
     }
     const user = await User.findOne({ email: email.toLowerCase().trim() });
@@ -566,11 +625,11 @@ export const forgotPassword = asyncHandler(
     if (!user) {
       return res.json({
         success: true,
-        message: "If an account exists with this email, an OTP has been sent."
+        message: "If an account exists with this email, an OTP has been sent.",
       });
     }
     // Generate OTP
-    const otp = await issueOtp(email, 'reset');
+    const otp = await issueOtp(email, "reset");
 
     try {
       await transporter.sendMail({
@@ -594,13 +653,13 @@ export const resetPassword = asyncHandler(
     if (!email || !otp || !newPassword) {
       throw new AppError("All fields required", 400);
     }
-    if (typeof email !== 'string') {
+    if (typeof email !== "string") {
       throw new AppError("Invalid email format", 400);
     }
     if (newPassword.length < 6) {
       throw new AppError("Password must be at least 6 characters", 400);
     }
-    const result = await consumeOtp(email, 'reset', otp);
+    const result = await consumeOtp(email, "reset", otp);
     if (!result.valid) {
       throw new AppError(result.message || "Invalid OTP", 400);
     }
@@ -611,7 +670,7 @@ export const resetPassword = asyncHandler(
     user.password = newPassword;
     user.passwordChangedAt = new Date();
     await user.save();
-    return res.json({ success: true, message: 'Password reset successfully' });
+    return res.json({ success: true, message: "Password reset successfully" });
   },
 );
 
@@ -620,14 +679,14 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   const authHeader = req.headers.authorization;
   let token: string | undefined;
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.substring(7);
   } else if (req.cookies?.token) {
     token = req.cookies.token;
   }
 
   if (!token) {
-    throw new AppError('No token provided', 400);
+    throw new AppError("No token provided", 400);
   }
 
   const rawDecoded = jwt.decode(token) as { exp?: number } | null;
@@ -638,64 +697,74 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
     await blacklistToken(token, new Date(Date.now() + remainingMs));
   }
 
-  res.clearCookie('token');
-  res.clearCookie('auth_status');
-  res.json({ success: true, message: 'Logged out successfully' });
+  res.clearCookie("token");
+  res.clearCookie("auth_status");
+  res.json({ success: true, message: "Logged out successfully" });
 });
 
-export const syncOrcidPublications = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = req.user;
-  if (!user) {
-    throw new AppError("User not authenticated", 401);
-  }
-
-  if (!user.orcidId) {
-    throw new AppError("No ORCID iD provided in your profile", 400);
-  }
-
-  try {
-    const response = await fetch(`https://pub.orcid.org/v3.0/${user.orcidId}/works`, {
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch from ORCID API');
+export const syncOrcidPublications = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = req.user;
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
     }
 
-    const data = await response.json();
-    const works = data?.group || [];
+    if (!user.orcidId) {
+      throw new AppError("No ORCID iD provided in your profile", 400);
+    }
 
-    const publications = works.map((workGroup: any) => {
-      const workSummary = workGroup['work-summary']?.[0];
-      if (!workSummary) return null;
+    try {
+      const response = await fetch(
+        `https://pub.orcid.org/v3.0/${user.orcidId}/works`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
 
-      return {
-        title: workSummary.title?.title?.value || 'Untitled',
-        year: workSummary['publication-date']?.year?.value || 'Unknown',
-        journal: workSummary['journal-title']?.value || 'Unknown Journal',
-        url: workSummary.url?.value || ''
-      };
-    }).filter(Boolean);
-
-    const updatedUser = await User.findByIdAndUpdate(
-      user._id,
-      { publications },
-      { new: true, runValidators: true }
-    ).select("-password");
-
-    res.json({
-      success: true,
-      message: "ORCID publications synced successfully",
-      data: {
-        user: updatedUser
+      if (!response.ok) {
+        throw new Error("Failed to fetch from ORCID API");
       }
-    });
-  } catch (error) {
-    throw new AppError("Failed to sync ORCID publications. Please check your ORCID iD.", 500);
-  }
-});
+
+      const data = await response.json();
+      const works = data?.group || [];
+
+      const publications = works
+        .map((workGroup: any) => {
+          const workSummary = workGroup["work-summary"]?.[0];
+          if (!workSummary) return null;
+
+          return {
+            title: workSummary.title?.title?.value || "Untitled",
+            year: workSummary["publication-date"]?.year?.value || "Unknown",
+            journal: workSummary["journal-title"]?.value || "Unknown Journal",
+            url: workSummary.url?.value || "",
+          };
+        })
+        .filter(Boolean);
+
+      const updatedUser = await User.findByIdAndUpdate(
+        user._id,
+        { publications },
+        { new: true, runValidators: true },
+      ).select("-password");
+
+      res.json({
+        success: true,
+        message: "ORCID publications synced successfully",
+        data: {
+          user: updatedUser,
+        },
+      });
+    } catch (error) {
+      throw new AppError(
+        "Failed to sync ORCID publications. Please check your ORCID iD.",
+        500,
+      );
+    }
+  },
+);
 
 // Issue a new access token from a valid refresh token without forcing the user
 // to log in again. The refresh token is sent as an HTTP-only cookie (set on
@@ -708,20 +777,20 @@ export const refreshToken = asyncHandler(
     const incomingRefreshToken = cookieToken || bodyToken;
 
     if (!incomingRefreshToken) {
-      throw new AppError('Refresh token is required', 401);
+      throw new AppError("Refresh token is required", 401);
     }
 
     const decoded = verifyRefreshToken(incomingRefreshToken);
     if (!decoded) {
-      throw new AppError('Invalid or expired refresh token', 401);
+      throw new AppError("Invalid or expired refresh token", 401);
     }
 
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId).select("-password");
     if (!user) {
-      throw new AppError('User not found', 401);
+      throw new AppError("User not found", 401);
     }
     if (!user.isActive) {
-      throw new AppError('Account is deactivated', 401);
+      throw new AppError("Account is deactivated", 401);
     }
 
     const tokenPayload = {
@@ -734,15 +803,15 @@ export const refreshToken = asyncHandler(
 
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax" as const,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
-    res.cookie('refresh_token', newRefreshToken, cookieOptions);
+    res.cookie("refresh_token", newRefreshToken, cookieOptions);
 
     res.json({
       success: true,
-      message: 'Token refreshed successfully',
+      message: "Token refreshed successfully",
       data: {
         token: newAccessToken,
         refreshToken: newRefreshToken,

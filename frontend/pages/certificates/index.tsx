@@ -1,48 +1,61 @@
-
-import { useEffect, useState } from 'react';
-import { Container, Typography, Box, CircularProgress, Alert } from '@mui/material';
-import Stack from '@mui/material/Stack';
-import api from '../../utils/api';
-import CertificateCard from '../../components/CertificateCard';
+import { useEffect, useState } from "react";
+import {
+  Container,
+  Typography,
+  Box,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+import Stack from "@mui/material/Stack";
+import api from "../../utils/api";
+import CertificateCard from "../../components/CertificateCard";
 
 export default function Certificates() {
   const [certificates, setCertificates] = useState<any[]>([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
+    const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
     if (!userId) {
-      setError('User ID not found. Please login again.');
+      setError("User ID not found. Please login again.");
       setLoading(false);
       return;
     }
-    api.get(`/certificates/user/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => {
+    api
+      .get(`/certificates/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
         setCertificates(res.data.data.certificates || []);
         setLoading(false);
       })
       .catch(() => {
-        setError('Failed to fetch certificates');
+        setError("Failed to fetch certificates");
         setLoading(false);
       });
   }, []);
 
-  if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
+  if (loading)
+    return (
+      <Box display="flex" justifyContent="center" mt={4}>
+        <CircularProgress />
+      </Box>
+    );
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <Container maxWidth="md">
       <Box sx={{ my: 4 }}>
-        <Typography variant="h4" gutterBottom>My Certificates</Typography>
+        <Typography variant="h4" gutterBottom>
+          My Certificates
+        </Typography>
         <Stack spacing={2}>
           {certificates.length === 0 ? (
             <Typography>No certificates found.</Typography>
           ) : (
-            certificates.map(c => (
+            certificates.map((c) => (
               <CertificateCard key={c._id} certificate={c} />
             ))
           )}

@@ -1,26 +1,37 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { Container, Typography, Box, CircularProgress, Alert, Card, CardContent, Button, Stack } from '@mui/material';
-import MessageIcon from '@mui/icons-material/Message';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import api from '../../utils/api';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import {
+  Container,
+  Typography,
+  Box,
+  CircularProgress,
+  Alert,
+  Card,
+  CardContent,
+  Button,
+  Stack,
+} from "@mui/material";
+import MessageIcon from "@mui/icons-material/Message";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import api from "../../utils/api";
 
 export default function UserProfile() {
   const router = useRouter();
   const { id } = router.query;
   const [user, setUser] = useState<any>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-    api.get(`/users/${id}/public`)
-      .then(res => {
+    api
+      .get(`/users/${id}/public`)
+      .then((res) => {
         setUser(res.data.data.user);
         setLoading(false);
       })
       .catch(() => {
-        setError('Failed to fetch user profile');
+        setError("Failed to fetch user profile");
         setLoading(false);
       });
   }, [id]);
@@ -34,10 +45,12 @@ export default function UserProfile() {
       <Box sx={{ my: 4 }}>
         <Card>
           <CardContent>
-            <Typography variant="h4" gutterBottom>{user.firstName} {user.lastName}</Typography>
+            <Typography variant="h4" gutterBottom>
+              {user.firstName} {user.lastName}
+            </Typography>
             <Typography variant="body1">Email: {user.email}</Typography>
             <Typography variant="body1">User Type: {user.userType}</Typography>
-            
+
             {user.publications && user.publications.length > 0 && (
               <Box mt={3}>
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
@@ -45,8 +58,19 @@ export default function UserProfile() {
                 </Typography>
                 <Stack spacing={2}>
                   {user.publications.map((pub: any, index: number) => (
-                    <Box key={index} sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                      <Typography variant="subtitle1" fontWeight={600} color="primary">
+                    <Box
+                      key={index}
+                      sx={{
+                        p: 2,
+                        border: "1px solid #e0e0e0",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={600}
+                        color="primary"
+                      >
                         {pub.title}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -61,7 +85,7 @@ export default function UserProfile() {
                           href={pub.url}
                           target="_blank"
                           startIcon={<MenuBookIcon />}
-                          sx={{ mt: 1, textTransform: 'none' }}
+                          sx={{ mt: 1, textTransform: "none" }}
                           rel="noopener noreferrer"
                         >
                           View Paper
@@ -74,9 +98,9 @@ export default function UserProfile() {
             )}
 
             <Box mt={3}>
-              <Button 
-                variant="contained" 
-                color="primary" 
+              <Button
+                variant="contained"
+                color="primary"
                 startIcon={<MessageIcon />}
                 onClick={() => router.push(`/messages?userId=${user._id}`)}
               >

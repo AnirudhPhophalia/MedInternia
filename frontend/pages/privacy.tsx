@@ -1,5 +1,12 @@
-import { Box, Container, Paper, Stack, Typography,IconButton } from "@mui/material";
-import { Lock, ShieldCheck,X } from "lucide-react";
+import {
+  Box,
+  Container,
+  Paper,
+  Stack,
+  Typography,
+  IconButton,
+} from "@mui/material";
+import { Lock, ShieldCheck, X } from "lucide-react";
 import { useRouter } from "next/router";
 const sections = [
   {
@@ -21,9 +28,15 @@ const sections = [
 ];
 
 export default function PrivacyPage() {
-   const router = useRouter(); 
+  const router = useRouter();
   return (
-    <Box sx={{ flex: 1, background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)", py: { xs: 6, md: 10 } }}>
+    <Box
+      sx={{
+        flex: 1,
+        background: "linear-gradient(120deg, #e0eafc 0%, #f8f9fa 100%)",
+        py: { xs: 6, md: 10 },
+      }}
+    >
       <Container maxWidth="md">
         <Paper
           elevation={0}
@@ -32,7 +45,7 @@ export default function PrivacyPage() {
             borderRadius: 5,
             border: "1px solid rgba(33,147,176,0.12)",
             boxShadow: "0 12px 36px rgba(33,147,176,0.14)",
-            position:'relative'
+            position: "relative",
           }}
         >
           <IconButton
@@ -46,7 +59,7 @@ export default function PrivacyPage() {
               transition: "all 0.2s ease-in-out",
               "&:hover": {
                 color: "#0072ff",
-                 backgroundColor: "rgba(0, 114, 255, 0.08)",
+                backgroundColor: "rgba(0, 114, 255, 0.08)",
                 transform: "scale(1.05)",
               },
             }}
@@ -55,18 +68,32 @@ export default function PrivacyPage() {
           </IconButton>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
             <ShieldCheck size={42} color="#0072ff" />
-            <Typography variant="h2" fontWeight={900} color="#0072ff" sx={{ fontSize: { xs: "2.2rem", md: "3.5rem" } }}>
+            <Typography
+              variant="h2"
+              fontWeight={900}
+              color="#0072ff"
+              sx={{ fontSize: { xs: "2.2rem", md: "3.5rem" } }}
+            >
               Privacy Policy
             </Typography>
           </Stack>
           <Typography color="text.secondary" sx={{ mb: 4, lineHeight: 1.7 }}>
-            This page explains how MedInternia handles user information and platform data.
+            This page explains how MedInternia handles user information and
+            platform data.
           </Typography>
 
           <Stack spacing={3}>
             {sections.map((section) => (
-              <Box key={section.title} sx={{ p: 3, borderRadius: 3, bgcolor: "rgba(33,147,176,0.08)" }}>
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <Box
+                key={section.title}
+                sx={{ p: 3, borderRadius: 3, bgcolor: "rgba(33,147,176,0.08)" }}
+              >
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="center"
+                  sx={{ mb: 1 }}
+                >
                   <Lock size={18} color="#0072ff" />
                   <Typography variant="h6" fontWeight={800}>
                     {section.title}

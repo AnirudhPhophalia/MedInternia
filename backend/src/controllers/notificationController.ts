@@ -1,45 +1,45 @@
-import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import Notification, { INotification } from '../models/Notification';
-import User from '../models/User';
-import { emitToUser } from '../utils/socket';
+import { Response } from "express";
+import { AuthRequest } from "../middleware/auth";
+import Notification, { INotification } from "../models/Notification";
+import User from "../models/User";
+import { emitToUser } from "../utils/socket";
 
 // ─────────────────────────────────────────────
 // CORE HELPER — used by ALL other controllers
 // ─────────────────────────────────────────────
 interface CreateNotificationOptions {
   recipientId: string;
-  type: INotification['type'];
+  type: INotification["type"];
   message: string;
   link?: string;
   payload?: Record<string, any>;
 }
 
 export const createAndEmitNotification = async (
-  opts: CreateNotificationOptions
+  opts: CreateNotificationOptions,
 ): Promise<void> => {
   try {
     const notification = await Notification.create({
       recipient: opts.recipientId,
-      type:      opts.type,
-      message:   opts.message,
-      link:      opts.link,
-      payload:   opts.payload,
+      type: opts.type,
+      message: opts.message,
+      link: opts.link,
+      payload: opts.payload,
     });
 
     // Emit real-time event to the recipient's private socket room
-    emitToUser(opts.recipientId.toString(), 'new_notification', {
-      _id:       notification._id,
-      type:      notification.type,
-      message:   notification.message,
-      link:      notification.link,
-      payload:   notification.payload,
-      isRead:    notification.isRead,
+    emitToUser(opts.recipientId.toString(), "new_notification", {
+      _id: notification._id,
+      type: notification.type,
+      message: notification.message,
+      link: notification.link,
+      payload: notification.payload,
+      isRead: notification.isRead,
       createdAt: notification.createdAt,
     });
   } catch (error) {
     // Never crash the parent operation if notification fails
-    console.error('Failed to create/emit notification:', error);
+    console.error("Failed to create/emit notification:", error);
   }
 };
 
@@ -49,11 +49,11 @@ export const createAndEmitNotification = async (
 // ─────────────────────────────────────────────
 export const getNotifications = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
+      res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
@@ -63,7 +63,9 @@ export const getNotifications = async (
 
     res.json({ success: true, notifications });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching notifications' });
+    res
+      .status(500)
+      .json({ success: false, message: "Error fetching notifications" });
   }
 };
 
@@ -73,11 +75,11 @@ export const getNotifications = async (
 // ─────────────────────────────────────────────
 export const markRead = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
+      res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
@@ -85,12 +87,14 @@ export const markRead = async (
 
     await Notification.updateOne(
       { _id: id, recipient: req.user._id },
-      { isRead: true }
+      { isRead: true },
     );
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error marking notification as read' });
+    res
+      .status(500)
+      .json({ success: false, message: "Error marking notification as read" });
   }
 };
 
@@ -100,22 +104,24 @@ export const markRead = async (
 // ─────────────────────────────────────────────
 export const markAllRead = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     if (!req.user) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
+      res.status(401).json({ success: false, message: "Unauthorized" });
       return;
     }
 
     await Notification.updateMany(
       { recipient: req.user._id, isRead: false },
-      { isRead: true }
+      { isRead: true },
     );
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error marking all as read' });
+    res
+      .status(500)
+      .json({ success: false, message: "Error marking all as read" });
   }
 };
 
@@ -124,20 +130,22 @@ export const markAllRead = async (
 // ─────────────────────────────────────────────
 export const notifyInternsWebinar = async (webinar: any): Promise<void> => {
   try {
-    const interns = await User.find({ userType: 'intern' }).select('_id').lean();
+    const interns = await User.find({ userType: "intern" })
+      .select("_id")
+      .lean();
 
     await Promise.all(
       interns.map((intern) =>
         createAndEmitNotification({
           recipientId: String(intern._id),
-          type:    'webinar',
+          type: "webinar",
           message: `New webinar: "${webinar.title}" — join now`,
-          link:    webinar.meetingLink,
+          link: webinar.meetingLink,
           payload: { webinarId: webinar._id },
-        })
-      )
+        }),
+      ),
     );
   } catch (error) {
-    console.error('Failed to notify interns about webinar:', error);
+    console.error("Failed to notify interns about webinar:", error);
   }
 };

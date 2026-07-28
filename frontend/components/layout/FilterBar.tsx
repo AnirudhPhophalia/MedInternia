@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Box,
   TextField,
@@ -8,9 +8,9 @@ import {
   IconButton,
   Stack,
   Switch,
-  FormControlLabel
-} from '@mui/material';
-import { Search, X } from 'lucide-react';
+  FormControlLabel,
+} from "@mui/material";
+import { Search, X } from "lucide-react";
 
 export interface FilterOption {
   value: string;
@@ -33,37 +33,39 @@ export interface FilterBarProps {
 }
 
 const defaultSpecialties: FilterOption[] = [
-  { value: '', label: 'All Specialties' },
-  { value: 'Cardiology', label: 'Cardiology' },
-  { value: 'Neurology', label: 'Neurology' },
-  { value: 'Pulmonology', label: 'Pulmonology' },
-  { value: 'Gastroenterology', label: 'Gastroenterology' },
-  { value: 'Orthopedics', label: 'Orthopedics' },
-  { value: 'General', label: 'General' },
+  { value: "", label: "All Specialties" },
+  { value: "Cardiology", label: "Cardiology" },
+  { value: "Neurology", label: "Neurology" },
+  { value: "Pulmonology", label: "Pulmonology" },
+  { value: "Gastroenterology", label: "Gastroenterology" },
+  { value: "Orthopedics", label: "Orthopedics" },
+  { value: "General", label: "General" },
 ];
 
 const defaultDifficulties: FilterOption[] = [
-  { value: '', label: 'All Levels' },
-  { value: 'Beginner', label: 'Beginner' },
-  { value: 'Intermediate', label: 'Intermediate' },
-  { value: 'Advanced', label: 'Advanced' },
+  { value: "", label: "All Levels" },
+  { value: "Beginner", label: "Beginner" },
+  { value: "Intermediate", label: "Intermediate" },
+  { value: "Advanced", label: "Advanced" },
 ];
 
 export default function FilterBar({
   searchValue,
   onSearchChange,
-  searchPlaceholder = 'Search by title or topic…',
-  specialtyValue = '',
+  searchPlaceholder = "Search by title or topic…",
+  specialtyValue = "",
   onSpecialtyChange,
   specialtyOptions = defaultSpecialties,
-  difficultyValue = '',
+  difficultyValue = "",
   onDifficultyChange,
   difficultyOptions = defaultDifficulties,
   isRareDiseaseValue = false,
   onRareDiseaseChange,
   onClear,
 }: FilterBarProps) {
-  const hasActiveFilters = Boolean(searchValue || specialtyValue || difficultyValue || isRareDiseaseValue);
+  const hasActiveFilters = Boolean(
+    searchValue || specialtyValue || difficultyValue || isRareDiseaseValue,
+  );
 
   return (
     <Paper
@@ -74,15 +76,15 @@ export default function FilterBar({
         p: { xs: 2, sm: 2.5 },
         mb: 3,
         borderRadius: 3,
-        border: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        border: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
       }}
     >
       <Stack
-        direction={{ xs: 'column', md: 'row' }}
+        direction={{ xs: "column", md: "row" }}
         spacing={2}
-        alignItems={{ xs: 'stretch', md: 'center' }}
+        alignItems={{ xs: "stretch", md: "center" }}
       >
         <TextField
           fullWidth
@@ -102,7 +104,7 @@ export default function FilterBar({
                 <IconButton
                   size="small"
                   aria-label="Clear search"
-                  onClick={() => onSearchChange('')}
+                  onClick={() => onSearchChange("")}
                 >
                   <X size={16} />
                 </IconButton>
@@ -124,7 +126,7 @@ export default function FilterBar({
             sx={{ flex: { md: 1 }, minWidth: { md: 160 } }}
           >
             {specialtyOptions.map((opt) => (
-              <MenuItem key={opt.value || 'all'} value={opt.value}>
+              <MenuItem key={opt.value || "all"} value={opt.value}>
                 {opt.label}
               </MenuItem>
             ))}
@@ -143,7 +145,7 @@ export default function FilterBar({
             sx={{ flex: { md: 1 }, minWidth: { md: 160 } }}
           >
             {difficultyOptions.map((opt) => (
-              <MenuItem key={opt.value || 'all'} value={opt.value}>
+              <MenuItem key={opt.value || "all"} value={opt.value}>
                 {opt.label}
               </MenuItem>
             ))}
@@ -151,7 +153,7 @@ export default function FilterBar({
         )}
 
         {onRareDiseaseChange && (
-          <Box sx={{ display: 'flex', alignItems: 'center', ml: { md: 2 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", ml: { md: 2 } }}>
             <FormControlLabel
               control={
                 <Switch
@@ -162,23 +164,23 @@ export default function FilterBar({
                 />
               }
               label="Rare Diseases"
-              sx={{ whiteSpace: 'nowrap', mr: 0 }}
+              sx={{ whiteSpace: "nowrap", mr: 0 }}
             />
           </Box>
         )}
 
         {hasActiveFilters && onClear && (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
             <IconButton
               onClick={onClear}
               aria-label="Clear all filters"
               sx={{
-                color: 'text.secondary',
-                border: '1px solid',
-                borderColor: 'divider',
+                color: "text.secondary",
+                border: "1px solid",
+                borderColor: "divider",
                 borderRadius: 2,
                 px: 2,
-                width: { xs: '100%', md: 'auto' },
+                width: { xs: "100%", md: "auto" },
               }}
             >
               <X size={16} style={{ marginRight: 6 }} />

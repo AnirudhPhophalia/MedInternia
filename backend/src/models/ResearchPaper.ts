@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IDiscussionComment {
   _id?: mongoose.Types.ObjectId;
@@ -21,33 +21,40 @@ export interface IResearchPaper extends Document {
   createdAt: Date;
 }
 
-const DiscussionCommentSchema = new Schema<IDiscussionComment>({
-  author: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+const DiscussionCommentSchema = new Schema<IDiscussionComment>(
+  {
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    content: {
+      type: String,
+      required: [true, "Comment content is required"],
+      trim: true,
+      maxlength: [2000, "Comment cannot be more than 2000 characters"],
+    },
+    replies: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "DiscussionComment",
+      },
+    ],
+    replyTo: {
+      type: Schema.Types.ObjectId,
+      ref: "DiscussionComment",
+    },
+    likes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
-  content: {
-    type: String,
-    required: [true, 'Comment content is required'],
-    trim: true,
-    maxlength: [2000, 'Comment cannot be more than 2000 characters'],
+  {
+    timestamps: true,
   },
-  replies: [{
-    type: Schema.Types.ObjectId,
-    ref: 'DiscussionComment',
-  }],
-  replyTo: {
-    type: Schema.Types.ObjectId,
-    ref: 'DiscussionComment',
-  },
-  likes: [{
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-  }],
-}, {
-  timestamps: true,
-});
+);
 
 const ResearchPaperSchema = new Schema<IResearchPaper>({
   title: { type: String, required: true },
@@ -59,4 +66,7 @@ const ResearchPaperSchema = new Schema<IResearchPaper>({
   createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.model<IResearchPaper>('ResearchPaper', ResearchPaperSchema);
+export default mongoose.model<IResearchPaper>(
+  "ResearchPaper",
+  ResearchPaperSchema,
+);

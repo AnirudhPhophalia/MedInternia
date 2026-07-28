@@ -1,97 +1,98 @@
-import videoRoutes from './video';
-import chatbotRoutes from './chatbot';
-import researchPaperRoutes from './researchPapers';
-import { Router, Request, Response } from 'express';
-import authRoutes from './auth';
-import patientRoutes from './patients';
-import doctorRoutes from './doctors';
-import caseRoutes from './cases';
-import enhancedRoutes from './enhanced';
-import badgeRoutes from './badges';
-import peerReviewRoutes from './peerReviews';
-import mentorshipRoutes from './mentorship';
-import jobRoutes from './jobs';
-import certificateRoutes from './certificates';
-import webinarRoutes from './webinars';
-import userRoutes from './users';
-import integrationRoutes from './integration';
-import notificationRoutes from './notifications';
-import diseaseInsightRoutes from './diseaseInsights';
-import symptomRoutes from './symptoms';
+import videoRoutes from "./video";
+import chatbotRoutes from "./chatbot";
+import researchPaperRoutes from "./researchPapers";
+import { Router, Request, Response } from "express";
+import authRoutes from "./auth";
+import patientRoutes from "./patients";
+import doctorRoutes from "./doctors";
+import caseRoutes from "./cases";
+import enhancedRoutes from "./enhanced";
+import badgeRoutes from "./badges";
+import peerReviewRoutes from "./peerReviews";
+import mentorshipRoutes from "./mentorship";
+import jobRoutes from "./jobs";
+import certificateRoutes from "./certificates";
+import webinarRoutes from "./webinars";
+import userRoutes from "./users";
+import integrationRoutes from "./integration";
+import notificationRoutes from "./notifications";
+import diseaseInsightRoutes from "./diseaseInsights";
+import symptomRoutes from "./symptoms";
 import diaryRoutes from "./diary";
-import messageRoutes from './messageRoutes';
-import flashcardRoutes from './flashcards';
-import collectionRoutes from './collections';
-import learningPathRoutes from './learningPaths';
-import waitlistRoutes from './waitlist';
+import messageRoutes from "./messageRoutes";
+import flashcardRoutes from "./flashcards";
+import collectionRoutes from "./collections";
+import learningPathRoutes from "./learningPaths";
+import waitlistRoutes from "./waitlist";
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
+router.get("/", (req: Request, res: Response) => {
   res.json({
-    message: 'Doctor-Intern Collaboration Platform API',
-    version: '3.0.0',
-    description: 'Comprehensive medical education platform connecting doctors, interns, and patients',
+    message: "Doctor-Intern Collaboration Platform API",
+    version: "3.0.0",
+    description:
+      "Comprehensive medical education platform connecting doctors, interns, and patients",
     features: [
-      'Case-based learning',
-      'Peer review system',
-      'Badge & certification system',
-      'Job opportunities board',
-      'Webinars & AMAs',
-      'AI-powered suggestions',
-      'Live video conferencing'
+      "Case-based learning",
+      "Peer review system",
+      "Badge & certification system",
+      "Job opportunities board",
+      "Webinars & AMAs",
+      "AI-powered suggestions",
+      "Live video conferencing",
     ],
-      endpoints: {
-        auth: '/api/auth',
-        users: '/api/users',
-        patients: '/api/patients',
-        doctors: '/api/doctors',
-        cases: '/api/cases',
-        aiCasePosts: '/api/cases/ai-posts',
-        diseaseInsights: '/api/ai-disease-insights',
-        badges: '/api/badges',
-        peerReviews: '/api/peer-reviews',
-        jobs: '/api/jobs',
-        certificates: '/api/certificates',
-        webinars: '/api/webinars',
-        symptoms: '/api/symptoms/extract',
-        leaderboard: '/api/leaderboard',
-        search: '/api/search',
-        smartSearch: '/api/search/smart'
-      }
+    endpoints: {
+      auth: "/api/auth",
+      users: "/api/users",
+      patients: "/api/patients",
+      doctors: "/api/doctors",
+      cases: "/api/cases",
+      aiCasePosts: "/api/cases/ai-posts",
+      diseaseInsights: "/api/ai-disease-insights",
+      badges: "/api/badges",
+      peerReviews: "/api/peer-reviews",
+      jobs: "/api/jobs",
+      certificates: "/api/certificates",
+      webinars: "/api/webinars",
+      symptoms: "/api/symptoms/extract",
+      leaderboard: "/api/leaderboard",
+      search: "/api/search",
+      smartSearch: "/api/search/smart",
+    },
   });
 });
 
-router.get('/test', (req: Request, res: Response) => {
+router.get("/test", (req: Request, res: Response) => {
   res.json({
-    message: 'Test route is working!',
-    timestamp: new Date().toISOString()
+    message: "Test route is working!",
+    timestamp: new Date().toISOString(),
   });
 });
 
-router.use('/auth', authRoutes);
-router.use('/chatbot', chatbotRoutes);
-router.use('/video', videoRoutes);
-router.use('/users', userRoutes);
-router.use('/patients', patientRoutes);
-router.use('/doctors', doctorRoutes);
-router.use('/cases', caseRoutes);
-router.use('/ai-disease-insights', diseaseInsightRoutes);
-router.use('/badges', badgeRoutes);
-router.use('/peer-reviews', peerReviewRoutes);
-router.use('/mentorship', mentorshipRoutes);
-router.use('/jobs', jobRoutes);
-router.use('/certificates', certificateRoutes);
-router.use('/webinars', webinarRoutes);
-router.use('/notifications', notificationRoutes);
-router.use('/integration', integrationRoutes);
-router.use('/symptoms', symptomRoutes);
-router.use('/', enhancedRoutes);
-router.use('/research-papers', researchPaperRoutes);
+router.use("/auth", authRoutes);
+router.use("/chatbot", chatbotRoutes);
+router.use("/video", videoRoutes);
+router.use("/users", userRoutes);
+router.use("/patients", patientRoutes);
+router.use("/doctors", doctorRoutes);
+router.use("/cases", caseRoutes);
+router.use("/ai-disease-insights", diseaseInsightRoutes);
+router.use("/badges", badgeRoutes);
+router.use("/peer-reviews", peerReviewRoutes);
+router.use("/mentorship", mentorshipRoutes);
+router.use("/jobs", jobRoutes);
+router.use("/certificates", certificateRoutes);
+router.use("/webinars", webinarRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/integration", integrationRoutes);
+router.use("/symptoms", symptomRoutes);
+router.use("/", enhancedRoutes);
+router.use("/research-papers", researchPaperRoutes);
 router.use("/diaries", diaryRoutes);
-router.use('/messages', messageRoutes);
-router.use('/flashcards', flashcardRoutes);
-router.use('/collections', collectionRoutes);
-router.use('/learning-paths', learningPathRoutes);
-router.use('/waitlist', waitlistRoutes);
+router.use("/messages", messageRoutes);
+router.use("/flashcards", flashcardRoutes);
+router.use("/collections", collectionRoutes);
+router.use("/learning-paths", learningPathRoutes);
+router.use("/waitlist", waitlistRoutes);
 
 export default router;

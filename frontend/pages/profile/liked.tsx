@@ -27,7 +27,7 @@ export default function LikedPage() {
   useEffect(() => {
     const fetchLikedCases = async () => {
       try {
-        const res = await api.get('/cases/liked');
+        const res = await api.get("/cases/liked");
         setLikedCases(res.data?.data?.cases || []);
       } catch (err) {
         setError("Could not load liked items. Please try again.");
@@ -75,8 +75,19 @@ export default function LikedPage() {
                   </IconButton>
                 }
               >
-                <Link href={`/cases/${item._id}`} passHref style={{ textDecoration: "none", color: "inherit", width: "100%" }}>
-                  <ListItemText primary={item.title} secondary={item.specialization} />
+                <Link
+                  href={`/cases/${item._id}`}
+                  passHref
+                  style={{
+                    textDecoration: "none",
+                    color: "inherit",
+                    width: "100%",
+                  }}
+                >
+                  <ListItemText
+                    primary={item.title}
+                    secondary={item.specialization}
+                  />
                 </Link>
               </ListItem>
             ))}

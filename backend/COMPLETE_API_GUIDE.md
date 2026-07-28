@@ -1,6 +1,7 @@
 # Healthcare Backend API - Complete Guide
 
 ## Server Information
+
 **Base URL**: `http://localhost:3000`
 
 **Status**: Active development
@@ -10,6 +11,7 @@
 ## Available Request URLs
 
 ### General Endpoints
+
 ```text
 GET  http://localhost:3000/health
 GET  http://localhost:3000/api
@@ -17,6 +19,7 @@ GET  http://localhost:3000/api/test
 ```
 
 ### Authentication Endpoints
+
 ```text
 POST http://localhost:3000/api/auth/register
 POST http://localhost:3000/api/auth/login
@@ -30,6 +33,7 @@ GET  http://localhost:3000/api/auth/validate-token
 Protected routes above require authentication. For browser sessions, the backend sets a token cookie on login/register; for API clients, use `Authorization: Bearer <token>`.
 
 ### User Management Endpoints
+
 ```text
 GET  http://localhost:3000/api/patients
 GET  http://localhost:3000/api/patients/:id
@@ -38,6 +42,7 @@ GET  http://localhost:3000/api/doctors/:id
 ```
 
 ### Medical Case Endpoints
+
 ```text
 GET    http://localhost:3000/api/cases
 POST   http://localhost:3000/api/cases
@@ -53,7 +58,9 @@ POST http://localhost:3000/api/cases/:id/like
 ## Registration Requirements
 
 ### Patient Registration
+
 Required:
+
 - `firstName`
 - `lastName`
 - `email`
@@ -61,6 +68,7 @@ Required:
 - `userType: "patient"`
 
 Optional:
+
 - `phone`
 - `dateOfBirth`
 - `gender`
@@ -70,7 +78,9 @@ Optional:
 - `allergies`
 
 ### Doctor Registration
+
 Required:
+
 - `firstName`
 - `lastName`
 - `email`
@@ -80,6 +90,7 @@ Required:
 - `licenseNumber`
 
 Optional:
+
 - `phone`
 - `dateOfBirth`
 - `gender`
@@ -90,10 +101,12 @@ Optional:
 ## Login Requirements
 
 Required:
+
 - `email`
 - `password`
 
 Successful login returns:
+
 - `user`
 - `token`
 - `refreshToken`
@@ -109,6 +122,7 @@ Authorization: Bearer YOUR_JWT_TOKEN_HERE
 ```
 
 Protected auth routes currently include:
+
 - `GET /api/auth/profile`
 - `PUT /api/auth/profile`
 - `PUT /api/auth/change-password`
@@ -118,6 +132,7 @@ Protected auth routes currently include:
 ## Response Formats
 
 ### Success
+
 ```json
 {
   "success": true,
@@ -127,6 +142,7 @@ Protected auth routes currently include:
 ```
 
 ### Error
+
 ```json
 {
   "success": false,

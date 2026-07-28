@@ -64,7 +64,7 @@ export default function ResetPassword() {
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
-          "Unable to reset password. Please try again."
+          "Unable to reset password. Please try again.",
       );
     }
 
@@ -101,11 +101,7 @@ export default function ResetPassword() {
             Reset Password
           </Typography>
 
-          <Typography
-            align="center"
-            color="text.secondary"
-            sx={{ mb: 3 }}
-          >
+          <Typography align="center" color="text.secondary" sx={{ mb: 3 }}>
             Enter the OTP sent to your email and create a new password.
           </Typography>
 
@@ -149,26 +145,15 @@ export default function ResetPassword() {
 
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton
-                      onClick={() =>
-                        setShowPassword(!showPassword)
-                      }
-                    >
-                      {showPassword ? (
-                        <VisibilityOff />
-                      ) : (
-                        <Visibility />
-                      )}
+                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 ),
               }}
             />
 
-            <Typography
-              variant="body2"
-              sx={{ mt: 2 }}
-            >
+            <Typography variant="body2" sx={{ mt: 2 }}>
               Password Strength
             </Typography>
 

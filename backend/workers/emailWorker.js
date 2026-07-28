@@ -1,17 +1,19 @@
-const { Worker } = require('bullmq');
-const nodemailer = require('nodemailer');
-const Redis = require('ioredis');
+const { Worker } = require("bullmq");
+const nodemailer = require("nodemailer");
+const Redis = require("ioredis");
 
-const connection = new Redis(process.env.REDIS_URL || {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: null,
-});
+const connection = new Redis(
+  process.env.REDIS_URL || {
+    host: process.env.REDIS_HOST || "127.0.0.1",
+    port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
+  },
+);
 
 // Configure reusable Nodemailer transporter using SMTP environment variables
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com',
+  host: process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT || process.env.EMAIL_PORT) || 587,
   secure: false,
   auth: {
@@ -22,18 +24,20 @@ const transporter = nodemailer.createTransport({
 
 // Initialize BullMQ worker listening to 'Email-Queue'
 const emailWorker = new Worker(
-  'Email-Queue',
+  "Email-Queue",
   async (job) => {
     const { email, code } = job.data;
 
     if (!email || !code) {
-      throw new Error(`Invalid job payload for job ${job.id}: missing email or code.`);
+      throw new Error(
+        `Invalid job payload for job ${job.id}: missing email or code.`,
+      );
     }
 
     const mailOptions = {
-      from: `"MedInternia Security" <${process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@medinternia.com'}>`,
+      from: `"MedInternia Security" <${process.env.SMTP_USER || process.env.EMAIL_USER || "no-reply@medinternia.com"}>`,
       to: email,
-      subject: 'MedInternia - Your Verification Code (OTP)',
+      subject: "MedInternia - Your Verification Code (OTP)",
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
           <h2 style="color: #2b6cb0;">MedInternia Verification Code</h2>
@@ -51,14 +55,16 @@ const emailWorker = new Worker(
     const info = await transporter.sendMail(mailOptions);
     return info.messageId;
   },
-  { connection }
+  { connection },
 );
 
-emailWorker.on('completed', (job, result) => {
-  console.log(`[EmailWorker] Job ${job.id} completed successfully. MessageID: ${result}`);
+emailWorker.on("completed", (job, result) => {
+  console.log(
+    `[EmailWorker] Job ${job.id} completed successfully. MessageID: ${result}`,
+  );
 });
 
-emailWorker.on('failed', (job, err) => {
+emailWorker.on("failed", (job, err) => {
   console.error(`[EmailWorker] Job ${job?.id} failed with error:`, err.message);
 });
 

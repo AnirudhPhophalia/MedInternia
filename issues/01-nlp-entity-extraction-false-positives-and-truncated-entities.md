@@ -56,6 +56,7 @@ The `"first"` strategy only keeps the **first subword token** of each word. For 
 - `"Streptococcus"` tokenized as `["Strept", "##ococcus"]` → entity text becomes `"Strept"` instead of `"Streptococcus"`
 
 **Contradictory evidence:**
+
 - Line 226's comment says: `# Clean subword artefacts (##token) — shouldn't appear with aggregation_strategy="simple" but guard anyway.`
 - The README at line 38 also says the code uses `aggregation_strategy="simple"`.
 - But the actual code uses `"first"` on both lines **110** and **118**.

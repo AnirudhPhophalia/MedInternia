@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IMentorshipGoal {
   _id?: mongoose.Types.ObjectId;
@@ -19,7 +19,7 @@ export interface IMentorshipMeeting {
 export interface IMentorship extends Document {
   mentor: mongoose.Types.ObjectId;
   mentee: mongoose.Types.ObjectId;
-  status: 'pending' | 'active' | 'rejected' | 'completed';
+  status: "pending" | "active" | "rejected" | "completed";
   specialtyRequested: string;
   initialMessage: string;
   goals: IMentorshipGoal[];
@@ -28,28 +28,36 @@ export interface IMentorship extends Document {
   updatedAt: Date;
 }
 
-const MentorshipSchema = new Schema<IMentorship>({
-  mentor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  mentee: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  status: { 
-    type: String, 
-    enum: ['pending', 'active', 'rejected', 'completed'], 
-    default: 'pending' 
+const MentorshipSchema = new Schema<IMentorship>(
+  {
+    mentor: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    mentee: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    status: {
+      type: String,
+      enum: ["pending", "active", "rejected", "completed"],
+      default: "pending",
+    },
+    specialtyRequested: { type: String, required: true },
+    initialMessage: { type: String, required: true },
+    goals: [
+      {
+        title: { type: String, required: true },
+        description: { type: String },
+        isCompleted: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    meetings: [
+      {
+        scheduledAt: { type: Date, required: true },
+        topic: { type: String, required: true },
+        link: { type: String },
+        notes: { type: String },
+      },
+    ],
   },
-  specialtyRequested: { type: String, required: true },
-  initialMessage: { type: String, required: true },
-  goals: [{
-    title: { type: String, required: true },
-    description: { type: String },
-    isCompleted: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
-  }],
-  meetings: [{
-    scheduledAt: { type: Date, required: true },
-    topic: { type: String, required: true },
-    link: { type: String },
-    notes: { type: String }
-  }]
-}, { timestamps: true });
+  { timestamps: true },
+);
 
-export default mongoose.models.Mentorship || mongoose.model<IMentorship>('Mentorship', MentorshipSchema);
+export default mongoose.models.Mentorship ||
+  mongoose.model<IMentorship>("Mentorship", MentorshipSchema);

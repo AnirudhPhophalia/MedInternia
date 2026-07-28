@@ -13,7 +13,11 @@ export interface SimilarCase {
   text_snippet: string;
 }
 
-export async function ingestCase(caseId: string, text: string, metadata: Record<string, any> = {}): Promise<void> {
+export async function ingestCase(
+  caseId: string,
+  text: string,
+  metadata: Record<string, any> = {},
+): Promise<void> {
   try {
     const res = await fetch(`${RAG_SERVICE_URL}/api/ingest-case`, {
       method: "POST",
@@ -27,14 +31,22 @@ export async function ingestCase(caseId: string, text: string, metadata: Record<
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(no body)");
-      console.error(`RAG ingest failed for case ${caseId} (${res.status}): ${body}`);
+      console.error(
+        `RAG ingest failed for case ${caseId} (${res.status}): ${body}`,
+      );
     }
   } catch (err) {
-    console.error(`Failed to reach RAG service for ingestion (case ${caseId}):`, err);
+    console.error(
+      `Failed to reach RAG service for ingestion (case ${caseId}):`,
+      err,
+    );
   }
 }
 
-export async function suggestCases(text: string, k: number = 3): Promise<SimilarCase[]> {
+export async function suggestCases(
+  text: string,
+  k: number = 3,
+): Promise<SimilarCase[]> {
   try {
     const res = await fetch(`${RAG_SERVICE_URL}/api/suggest-cases`, {
       method: "POST",

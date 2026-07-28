@@ -20,12 +20,19 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, userType: string, body: any = {}, params: any = {}, query: any = {}): AuthRequest => ({
-  user: { _id: userId, userType },
-  body,
-  params,
-  query,
-}) as unknown as AuthRequest;
+const mockRequest = (
+  userId: string,
+  userType: string,
+  body: any = {},
+  params: any = {},
+  query: any = {},
+): AuthRequest =>
+  ({
+    user: { _id: userId, userType },
+    body,
+    params,
+    query,
+  }) as unknown as AuthRequest;
 
 describe("Enhanced Controller", () => {
   beforeEach(() => {
@@ -40,7 +47,11 @@ describe("Enhanced Controller", () => {
       await rateComment(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Only doctors or admins can rate comments" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Only doctors or admins can rate comments",
+        }),
+      );
     });
 
     it("rejects invalid rating range", async () => {
@@ -50,26 +61,43 @@ describe("Enhanced Controller", () => {
       await rateComment(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Rating must be between 1 and 5" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Rating must be between 1 and 5" }),
+      );
     });
-    
+
     it("rejects rating another doctor's comment", async () => {
-      const req = mockRequest("doc-1", "doctor", { rating: 4 }, { caseId: "case-1", commentId: "com-1" });
+      const req = mockRequest(
+        "doc-1",
+        "doctor",
+        { rating: 4 },
+        { caseId: "case-1", commentId: "com-1" },
+      );
       const res = mockResponse();
 
-      mockedCase.findById.mockResolvedValue({ comments: [{ _id: "com-1", author: "doc-2" }] } as any);
+      mockedCase.findById.mockResolvedValue({
+        comments: [{ _id: "com-1", author: "doc-2" }],
+      } as any);
       mockedUser.findById.mockResolvedValue({ userType: "doctor" } as any); // Author is a doctor
 
       await rateComment(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Can only rate intern comments" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Can only rate intern comments" }),
+      );
     });
   });
 
   describe("advancedSearch", () => {
     it("queries Case model when type is cases", async () => {
-      const req = mockRequest("user-1", "intern", {}, {}, { type: "cases", query: "fever" });
+      const req = mockRequest(
+        "user-1",
+        "intern",
+        {},
+        {},
+        { type: "cases", query: "fever" },
+      );
       const res = mockResponse();
 
       const limitMock = jest.fn().mockResolvedValue([{ _id: "case-1" }]);
@@ -85,12 +113,18 @@ describe("Enhanced Controller", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ searchType: "cases" }),
-        })
+        }),
       );
     });
 
     it("queries User model when type is doctors", async () => {
-      const req = mockRequest("user-1", "intern", {}, {}, { type: "doctors", query: "john" });
+      const req = mockRequest(
+        "user-1",
+        "intern",
+        {},
+        {},
+        { type: "doctors", query: "john" },
+      );
       const res = mockResponse();
 
       const limitMock = jest.fn().mockResolvedValue([{ _id: "doc-1" }]);
@@ -108,7 +142,7 @@ describe("Enhanced Controller", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ searchType: "doctors" }),
-        })
+        }),
       );
     });
   });

@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
+import { Router } from "express";
+import { authenticate } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import {
   createJobOpportunity,
   getJobOpportunities,
@@ -9,33 +9,53 @@ import {
   deleteJobOpportunity,
   checkJobEligibility,
   applyToJob,
-  getMyJobOpportunities
-} from '../controllers/jobController';
+  getMyJobOpportunities,
+} from "../controllers/jobController";
 
 const router = Router();
 
 // Create job opportunity
-router.post('/', authenticate, requirePermission('job:manage'), createJobOpportunity);
+router.post(
+  "/",
+  authenticate,
+  requirePermission("job:manage"),
+  createJobOpportunity,
+);
 
 // Get all job opportunities
-router.get('/', authenticate, getJobOpportunities);
+router.get("/", authenticate, getJobOpportunities);
 
 // Get my job opportunities
-router.get('/my', authenticate, requirePermission('job:manage'), getMyJobOpportunities);
+router.get(
+  "/my",
+  authenticate,
+  requirePermission("job:manage"),
+  getMyJobOpportunities,
+);
 
 // Get job opportunity by ID
-router.get('/:id', authenticate, getJobOpportunityById);
+router.get("/:id", authenticate, getJobOpportunityById);
 
 // Update job opportunity
-router.put('/:id', authenticate, requirePermission('job:manage'), updateJobOpportunity);
+router.put(
+  "/:id",
+  authenticate,
+  requirePermission("job:manage"),
+  updateJobOpportunity,
+);
 
 // Delete job opportunity
-router.delete('/:id', authenticate, requirePermission('job:manage'), deleteJobOpportunity);
+router.delete(
+  "/:id",
+  authenticate,
+  requirePermission("job:manage"),
+  deleteJobOpportunity,
+);
 
 // Check job eligibility
-router.get('/:id/eligibility', authenticate, checkJobEligibility);
+router.get("/:id/eligibility", authenticate, checkJobEligibility);
 
 // Apply to job
-router.post('/:id/apply', authenticate, applyToJob);
+router.post("/:id/apply", authenticate, applyToJob);
 
 export default router;

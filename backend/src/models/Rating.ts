@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface IRating extends Document {
   rater: mongoose.Types.ObjectId; // Doctor who gave the rating
@@ -11,45 +11,48 @@ export interface IRating extends Document {
   createdAt: Date;
 }
 
-const RatingSchema = new Schema<IRating>({
-  rater: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const RatingSchema = new Schema<IRating>(
+  {
+    rater: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    ratee: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    caseId: {
+      type: Schema.Types.ObjectId,
+      ref: "Case",
+      required: true,
+    },
+    commentId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+    },
+    rating: {
+      type: Number,
+      required: [true, "Rating is required"],
+      min: [1, "Rating must be at least 1"],
+      max: [5, "Rating cannot exceed 5"],
+    },
+    feedback: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Feedback cannot be more than 500 characters"],
+    },
+    pointsAwarded: {
+      type: Number,
+      default: 0,
+      min: [0, "Points awarded cannot be negative"],
+    },
   },
-  ratee: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  {
+    timestamps: true,
   },
-  caseId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Case',
-    required: true
-  },
-  commentId: {
-    type: Schema.Types.ObjectId,
-    required: true
-  },
-  rating: {
-    type: Number,
-    required: [true, 'Rating is required'],
-    min: [1, 'Rating must be at least 1'],
-    max: [5, 'Rating cannot exceed 5']
-  },
-  feedback: {
-    type: String,
-    trim: true,
-    maxlength: [500, 'Feedback cannot be more than 500 characters']
-  },
-  pointsAwarded: {
-    type: Number,
-    default: 0,
-    min: [0, 'Points awarded cannot be negative']
-  }
-}, {
-  timestamps: true
-});
+);
 
 // Ensure one rating per comment by same doctor
 RatingSchema.index({ rater: 1, commentId: 1 }, { unique: true });
@@ -59,4 +62,4 @@ RatingSchema.index({ ratee: 1 });
 RatingSchema.index({ caseId: 1 });
 RatingSchema.index({ createdAt: -1 });
 
-export default mongoose.model<IRating>('Rating', RatingSchema);
+export default mongoose.model<IRating>("Rating", RatingSchema);

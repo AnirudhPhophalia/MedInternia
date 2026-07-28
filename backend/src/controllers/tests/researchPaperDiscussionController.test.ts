@@ -52,7 +52,11 @@ describe("ResearchPaperDiscussionController", () => {
       };
       mockedResearchPaper.findById.mockResolvedValue(paperMock as any);
 
-      const req = mockRequest("user-1", { id: "paper-1" }, { content: "Great paper!" });
+      const req = mockRequest(
+        "user-1",
+        { id: "paper-1" },
+        { content: "Great paper!" },
+      );
       const res = mockResponse();
       const next = jest.fn();
 
@@ -72,7 +76,9 @@ describe("ResearchPaperDiscussionController", () => {
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(addComment(req as any, res as any, next)).rejects.toThrow("Comment content is required");
+      await expect(addComment(req as any, res as any, next)).rejects.toThrow(
+        "Comment content is required",
+      );
     });
 
     it("returns 401 if user is not authenticated", async () => {
@@ -82,17 +88,25 @@ describe("ResearchPaperDiscussionController", () => {
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(addComment(req as any, res as any, next)).rejects.toThrow("User not authenticated");
+      await expect(addComment(req as any, res as any, next)).rejects.toThrow(
+        "User not authenticated",
+      );
     });
 
     it("returns 404 if paper not found", async () => {
       mockedResearchPaper.findById.mockResolvedValue(null);
 
-      const req = mockRequest("user-1", { id: "nonexistent" }, { content: "Nice" });
+      const req = mockRequest(
+        "user-1",
+        { id: "nonexistent" },
+        { content: "Nice" },
+      );
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(addComment(req as any, res as any, next)).rejects.toThrow("Research paper not found");
+      await expect(addComment(req as any, res as any, next)).rejects.toThrow(
+        "Research paper not found",
+      );
     });
   });
 
@@ -148,7 +162,9 @@ describe("ResearchPaperDiscussionController", () => {
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(replyToComment(req as any, res as any, next)).rejects.toThrow("Comment not found");
+      await expect(
+        replyToComment(req as any, res as any, next),
+      ).rejects.toThrow("Comment not found");
     });
   });
 
@@ -157,13 +173,17 @@ describe("ResearchPaperDiscussionController", () => {
     const VALID_COMMENT_ID = "507f1f77bcf86cd799439012";
 
     it("toggles like on a comment (unlike when already liked)", async () => {
-      mockedResearchPaper.updateOne
-        .mockResolvedValueOnce({ modifiedCount: 1 } as any);
+      mockedResearchPaper.updateOne.mockResolvedValueOnce({
+        modifiedCount: 1,
+      } as any);
       mockedResearchPaper.findById.mockResolvedValue({
         comments: [{ likes: [] }],
       } as any);
 
-      const req = mockRequest(VALID_USER_ID, { paperId: "paper-1", commentId: VALID_COMMENT_ID });
+      const req = mockRequest(VALID_USER_ID, {
+        paperId: "paper-1",
+        commentId: VALID_COMMENT_ID,
+      });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -186,7 +206,10 @@ describe("ResearchPaperDiscussionController", () => {
         comments: [{ likes: [VALID_USER_ID] }],
       } as any);
 
-      const req = mockRequest(VALID_USER_ID, { paperId: "paper-1", commentId: VALID_COMMENT_ID });
+      const req = mockRequest(VALID_USER_ID, {
+        paperId: "paper-1",
+        commentId: VALID_COMMENT_ID,
+      });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -208,13 +231,20 @@ describe("ResearchPaperDiscussionController", () => {
       const paperMock = {
         _id: "paper-1",
         comments: [
-          { _id: "comment-1", author: { toString: () => "user-1" }, content: "My comment" },
+          {
+            _id: "comment-1",
+            author: { toString: () => "user-1" },
+            content: "My comment",
+          },
         ],
         save,
       };
       mockedResearchPaper.findById.mockResolvedValue(paperMock as any);
 
-      const req = mockRequest("user-1", { paperId: "paper-1", commentId: "comment-1" });
+      const req = mockRequest("user-1", {
+        paperId: "paper-1",
+        commentId: "comment-1",
+      });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -231,12 +261,19 @@ describe("ResearchPaperDiscussionController", () => {
       const paperMock = {
         _id: "paper-1",
         comments: [
-          { _id: "comment-1", author: { toString: () => "user-2" }, content: "Their comment" },
+          {
+            _id: "comment-1",
+            author: { toString: () => "user-2" },
+            content: "Their comment",
+          },
         ],
       };
       mockedResearchPaper.findById.mockResolvedValue(paperMock as any);
 
-      const req = mockRequest("user-1", { paperId: "paper-1", commentId: "comment-1" });
+      const req = mockRequest("user-1", {
+        paperId: "paper-1",
+        commentId: "comment-1",
+      });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -261,7 +298,12 @@ describe("ResearchPaperDiscussionController", () => {
         populate: populateMock,
       } as any);
 
-      const req = mockRequest("user-1", { id: "paper-1" }, {}, { page: "1", limit: "10" });
+      const req = mockRequest(
+        "user-1",
+        { id: "paper-1" },
+        {},
+        { page: "1", limit: "10" },
+      );
       const res = mockResponse();
       const next = jest.fn();
 

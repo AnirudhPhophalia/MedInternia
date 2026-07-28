@@ -1,8 +1,8 @@
-import { Response } from 'express';
-import Case from '../models/Case';
-import User from '../models/User';
-import Rating from '../models/Rating';
-import { AuthRequest } from '../middleware/auth';
+import { Response } from "express";
+import Case from "../models/Case";
+import User from "../models/User";
+import Rating from "../models/Rating";
+import { AuthRequest } from "../middleware/auth";
 
 // Rate and award points for a comment
 export const rateComment = async (req: AuthRequest, res: Response) => {
@@ -14,21 +14,21 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'User not authenticated'
+        message: "User not authenticated",
       });
     }
 
-    if (user.userType !== 'doctor' && user.userType !== 'admin') {
+    if (user.userType !== "doctor" && user.userType !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Only doctors or admins can rate comments'
+        message: "Only doctors or admins can rate comments",
       });
     }
 
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
-        message: 'Rating must be between 1 and 5'
+        message: "Rating must be between 1 and 5",
       });
     }
 
@@ -37,37 +37,39 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
     if (!caseData) {
       return res.status(404).json({
         success: false,
-        message: 'Case not found'
+        message: "Case not found",
       });
     }
 
-    const comment = caseData.comments.find(c => c._id?.toString() === commentId);
+    const comment = caseData.comments.find(
+      (c) => c._id?.toString() === commentId,
+    );
     if (!comment) {
       return res.status(404).json({
         success: false,
-        message: 'Comment not found'
+        message: "Comment not found",
       });
     }
 
     // Check if comment author is an intern
     const commentAuthor = await User.findById(comment.author);
-    if (!commentAuthor || commentAuthor.userType !== 'intern') {
+    if (!commentAuthor || commentAuthor.userType !== "intern") {
       return res.status(400).json({
         success: false,
-        message: 'Can only rate intern comments'
+        message: "Can only rate intern comments",
       });
     }
 
     // Check if already rated by this doctor
     const existingRating = await Rating.findOne({
       rater: user._id,
-      commentId: commentId
+      commentId: commentId,
     });
 
     if (existingRating) {
       return res.status(400).json({
         success: false,
-        message: 'You have already rated this comment'
+        message: "You have already rated this comment",
       });
     }
 
@@ -79,7 +81,7 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
       commentId: commentId,
       rating: rating,
       feedback: feedback,
-      pointsAwarded: pointsAwarded || rating * 2 // Default: 2 points per star
+      pointsAwarded: pointsAwarded || rating * 2, // Default: 2 points per star
     });
 
     await newRating.save();
@@ -94,35 +96,36 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
     const internUpdate = await User.findByIdAndUpdate(
       comment.author,
       {
-        $inc: { 
+        $inc: {
           points: pointsToAdd,
-          totalRatings: 1
-        }
+          totalRatings: 1,
+        },
       },
-      { new: true }
+      { new: true },
     );
 
     // Recalculate average rating
     if (internUpdate) {
       const allRatings = await Rating.find({ ratee: comment.author });
-      const avgRating = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
+      const avgRating =
+        allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
       internUpdate.averageRating = Math.round(avgRating * 100) / 100;
       await internUpdate.save();
     }
 
     res.status(201).json({
       success: true,
-      message: 'Comment rated successfully',
+      message: "Comment rated successfully",
       data: {
         rating: newRating,
-        pointsAwarded: pointsToAdd
-      }
+        pointsAwarded: pointsToAdd,
+      },
     });
   } catch (error) {
-    console.error('Rate comment error:', error);
+    console.error("Rate comment error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -137,14 +140,14 @@ export const replyToComment = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'User not authenticated'
+        message: "User not authenticated",
       });
     }
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Reply content is required'
+        message: "Reply content is required",
       });
     }
 
@@ -152,15 +155,17 @@ export const replyToComment = async (req: AuthRequest, res: Response) => {
     if (!caseData) {
       return res.status(404).json({
         success: false,
-        message: 'Case not found'
+        message: "Case not found",
       });
     }
 
-    const parentComment = caseData.comments.find(c => c._id?.toString() === commentId);
+    const parentComment = caseData.comments.find(
+      (c) => c._id?.toString() === commentId,
+    );
     if (!parentComment) {
       return res.status(404).json({
         success: false,
-        message: 'Parent comment not found'
+        message: "Parent comment not found",
       });
     }
 
@@ -170,28 +175,28 @@ export const replyToComment = async (req: AuthRequest, res: Response) => {
       content: content.trim(),
       parentComment: commentId,
       replies: [],
-      likes: []
+      likes: [],
     };
 
     caseData.comments.push(reply as any);
     await caseData.save();
 
-    await caseData.populate('comments.author', 'firstName lastName userType');
+    await caseData.populate("comments.author", "firstName lastName userType");
 
     const addedReply = caseData.comments[caseData.comments.length - 1];
 
     res.status(201).json({
       success: true,
-      message: 'Reply added successfully',
+      message: "Reply added successfully",
       data: {
-        reply: addedReply
-      }
+        reply: addedReply,
+      },
     });
   } catch (error) {
-    console.error('Reply to comment error:', error);
+    console.error("Reply to comment error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -205,7 +210,7 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'User not authenticated'
+        message: "User not authenticated",
       });
     }
 
@@ -213,23 +218,27 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
     if (!caseData) {
       return res.status(404).json({
         success: false,
-        message: 'Case not found'
+        message: "Case not found",
       });
     }
 
-    const comment = caseData.comments.find(c => c._id?.toString() === commentId);
+    const comment = caseData.comments.find(
+      (c) => c._id?.toString() === commentId,
+    );
     if (!comment) {
       return res.status(404).json({
         success: false,
-        message: 'Comment not found'
+        message: "Comment not found",
       });
     }
 
     const userIdString = user._id?.toString();
-    const likeIndex = comment.likes.findIndex((like: any) => like.toString() === userIdString);
+    const likeIndex = comment.likes.findIndex(
+      (like: any) => like.toString() === userIdString,
+    );
 
     let isLiked = false;
-    
+
     if (likeIndex > -1) {
       // Unlike
       comment.likes.splice(likeIndex, 1);
@@ -244,17 +253,19 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: isLiked ? 'Comment liked successfully' : 'Comment unliked successfully',
+      message: isLiked
+        ? "Comment liked successfully"
+        : "Comment unliked successfully",
       data: {
         isLiked,
-        totalLikes: comment.likes.length
-      }
+        totalLikes: comment.likes.length,
+      },
     });
   } catch (error) {
-    console.error('Like comment error:', error);
+    console.error("Like comment error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -262,13 +273,13 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
 // Get leaderboard
 export const getLeaderboard = async (req: AuthRequest, res: Response) => {
   try {
-    const { limit = 20, type = 'interns' } = req.query;
+    const { limit = 20, type = "interns" } = req.query;
 
     let pipeline: any[] = [];
 
-    if (type === 'interns') {
+    if (type === "interns") {
       pipeline = [
-        { $match: { userType: 'intern' } },
+        { $match: { userType: "intern" } },
         { $sort: { points: -1, averageRating: -1 } },
         { $limit: parseInt(limit as string) },
         {
@@ -279,13 +290,13 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
             yearOfStudy: 1,
             points: 1,
             averageRating: 1,
-            totalRatings: 1
-          }
-        }
+            totalRatings: 1,
+          },
+        },
       ];
-    } else if (type === 'doctors') {
+    } else if (type === "doctors") {
       pipeline = [
-        { $match: { userType: 'doctor' } },
+        { $match: { userType: "doctor" } },
         { $sort: { points: -1 } },
         { $limit: parseInt(limit as string) },
         {
@@ -294,9 +305,9 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
             lastName: 1,
             specialization: 1,
             points: 1,
-            experience: 1
-          }
-        }
+            experience: 1,
+          },
+        },
       ];
     }
 
@@ -306,34 +317,32 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
       success: true,
       data: {
         leaderboard,
-        type
-      }
+        type,
+      },
     });
   } catch (error) {
-    console.error('Get leaderboard error:', error);
+    console.error("Get leaderboard error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
 
 // Award points to doctor for posting case
-export const awardCasePoints = async (doctorId: string, caseId: string, points: number = 10) => {
+export const awardCasePoints = async (
+  doctorId: string,
+  caseId: string,
+  points: number = 10,
+) => {
   try {
-    await User.findByIdAndUpdate(
-      doctorId,
-      { $inc: { points: points } }
-    );
+    await User.findByIdAndUpdate(doctorId, { $inc: { points: points } });
 
-    await Case.findByIdAndUpdate(
-      caseId,
-      { pointsAwarded: points }
-    );
+    await Case.findByIdAndUpdate(caseId, { pointsAwarded: points });
 
     return true;
   } catch (error) {
-    console.error('Award case points error:', error);
+    console.error("Award case points error:", error);
     return false;
   }
 };
@@ -350,7 +359,7 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       disease,
       tags,
       page = 1,
-      limit = 10
+      limit = 10,
     } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -360,20 +369,20 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
     let results: any[] = [];
     let total = 0;
 
-    if (type === 'cases' || !type) {
+    if (type === "cases" || !type) {
       const filter: any = { isActive: true };
 
       if (query) {
         filter.$or = [
-          { title: { $regex: query, $options: 'i' } },
-          { description: { $regex: query, $options: 'i' } },
-          { diagnosis: { $regex: query, $options: 'i' } },
-          { tags: { $in: [new RegExp(query as string, 'i')] } }
+          { title: { $regex: query, $options: "i" } },
+          { description: { $regex: query, $options: "i" } },
+          { diagnosis: { $regex: query, $options: "i" } },
+          { tags: { $in: [new RegExp(query as string, "i")] } },
         ];
       }
 
       if (specialization) {
-        filter.specialization = { $regex: specialization, $options: 'i' };
+        filter.specialization = { $regex: specialization, $options: "i" };
       }
 
       if (difficulty) {
@@ -383,8 +392,8 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       if (disease) {
         filter.$or = filter.$or || [];
         filter.$or.push(
-          { diagnosis: { $regex: disease, $options: 'i' } },
-          { symptoms: { $in: [new RegExp(disease as string, 'i')] } }
+          { diagnosis: { $regex: disease, $options: "i" } },
+          { symptoms: { $in: [new RegExp(disease as string, "i")] } },
         );
       }
 
@@ -394,7 +403,7 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       }
 
       results = await Case.find(filter)
-        .populate('doctor', 'firstName lastName specialization')
+        .populate("doctor", "firstName lastName specialization")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum);
@@ -402,24 +411,24 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       total = await Case.countDocuments(filter);
     }
 
-    if (type === 'doctors') {
-      const filter: any = { userType: 'doctor' };
+    if (type === "doctors") {
+      const filter: any = { userType: "doctor" };
 
       if (query || doctorName) {
         const searchTerm = query || doctorName;
         filter.$or = [
-          { firstName: { $regex: searchTerm, $options: 'i' } },
-          { lastName: { $regex: searchTerm, $options: 'i' } },
-          { specialization: { $regex: searchTerm, $options: 'i' } }
+          { firstName: { $regex: searchTerm, $options: "i" } },
+          { lastName: { $regex: searchTerm, $options: "i" } },
+          { specialization: { $regex: searchTerm, $options: "i" } },
         ];
       }
 
       if (specialization) {
-        filter.specialization = { $regex: specialization, $options: 'i' };
+        filter.specialization = { $regex: specialization, $options: "i" };
       }
 
       results = await User.find(filter)
-        .select('firstName lastName specialization experience points')
+        .select("firstName lastName specialization experience points")
         .sort({ points: -1 })
         .skip(skip)
         .limit(limitNum);
@@ -427,20 +436,22 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       total = await User.countDocuments(filter);
     }
 
-    if (type === 'interns') {
-      const filter: any = { userType: 'intern' };
+    if (type === "interns") {
+      const filter: any = { userType: "intern" };
 
       if (query) {
         filter.$or = [
-          { firstName: { $regex: query, $options: 'i' } },
-          { lastName: { $regex: query, $options: 'i' } },
-          { medicalSchool: { $regex: query, $options: 'i' } },
-          { interests: { $in: [new RegExp(query as string, 'i')] } }
+          { firstName: { $regex: query, $options: "i" } },
+          { lastName: { $regex: query, $options: "i" } },
+          { medicalSchool: { $regex: query, $options: "i" } },
+          { interests: { $in: [new RegExp(query as string, "i")] } },
         ];
       }
 
       results = await User.find(filter)
-        .select('firstName lastName medicalSchool yearOfStudy points averageRating')
+        .select(
+          "firstName lastName medicalSchool yearOfStudy points averageRating",
+        )
         .sort({ points: -1 })
         .skip(skip)
         .limit(limitNum);
@@ -452,20 +463,20 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       success: true,
       data: {
         results,
-        searchType: type || 'cases',
+        searchType: type || "cases",
         pagination: {
           page: pageNum,
           limit: limitNum,
           total,
-          pages: Math.ceil(total / limitNum)
-        }
-      }
+          pages: Math.ceil(total / limitNum),
+        },
+      },
     });
   } catch (error) {
-    console.error('Advanced search error:', error);
+    console.error("Advanced search error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };

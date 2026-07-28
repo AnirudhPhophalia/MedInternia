@@ -13,9 +13,7 @@
  *   // result.entities, result.entity_counts, result.processing_time_ms
  */
 
-
-const NER_SERVICE_URL =
-  process.env.NLP_SERVICE_URL ?? "http://localhost:8001";
+const NER_SERVICE_URL = process.env.NLP_SERVICE_URL ?? "http://localhost:8001";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -25,8 +23,8 @@ export type EntityLabel = "SYMPTOM" | "DISEASE" | "MEDICATION";
 export interface NEREntity {
   text: string;
   label: EntityLabel;
-  score: number;   // 0–1 confidence
-  start: number;   // character offset in original text
+  score: number; // 0–1 confidence
+  start: number; // character offset in original text
   end: number;
 }
 
@@ -52,7 +50,7 @@ export interface BatchNERResult extends NERResult {}
  */
 export async function extractEntities(
   text: string,
-  caseId?: string
+  caseId?: string,
 ): Promise<NERResult> {
   const res = await fetch(`${NER_SERVICE_URL}/extract`, {
     method: "POST",
@@ -65,7 +63,7 @@ export async function extractEntities(
   if (!res.ok) {
     const body = await res.text().catch(() => "(no body)");
     throw new Error(
-      `NER service returned ${res.status} for case ${caseId}: ${body}`
+      `NER service returned ${res.status} for case ${caseId}: ${body}`,
     );
   }
 
@@ -77,7 +75,7 @@ export async function extractEntities(
 // ---------------------------------------------------------------------------
 
 export async function batchExtractEntities(
-  items: Array<{ text: string; case_id?: string }>
+  items: Array<{ text: string; case_id?: string }>,
 ): Promise<BatchNERResult[]> {
   if (items.length === 0) return [];
   if (items.length > 20) {
@@ -131,7 +129,7 @@ export interface ComplianceCheckResult {
 
 export async function checkCompliance(
   text: string,
-  patientAge?: number
+  patientAge?: number,
 ): Promise<ComplianceCheckResult> {
   const res = await fetch(`${NER_SERVICE_URL}/compliance/check`, {
     method: "POST",
@@ -142,9 +140,7 @@ export async function checkCompliance(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "(no body)");
-    throw new Error(
-      `Compliance service returned ${res.status}: ${body}`
-    );
+    throw new Error(`Compliance service returned ${res.status}: ${body}`);
   }
 
   return res.json() as Promise<ComplianceCheckResult>;

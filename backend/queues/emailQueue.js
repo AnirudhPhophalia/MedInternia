@@ -1,14 +1,16 @@
-const { Queue } = require('bullmq');
-const Redis = require('ioredis');
+const { Queue } = require("bullmq");
+const Redis = require("ioredis");
 
-const connection = new Redis(process.env.REDIS_URL || {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: null,
-});
+const connection = new Redis(
+  process.env.REDIS_URL || {
+    host: process.env.REDIS_HOST || "127.0.0.1",
+    port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
+  },
+);
 
-const emailQueue = new Queue('Email-Queue', { connection });
+const emailQueue = new Queue("Email-Queue", { connection });
 
 /**
  * Enqueue an OTP dispatch job into the BullMQ Email Queue with automatic retries.
@@ -18,17 +20,17 @@ const emailQueue = new Queue('Email-Queue', { connection });
  */
 const enqueueOTP = async (email, code) => {
   return await emailQueue.add(
-    'sendOTP',
+    "sendOTP",
     { email, code },
     {
       attempts: 3,
       backoff: {
-        type: 'exponential',
+        type: "exponential",
         delay: 1000,
       },
       removeOnComplete: true,
       removeOnFail: false,
-    }
+    },
   );
 };
 

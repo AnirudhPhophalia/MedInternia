@@ -13,7 +13,7 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 
 interface CaseItem {
-  _id: string; 
+  _id: string;
   title: string;
 }
 
@@ -24,7 +24,7 @@ export default function StarredPage() {
 
   // Fetch the user's real starred cases on page load
   useEffect(() => {
-    fetch("/api/cases/starred") 
+    fetch("/api/cases/starred")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load your starred cases.");
         return res.json();
@@ -81,7 +81,10 @@ export default function StarredPage() {
               <ListItem
                 key={item._id}
                 secondaryAction={
-                  <IconButton color="warning" onClick={() => handleUnstar(item._id)}>
+                  <IconButton
+                    color="warning"
+                    onClick={() => handleUnstar(item._id)}
+                  >
                     <StarIcon />
                   </IconButton>
                 }

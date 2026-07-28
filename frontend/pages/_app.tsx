@@ -139,9 +139,9 @@ function MyApp({ Component, pageProps }: AppProps) {
 
             {showFooter && <Footer />}
             <ScrollToTop />
-            {showChatbot && router.pathname !== "/" && router.pathname !== "/landing" && (
-              <Chatbot />
-            )}
+            {showChatbot &&
+              router.pathname !== "/" &&
+              router.pathname !== "/landing" && <Chatbot />}
 
             <Snackbar
               open={!!newToast}

@@ -1,23 +1,32 @@
-import { Request, Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import Webinar from '../models/Webinar';
-import Notification from '../models/Notification';
-import User from '../models/User';
-import { getSocketIO } from '../utils/socket';
+import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth";
+import Webinar from "../models/Webinar";
+import Notification from "../models/Notification";
+import User from "../models/User";
+import { getSocketIO } from "../utils/socket";
 
-const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) => {
+const getWebinarEndTime = (webinar: {
+  scheduledAt: Date;
+  duration?: number;
+}) => {
   const durationInMinutes = webinar.duration || 0;
-  return new Date(new Date(webinar.scheduledAt).getTime() + durationInMinutes * 60 * 1000);
+  return new Date(
+    new Date(webinar.scheduledAt).getTime() + durationInMinutes * 60 * 1000,
+  );
 };
 
-const isWebinarExpired = (webinar: { scheduledAt: Date; duration?: number; status: string }) => {
+const isWebinarExpired = (webinar: {
+  scheduledAt: Date;
+  duration?: number;
+  status: string;
+}) => {
   const now = new Date();
 
-  if (webinar.status === 'completed' || webinar.status === 'cancelled') {
+  if (webinar.status === "completed" || webinar.status === "cancelled") {
     return true;
   }
 
-  if (webinar.status === 'live') {
+  if (webinar.status === "live") {
     return getWebinarEndTime(webinar) <= now;
   }
 
@@ -29,14 +38,16 @@ const canInteractWithWebinar = (
     host: { toString: () => string };
     participants: Array<{ user: { toString: () => string } }>;
   },
-  req: AuthRequest
+  req: AuthRequest,
 ) => {
   const userId = String(req.user!._id);
 
   return (
-    req.user!.userType === 'admin' ||
+    req.user!.userType === "admin" ||
     webinar.host.toString() === userId ||
-    webinar.participants.some(participant => participant.user.toString() === userId)
+    webinar.participants.some(
+      (participant) => participant.user.toString() === userId,
+    )
   );
 };
 
@@ -45,36 +56,38 @@ const syncExpiredWebinars = async () => {
 
   await Webinar.updateMany(
     {
-      status: 'scheduled',
-      scheduledAt: { $lte: now }
+      status: "scheduled",
+      scheduledAt: { $lte: now },
     },
-    { $set: { status: 'completed' } }
+    { $set: { status: "completed" } },
   );
 
-  const liveWebinars = await Webinar.find({ status: 'live' }).select('scheduledAt duration status');
+  const liveWebinars = await Webinar.find({ status: "live" }).select(
+    "scheduledAt duration status",
+  );
   const expiredLiveIds = liveWebinars
-    .filter(webinar => isWebinarExpired(webinar))
-    .map(webinar => webinar._id);
+    .filter((webinar) => isWebinarExpired(webinar))
+    .map((webinar) => webinar._id);
 
   if (expiredLiveIds.length > 0) {
     await Webinar.updateMany(
       { _id: { $in: expiredLiveIds } },
-      { $set: { status: 'completed' } }
+      { $set: { status: "completed" } },
     );
   }
 };
 
 const WEBINAR_UPDATABLE_FIELDS = [
-  'title',
-  'description',
-  'type',
-  'specialization',
-  'scheduledAt',
-  'duration',
-  'maxParticipants',
-  'registrationDeadline',
-  'materials',
-  'tags'
+  "title",
+  "description",
+  "type",
+  "specialization",
+  "scheduledAt",
+  "duration",
+  "maxParticipants",
+  "registrationDeadline",
+  "materials",
+  "tags",
 ] as const;
 
 // Create webinar
@@ -90,14 +103,14 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       maxParticipants,
       registrationDeadline,
       materials,
-      tags
+      tags,
     } = req.body;
 
     // Webinar managers can create webinars after route-level permission checks.
-    if (req.user!.userType !== 'doctor' && req.user!.userType !== 'admin') {
+    if (req.user!.userType !== "doctor" && req.user!.userType !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Only doctors or admins can create webinars'
+        message: "Only doctors or admins can create webinars",
       });
     }
 
@@ -113,11 +126,14 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       registrationDeadline,
       materials,
       tags,
-      meetingLink: `https://meet.jit.si/webinar-${new Date().getTime()}-${Math.floor(Math.random()*10000)}`
+      meetingLink: `https://meet.jit.si/webinar-${new Date().getTime()}-${Math.floor(Math.random() * 10000)}`,
     });
 
     await webinar.save();
-    await webinar.populate('host', 'firstName lastName specialization isVerifiedDoctor');
+    await webinar.populate(
+      "host",
+      "firstName lastName specialization isVerifiedDoctor",
+    );
 
     // Ensure webinar.host is a populated document
     const host = webinar.host as any;
@@ -125,32 +141,32 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     // Respond immediately — notify interns asynchronously in batches
     setImmediate(async () => {
       try {
-        const internIds = await User.find({ userType: 'intern' }).select('_id');
+        const internIds = await User.find({ userType: "intern" }).select("_id");
         const batchSize = 500;
         for (let i = 0; i < internIds.length; i += batchSize) {
-          const batch = internIds.slice(i, i + batchSize).map(intern => ({
+          const batch = internIds.slice(i, i + batchSize).map((intern) => ({
             recipient: intern._id,
             message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
-            type: 'webinar',
-            link: webinar.meetingLink
+            type: "webinar",
+            link: webinar.meetingLink,
           }));
           await Notification.insertMany(batch);
         }
       } catch (notifyErr) {
-        console.error('Failed to send webinar notifications:', notifyErr);
+        console.error("Failed to send webinar notifications:", notifyErr);
       }
     });
 
     res.status(201).json({
       success: true,
-      message: 'Webinar created successfully',
-      data: { webinar, meetingLink: webinar.meetingLink }
+      message: "Webinar created successfully",
+      data: { webinar, meetingLink: webinar.meetingLink },
     });
   } catch (error: any) {
-    console.error('Create webinar error:', error);
+    console.error("Create webinar error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -167,61 +183,73 @@ export const getWebinars = async (req: Request, res: Response) => {
       upcoming,
       page = 1,
       limit = 10,
-      sortBy = 'scheduledAt',
-      sortOrder = 'asc'
+      sortBy = "scheduledAt",
+      sortOrder = "asc",
     } = req.query;
 
     const filter: any = { isActive: true };
-    
+
     if (type) filter.type = type;
     if (specialization) filter.specialization = { $in: [specialization] };
     if (status) filter.status = status;
-    
-    if (upcoming === 'true') {
+
+    if (upcoming === "true") {
       const now = new Date();
-      filter.status = { $in: ['scheduled', 'live'] };
-      filter.$or = [
-        { scheduledAt: { $gt: now } },
-        { status: 'live' }
-      ];
+      filter.status = { $in: ["scheduled", "live"] };
+      filter.$or = [{ scheduledAt: { $gt: now } }, { status: "live" }];
     }
 
     const skip = (Number(page) - 1) * Number(limit);
     let webinars;
 
-    if (sortBy === 'most_registered') {
+    if (sortBy === "most_registered") {
       webinars = await Webinar.aggregate([
         { $match: filter },
-        { $addFields: { participantCount: { $size: { $ifNull: ["$participants", []] } } } },
+        {
+          $addFields: {
+            participantCount: { $size: { $ifNull: ["$participants", []] } },
+          },
+        },
         { $sort: { participantCount: -1, scheduledAt: 1 } },
         { $skip: skip },
-        { $limit: Number(limit) }
+        { $limit: Number(limit) },
       ]);
       webinars = await Webinar.populate(webinars, [
-        { path: 'host', select: 'firstName lastName specialization isVerifiedDoctor profilePicture' }
+        {
+          path: "host",
+          select:
+            "firstName lastName specialization isVerifiedDoctor profilePicture",
+        },
       ]);
-    } else if (sortBy === 'highest_rated') {
+    } else if (sortBy === "highest_rated") {
       webinars = await Webinar.aggregate([
         { $match: filter },
-        { 
-          $addFields: { 
-            avgRating: { 
-              $avg: "$participants.feedback.rating" 
-            } 
-          } 
+        {
+          $addFields: {
+            avgRating: {
+              $avg: "$participants.feedback.rating",
+            },
+          },
         },
         { $sort: { avgRating: -1, scheduledAt: 1 } },
         { $skip: skip },
-        { $limit: Number(limit) }
+        { $limit: Number(limit) },
       ]);
       webinars = await Webinar.populate(webinars, [
-        { path: 'host', select: 'firstName lastName specialization isVerifiedDoctor profilePicture' }
+        {
+          path: "host",
+          select:
+            "firstName lastName specialization isVerifiedDoctor profilePicture",
+        },
       ]);
     } else {
       const sort: any = {};
-      sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
+      sort[sortBy as string] = sortOrder === "desc" ? -1 : 1;
       webinars = await Webinar.find(filter)
-        .populate('host', 'firstName lastName specialization isVerifiedDoctor profilePicture')
+        .populate(
+          "host",
+          "firstName lastName specialization isVerifiedDoctor profilePicture",
+        )
         .sort(sort)
         .skip(skip)
         .limit(Number(limit));
@@ -235,14 +263,14 @@ export const getWebinars = async (req: Request, res: Response) => {
         webinars,
         total,
         totalPages: Math.ceil(total / Number(limit)),
-        currentPage: Number(page)
-      }
+        currentPage: Number(page),
+      },
     });
   } catch (error: any) {
-    console.error('Get webinars error:', error);
+    console.error("Get webinars error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -255,36 +283,44 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
     const webinar = await Webinar.findById(id)
-      .populate('host', 'firstName lastName specialization isVerifiedDoctor profilePicture bio')
-      .populate('participants.user', 'firstName lastName userType profilePicture');
+      .populate(
+        "host",
+        "firstName lastName specialization isVerifiedDoctor profilePicture bio",
+      )
+      .populate(
+        "participants.user",
+        "firstName lastName userType profilePicture",
+      );
 
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found'
+        message: "Webinar not found",
       });
     }
 
     // Build the base public response — only safe fields
     const userId = req.user?._id?.toString();
-    const isHostOrAdmin = !!userId && (
-      req.user!.userType === 'admin' ||
-      req.user!.userType === 'moderator' ||
-      webinar.host._id?.toString() === userId ||
-      webinar.host.toString() === userId
-    );
+    const isHostOrAdmin =
+      !!userId &&
+      (req.user!.userType === "admin" ||
+        req.user!.userType === "moderator" ||
+        webinar.host._id?.toString() === userId ||
+        webinar.host.toString() === userId);
 
     // Full document for organizers, admins, and moderators
     if (isHostOrAdmin) {
       return res.json({
         success: true,
-        data: { webinar }
+        data: { webinar },
       });
     }
 
-    const isParticipant = !!userId && webinar.participants.some(p =>
-      (p.user._id?.toString() || p.user.toString()) === userId
-    );
+    const isParticipant =
+      !!userId &&
+      webinar.participants.some(
+        (p) => (p.user._id?.toString() || p.user.toString()) === userId,
+      );
 
     const publicWebinar = {
       _id: webinar._id,
@@ -304,7 +340,7 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
       status: webinar.status,
       createdAt: webinar.createdAt,
       updatedAt: webinar.updatedAt,
-      participantCount: webinar.participants?.length || 0
+      participantCount: webinar.participants?.length || 0,
     };
 
     if (isParticipant) {
@@ -313,26 +349,26 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
         meetingLink: webinar.meetingLink,
         polls: webinar.polls,
         qna: webinar.qna,
-        participants: webinar.participants.map(p => ({
-          user: (p.user as any)._id?.toString() || p.user.toString()
-        }))
+        participants: webinar.participants.map((p) => ({
+          user: (p.user as any)._id?.toString() || p.user.toString(),
+        })),
       };
 
       return res.json({
         success: true,
-        data: { webinar: participantWebinar }
+        data: { webinar: participantWebinar },
       });
     }
 
     res.json({
       success: true,
-      data: { webinar: publicWebinar }
+      data: { webinar: publicWebinar },
     });
   } catch (error: any) {
-    console.error('Get webinar error:', error);
+    console.error("Get webinar error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -349,69 +385,78 @@ export const registerForWebinar = async (req: AuthRequest, res: Response) => {
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found'
+        message: "Webinar not found",
       });
     }
 
-    if (isWebinarExpired(webinar) || webinar.status !== 'scheduled') {
+    if (isWebinarExpired(webinar) || webinar.status !== "scheduled") {
       return res.status(400).json({
         success: false,
-        message: 'This webinar has expired and registration is closed'
+        message: "This webinar has expired and registration is closed",
       });
     }
 
     // Check if registration is still open
-    if (webinar.registrationDeadline && new Date() > webinar.registrationDeadline) {
+    if (
+      webinar.registrationDeadline &&
+      new Date() > webinar.registrationDeadline
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Registration deadline has passed'
+        message: "Registration deadline has passed",
       });
     }
 
     // Check if webinar is full
-    if (webinar.maxParticipants && webinar.participants.length >= webinar.maxParticipants) {
+    if (
+      webinar.maxParticipants &&
+      webinar.participants.length >= webinar.maxParticipants
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Webinar is full'
+        message: "Webinar is full",
       });
     }
 
     // Check if user is already registered
     const isAlreadyRegistered = webinar.participants.some(
-      p => (p.user as any).toString() === (userId as any).toString()
+      (p) => (p.user as any).toString() === (userId as any).toString(),
     );
 
     if (isAlreadyRegistered) {
       return res.status(400).json({
         success: false,
-        message: 'You are already registered for this webinar'
+        message: "You are already registered for this webinar",
       });
     }
 
     webinar.participants.push({
       user: userId as any,
       registeredAt: new Date(),
-      attended: false
+      attended: false,
     });
 
     await webinar.save();
 
     res.json({
       success: true,
-      message: 'Successfully registered for webinar',
-      data: { webinar }
+      message: "Successfully registered for webinar",
+      data: { webinar },
     });
   } catch (error: any) {
-    console.error('Register for webinar error:', error);
+    console.error("Register for webinar error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
 
 // Unregister from webinar
-export const unregisterFromWebinar = async (req: AuthRequest, res: Response) => {
+export const unregisterFromWebinar = async (
+  req: AuthRequest,
+  res: Response,
+) => {
   try {
     await syncExpiredWebinars();
 
@@ -422,26 +467,31 @@ export const unregisterFromWebinar = async (req: AuthRequest, res: Response) => 
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found'
+        message: "Webinar not found",
       });
     }
 
     // Check if webinar has already started
-    if (webinar.status === 'live' || webinar.status === 'completed' || new Date(webinar.scheduledAt) <= new Date()) {
+    if (
+      webinar.status === "live" ||
+      webinar.status === "completed" ||
+      new Date(webinar.scheduledAt) <= new Date()
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot unregister from a webinar that has started or completed'
+        message:
+          "Cannot unregister from a webinar that has started or completed",
       });
     }
 
     const participantIndex = webinar.participants.findIndex(
-      p => (p.user as any).toString() === userId
+      (p) => (p.user as any).toString() === userId,
     );
 
     if (participantIndex === -1) {
       return res.status(400).json({
         success: false,
-        message: 'You are not registered for this webinar'
+        message: "You are not registered for this webinar",
       });
     }
 
@@ -450,13 +500,13 @@ export const unregisterFromWebinar = async (req: AuthRequest, res: Response) => 
 
     res.json({
       success: true,
-      message: 'Successfully unregistered from webinar'
+      message: "Successfully unregistered from webinar",
     });
   } catch (error: any) {
-    console.error('Unregister from webinar error:', error);
+    console.error("Unregister from webinar error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -471,7 +521,7 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized to update it'
+        message: "Webinar not found or you are not authorized to update it",
       });
     }
 
@@ -481,18 +531,18 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
       }
     }
     await webinar.save();
-    await webinar.populate('host', 'firstName lastName specialization');
+    await webinar.populate("host", "firstName lastName specialization");
 
     res.json({
       success: true,
-      message: 'Webinar updated successfully',
-      data: { webinar }
+      message: "Webinar updated successfully",
+      data: { webinar },
     });
   } catch (error: any) {
-    console.error('Update webinar error:', error);
+    console.error("Update webinar error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -508,18 +558,19 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized to mark attendance'
+        message:
+          "Webinar not found or you are not authorized to mark attendance",
       });
     }
 
     const participant = webinar.participants.find(
-      p => (p.user as any).toString() === userId
+      (p) => (p.user as any).toString() === userId,
     );
 
     if (!participant) {
       return res.status(404).json({
         success: false,
-        message: 'Participant not found'
+        message: "Participant not found",
       });
     }
 
@@ -528,13 +579,13 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: 'Attendance marked successfully'
+      message: "Attendance marked successfully",
     });
   } catch (error: any) {
-    console.error('Mark attendance error:', error);
+    console.error("Mark attendance error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -550,7 +601,7 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
     if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
       return res.status(400).json({
         success: false,
-        message: 'Rating must be between 1 and 5'
+        message: "Rating must be between 1 and 5",
       });
     }
 
@@ -558,25 +609,25 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found'
+        message: "Webinar not found",
       });
     }
 
     const participant = webinar.participants.find(
-      p => (p.user as any).toString() === userId
+      (p) => (p.user as any).toString() === userId,
     );
 
     if (!participant) {
       return res.status(404).json({
         success: false,
-        message: 'You are not registered for this webinar'
+        message: "You are not registered for this webinar",
       });
     }
 
     if (!participant.attended) {
       return res.status(400).json({
         success: false,
-        message: 'You must attend the webinar to provide feedback'
+        message: "You must attend the webinar to provide feedback",
       });
     }
 
@@ -585,13 +636,13 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: 'Feedback submitted successfully'
+      message: "Feedback submitted successfully",
     });
   } catch (error: any) {
-    console.error('Submit feedback error:', error);
+    console.error("Submit feedback error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -600,42 +651,39 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
 export const getUserWebinars = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!._id;
-    const { type = 'all' } = req.query; // 'hosted', 'attended', 'registered', 'all'
+    const { type = "all" } = req.query; // 'hosted', 'attended', 'registered', 'all'
 
     let query: any = {};
-    
-    if (type === 'hosted') {
+
+    if (type === "hosted") {
       query = { host: userId };
-    } else if (type === 'attended') {
-      query = { 'participants.user': userId, 'participants.attended': true };
-    } else if (type === 'registered') {
-      query = { 'participants.user': userId };
+    } else if (type === "attended") {
+      query = { "participants.user": userId, "participants.attended": true };
+    } else if (type === "registered") {
+      query = { "participants.user": userId };
     } else {
       // Get all webinars user is involved with
       query = {
-        $or: [
-          { host: userId },
-          { 'participants.user': userId }
-        ]
+        $or: [{ host: userId }, { "participants.user": userId }],
       };
     }
 
     const webinars = await Webinar.find(query)
-      .populate('host', 'firstName lastName specialization')
+      .populate("host", "firstName lastName specialization")
       .sort({ scheduledAt: -1 });
 
     res.json({
       success: true,
       data: {
         webinars,
-        total: webinars.length
-      }
+        total: webinars.length,
+      },
     });
   } catch (error: any) {
-    console.error('Get user webinars error:', error);
+    console.error("Get user webinars error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -652,37 +700,37 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized'
+        message: "Webinar not found or you are not authorized",
       });
     }
 
     if (isWebinarExpired(webinar)) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot generate a meeting link for an expired webinar'
+        message: "Cannot generate a meeting link for an expired webinar",
       });
     }
 
     // Generate a simple meeting link (in production, integrate with Zoom, Google Meet, etc.)
     const meetingLink = `https://meet.example.com/webinar-${webinar._id}`;
-    
+
     webinar.meetingLink = meetingLink;
-    webinar.status = 'live';
+    webinar.status = "live";
     await webinar.save();
 
     res.json({
       success: true,
-      message: 'Meeting link generated successfully',
-      data: { 
+      message: "Meeting link generated successfully",
+      data: {
         meetingLink,
-        webinar 
-      }
+        webinar,
+      },
     });
   } catch (error: any) {
-    console.error('Generate meeting link error:', error);
+    console.error("Generate meeting link error:", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: "Internal server error",
     });
   }
 };
@@ -695,27 +743,44 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { question, options } = req.body;
-    const trimmedQuestion = typeof question === 'string' ? question.trim() : '';
+    const trimmedQuestion = typeof question === "string" ? question.trim() : "";
     const normalizedOptions = Array.isArray(options)
-      ? options.map((option) => typeof option === 'string' ? option.trim() : '').filter(Boolean)
+      ? options
+          .map((option) => (typeof option === "string" ? option.trim() : ""))
+          .filter(Boolean)
       : [];
 
     if (!trimmedQuestion) {
-      return res.status(400).json({ success: false, message: 'Poll question is required' });
+      return res
+        .status(400)
+        .json({ success: false, message: "Poll question is required" });
     }
 
     if (normalizedOptions.length < 2) {
-      return res.status(400).json({ success: false, message: 'At least two poll options are required' });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "At least two poll options are required",
+        });
     }
-    
-    if (req.user!.userType !== 'doctor' && req.user!.userType !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+
+    if (req.user!.userType !== "doctor" && req.user!.userType !== "admin") {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
     const webinar = await Webinar.findById(id);
-    if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
-    if (webinar.host.toString() !== String(req.user!._id) && req.user!.userType !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Only the host can create polls' });
+    if (!webinar)
+      return res
+        .status(404)
+        .json({ success: false, message: "Webinar not found" });
+    if (
+      webinar.host.toString() !== String(req.user!._id) &&
+      req.user!.userType !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Only the host can create polls" });
     }
 
     webinar.polls.push({
@@ -723,17 +788,17 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
       options: normalizedOptions,
       active: true,
       votes: new Map(),
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     await webinar.save();
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit("webinar_update", webinar);
 
     res.status(201).json({ success: true, data: webinar });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -744,30 +809,46 @@ export const votePoll = async (req: AuthRequest, res: Response) => {
     const userId = String(req.user!._id);
 
     const webinar = await Webinar.findById(id);
-    if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    if (!webinar)
+      return res
+        .status(404)
+        .json({ success: false, message: "Webinar not found" });
     if (!canInteractWithWebinar(webinar, req)) {
       return res.status(403).json({
         success: false,
-        message: 'Only webinar participants, the host, or admins can interact with this webinar'
+        message:
+          "Only webinar participants, the host, or admins can interact with this webinar",
       });
     }
 
-    const poll = webinar.polls.find(p => p._id?.toString() === pollId);
-    if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
-    if (!poll.active) return res.status(400).json({ success: false, message: 'Poll is closed' });
-    if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex >= poll.options.length) {
-      return res.status(400).json({ success: false, message: 'Invalid poll option' });
+    const poll = webinar.polls.find((p) => p._id?.toString() === pollId);
+    if (!poll)
+      return res
+        .status(404)
+        .json({ success: false, message: "Poll not found" });
+    if (!poll.active)
+      return res
+        .status(400)
+        .json({ success: false, message: "Poll is closed" });
+    if (
+      !Number.isInteger(optionIndex) ||
+      optionIndex < 0 ||
+      optionIndex >= poll.options.length
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid poll option" });
     }
 
     poll.votes.set(userId, optionIndex);
     await webinar.save();
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit("webinar_update", webinar);
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -776,23 +857,34 @@ export const closePoll = async (req: AuthRequest, res: Response) => {
     const { id, pollId } = req.params;
 
     const webinar = await Webinar.findById(id);
-    if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
-    if (webinar.host.toString() !== String(req.user!._id) && req.user!.userType !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Only the host can close polls' });
+    if (!webinar)
+      return res
+        .status(404)
+        .json({ success: false, message: "Webinar not found" });
+    if (
+      webinar.host.toString() !== String(req.user!._id) &&
+      req.user!.userType !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Only the host can close polls" });
     }
 
-    const poll = webinar.polls.find(p => p._id?.toString() === pollId);
-    if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
+    const poll = webinar.polls.find((p) => p._id?.toString() === pollId);
+    if (!poll)
+      return res
+        .status(404)
+        .json({ success: false, message: "Poll not found" });
 
     poll.active = false;
     await webinar.save();
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit("webinar_update", webinar);
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -804,18 +896,24 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { question } = req.body;
-    const trimmedQuestion = typeof question === 'string' ? question.trim() : '';
+    const trimmedQuestion = typeof question === "string" ? question.trim() : "";
 
     if (!trimmedQuestion) {
-      return res.status(400).json({ success: false, message: 'Question is required' });
+      return res
+        .status(400)
+        .json({ success: false, message: "Question is required" });
     }
 
     const webinar = await Webinar.findById(id);
-    if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    if (!webinar)
+      return res
+        .status(404)
+        .json({ success: false, message: "Webinar not found" });
     if (!canInteractWithWebinar(webinar, req)) {
       return res.status(403).json({
         success: false,
-        message: 'Only webinar participants, the host, or admins can interact with this webinar'
+        message:
+          "Only webinar participants, the host, or admins can interact with this webinar",
       });
     }
 
@@ -824,18 +922,18 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
       author: req.user!._id,
       upvotes: [],
       isAnswered: false,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     await webinar.save();
-    await webinar.populate('qna.author', 'firstName lastName profilePicture');
+    await webinar.populate("qna.author", "firstName lastName profilePicture");
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit("webinar_update", webinar);
 
     res.status(201).json({ success: true, data: webinar });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -845,18 +943,27 @@ export const upvoteQuestion = async (req: AuthRequest, res: Response) => {
     const userId = req.user!._id;
 
     const webinar = await Webinar.findById(id);
-    if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    if (!webinar)
+      return res
+        .status(404)
+        .json({ success: false, message: "Webinar not found" });
     if (!canInteractWithWebinar(webinar, req)) {
       return res.status(403).json({
         success: false,
-        message: 'Only webinar participants, the host, or admins can interact with this webinar'
+        message:
+          "Only webinar participants, the host, or admins can interact with this webinar",
       });
     }
 
-    const question = webinar.qna.find(q => q._id?.toString() === qnaId);
-    if (!question) return res.status(404).json({ success: false, message: 'Question not found' });
+    const question = webinar.qna.find((q) => q._id?.toString() === qnaId);
+    if (!question)
+      return res
+        .status(404)
+        .json({ success: false, message: "Question not found" });
 
-    const upvoteIndex = question.upvotes.findIndex((v: any) => v.toString() === (userId as any).toString());
+    const upvoteIndex = question.upvotes.findIndex(
+      (v: any) => v.toString() === (userId as any).toString(),
+    );
     if (upvoteIndex > -1) {
       question.upvotes.splice(upvoteIndex, 1);
     } else {
@@ -864,14 +971,14 @@ export const upvoteQuestion = async (req: AuthRequest, res: Response) => {
     }
 
     await webinar.save();
-    await webinar.populate('qna.author', 'firstName lastName profilePicture');
+    await webinar.populate("qna.author", "firstName lastName profilePicture");
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit("webinar_update", webinar);
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -880,23 +987,37 @@ export const markQuestionAnswered = async (req: AuthRequest, res: Response) => {
     const { id, qnaId } = req.params;
 
     const webinar = await Webinar.findById(id);
-    if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
-    if (webinar.host.toString() !== String(req.user!._id) && req.user!.userType !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Only the host can mark questions answered' });
+    if (!webinar)
+      return res
+        .status(404)
+        .json({ success: false, message: "Webinar not found" });
+    if (
+      webinar.host.toString() !== String(req.user!._id) &&
+      req.user!.userType !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "Only the host can mark questions answered",
+        });
     }
 
-    const question = webinar.qna.find(q => q._id?.toString() === qnaId);
-    if (!question) return res.status(404).json({ success: false, message: 'Question not found' });
+    const question = webinar.qna.find((q) => q._id?.toString() === qnaId);
+    if (!question)
+      return res
+        .status(404)
+        .json({ success: false, message: "Question not found" });
 
     question.isAnswered = true;
     await webinar.save();
-    await webinar.populate('qna.author', 'firstName lastName profilePicture');
+    await webinar.populate("qna.author", "firstName lastName profilePicture");
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit("webinar_update", webinar);
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

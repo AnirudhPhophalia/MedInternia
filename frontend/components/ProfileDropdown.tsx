@@ -18,8 +18,8 @@ import GroupIcon from "@mui/icons-material/Group";
 import StarIcon from "@mui/icons-material/Star";
 import ThumbUpAltIcon from "@mui/icons-material/ThumbUpAlt";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import { useTranslation } from 'react-i18next';
-import { setGlobalToken } from '../context/AuthContext';
+import { useTranslation } from "react-i18next";
+import { setGlobalToken } from "../context/AuthContext";
 
 interface ProfileDropdownProps {
   onNavigate: (path: string) => void;
@@ -29,8 +29,14 @@ interface ProfileDropdownProps {
   userType?: string;
 }
 
-const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileImageUrl, firstName, lastName, userType }) => {
-  const { t } = useTranslation('common');
+const ProfileDropdown: React.FC<ProfileDropdownProps> = ({
+  onNavigate,
+  profileImageUrl,
+  firstName,
+  lastName,
+  userType,
+}) => {
+  const { t } = useTranslation("common");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -42,22 +48,23 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
   };
 
   // Get userId and initials from localStorage
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : '';
+  const userId =
+    typeof window !== "undefined" ? localStorage.getItem("userId") : "";
 
   // Logout logic
   const logout = () => {
-  localStorage.removeItem("token");
-  setGlobalToken(null);
-  localStorage.removeItem("userId");
-  localStorage.removeItem("user");
-  localStorage.removeItem("starredCases");
-  localStorage.removeItem("starredPapers");
-  localStorage.removeItem("pinnedPapers");
-  localStorage.removeItem("refreshToken");
-  document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
-  document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
-  handleClose();
-  onNavigate("/");
+    localStorage.removeItem("token");
+    setGlobalToken(null);
+    localStorage.removeItem("userId");
+    localStorage.removeItem("user");
+    localStorage.removeItem("starredCases");
+    localStorage.removeItem("starredPapers");
+    localStorage.removeItem("pinnedPapers");
+    localStorage.removeItem("refreshToken");
+    document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
+    document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
+    handleClose();
+    onNavigate("/");
   };
 
   return (
@@ -74,22 +81,22 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
         ) : (
           <Box
             sx={{
-              bgcolor: '#bae6fd',
-              color: '#0284c7',
+              bgcolor: "#bae6fd",
+              color: "#0284c7",
               width: 40,
               height: 40,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               fontWeight: 700,
               fontSize: 16,
               mr: 1,
             }}
           >
-            {(firstName || lastName)
-              ? `${(firstName?.[0] || '').toUpperCase()}${(lastName?.[0] || '').toUpperCase()}`
-              : 'U'}
+            {firstName || lastName
+              ? `${(firstName?.[0] || "").toUpperCase()}${(lastName?.[0] || "").toUpperCase()}`
+              : "U"}
           </Box>
         )}
         <ArrowDropDownIcon />
@@ -102,7 +109,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
       >
         <Box px={2} py={1}>
           <Typography variant="subtitle1" fontWeight={700}>
-            {t('navbar.profile')}
+            {t("navbar.profile")}
           </Typography>
         </Box>
         <Divider sx={{ my: 1 }} />

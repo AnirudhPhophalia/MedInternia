@@ -15,7 +15,7 @@ import {
   Alert,
   Stack,
   Divider,
-  SelectChangeEvent
+  SelectChangeEvent,
 } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import PageHeader from "../components/layout/PageHeader";
@@ -28,7 +28,7 @@ const AI_MODELS = [
   { value: "gpt-4o", label: "GPT-4o" },
   { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
   { value: "gemini-2.0-pro", label: "Gemini 2.0 Pro" },
-  { value: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" }
+  { value: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
 ];
 
 export default function Settings() {
@@ -36,7 +36,10 @@ export default function Settings() {
   const [authChecked, setAuthChecked] = useState(false);
   const [preferredModel, setPreferredModel] = useState("gpt-3.5-turbo");
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -73,12 +76,15 @@ export default function Settings() {
         }
         setMessage({ type: "success", text: "AI model preference saved." });
       } else {
-        setMessage({ type: "error", text: "Could not save preference. Please try again." });
+        setMessage({
+          type: "error",
+          text: "Could not save preference. Please try again.",
+        });
       }
     } catch (err: any) {
       setMessage({
         type: "error",
-        text: err?.response?.data?.message || "Failed to save preference."
+        text: err?.response?.data?.message || "Failed to save preference.",
       });
     } finally {
       setSaving(false);
@@ -97,18 +103,26 @@ export default function Settings() {
 
       <Card sx={{ borderRadius: 4, border: "1px solid #e3eafc", mt: 3 }}>
         <CardContent sx={{ p: 3 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            sx={{ mb: 1 }}
+          >
             <SmartToyIcon color="primary" />
             <Typography variant="h6" fontWeight={700}>
               AI Model Selection
             </Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Choose which AI model powers suggestions and insights across MedInternia.
+            Choose which AI model powers suggestions and insights across
+            MedInternia.
           </Typography>
 
           <FormControl fullWidth size="small">
-            <InputLabel id="preferred-model-label">Preferred AI Model</InputLabel>
+            <InputLabel id="preferred-model-label">
+              Preferred AI Model
+            </InputLabel>
             <Select
               labelId="preferred-model-label"
               label="Preferred AI Model"

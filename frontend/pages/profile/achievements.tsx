@@ -287,16 +287,13 @@ export default function AchievementsPage() {
             sx={{
               cursor: "pointer",
               borderRadius: 4,
-              boxShadow:
-                "10px 10px 20px #caced1, -10px -10px 20px #ffffff",
+              boxShadow: "10px 10px 20px #caced1, -10px -10px 20px #ffffff",
               background: "#ecf0f3",
               position: "relative",
               minHeight: 180,
               transition:
                 "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-              animation: `card-fade-in 0.5s ease-out forwards ${
-                index * 0.1
-              }s`,
+              animation: `card-fade-in 0.5s ease-out forwards ${index * 0.1}s`,
               "&:hover": {
                 transform: "translateY(-8px) scale(1.03)",
                 boxShadow: "6px 6px 12px #caced1, -6px -6px 12px #ffffff",
@@ -424,7 +421,8 @@ export default function AchievementsPage() {
                       ml: 1,
                       fontSize: "1.5rem", // Increased lock icon size
                       verticalAlign: "top",
-                      filter: "drop-shadow(0 0 5px #fff) drop-shadow(0 0 2px #777)",
+                      filter:
+                        "drop-shadow(0 0 5px #fff) drop-shadow(0 0 2px #777)",
                     }}
                   />
                 </Box>
@@ -488,8 +486,7 @@ export default function AchievementsPage() {
                   height: "100%",
                   borderRadius: "50%",
                   overflow: "hidden",
-                  boxShadow:
-                    "8px 8px 16px #caced1, -8px -8px 16px #ffffff",
+                  boxShadow: "8px 8px 16px #caced1, -8px -8px 16px #ffffff",
                   cursor: "pointer",
                   transition: "transform 0.3s, box-shadow 0.3s, filter 0.3s",
                   animation: `badge-pop-in 0.4s ease-out forwards ${
@@ -618,21 +615,21 @@ export default function AchievementsPage() {
       {/* Modal for achievement details */}
       <Modal open={modalOpen} onClose={handleClose}>
         <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          bgcolor: "#ecf0f3",
-          boxShadow:
-          "10px 10px 20px #caced1, -10px -10px 20px #ffffff",
-          p: 5,
-          borderRadius: 6,
-          minWidth: 320,
-          maxWidth: 400,
-          textAlign: "center",
-          animation: "modal-fade-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-        }}
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "#ecf0f3",
+            boxShadow: "10px 10px 20px #caced1, -10px -10px 20px #ffffff",
+            p: 5,
+            borderRadius: 6,
+            minWidth: 320,
+            maxWidth: 400,
+            textAlign: "center",
+            animation:
+              "modal-fade-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+          }}
         >
           <IconButton
             onClick={handleClose}
@@ -650,7 +647,8 @@ export default function AchievementsPage() {
           >
             <CloseIcon />
           </IconButton>
-          {isSparkling && <SparkleEffect />} {/* Conditionally render the sparkle effect */}
+          {isSparkling && <SparkleEffect />}{" "}
+          {/* Conditionally render the sparkle effect */}
           {selected?.unlocked && (
             <CelebrationIcon
               sx={{
@@ -662,7 +660,6 @@ export default function AchievementsPage() {
               }}
             />
           )}
-
           {selected && (
             <>
               <Box mb={2} textAlign="center">
@@ -713,10 +710,8 @@ export default function AchievementsPage() {
                   sx={{
                     mt: 2,
                     borderRadius: 2,
-                    boxShadow:
-                      "6px 6px 12px #caced1, -6px -6px 12px #ffffff",
-                    background:
-                      "linear-gradient(145deg, #3498db, #2980b9)",
+                    boxShadow: "6px 6px 12px #caced1, -6px -6px 12px #ffffff",
+                    background: "linear-gradient(145deg, #3498db, #2980b9)",
                     color: "#fff",
                     transition: "transform 0.3s",
                     "&:hover": {

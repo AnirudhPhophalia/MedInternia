@@ -1,15 +1,18 @@
 # Healthcare API Documentation
 
 ## Overview
+
 MedInternia provides a healthcare and medical learning API for patients, interns, and doctors.
 
 The backend currently supports:
+
 - JWT-based authentication
 - Cookie-backed sessions for browser clients
 - Bearer-token authentication for API clients
 - Role-based access control across multiple user types
 
 ## Base URL
+
 ```text
 http://localhost:3000/api
 ```
@@ -28,6 +31,7 @@ For browser clients, the frontend stores the token in localStorage and also rece
 - `patient`: Can manage their profile, cases, and personal medical information
 - `doctor`: Can create and moderate cases, review content, and manage professional profile data
 - `intern`: Can participate in learning workflows, discussions, and case reviews
+
 > Note: The codebase contains placeholder permission entries for additional roles, but the documented and actively used user model currently centers on patient, doctor, and intern accounts.
 
 ## API Endpoints
@@ -35,11 +39,13 @@ For browser clients, the frontend stores the token in localStorage and also rece
 ### Authentication Routes (`/api/auth`)
 
 #### Register User
+
 ```http
 POST /api/auth/register
 ```
 
 Creates a new user account and returns:
+
 - `user`
 - `token`
 - `refreshToken`
@@ -47,6 +53,7 @@ Creates a new user account and returns:
 The response also sets authentication cookies for browser sessions.
 
 **Common required fields**
+
 ```json
 {
   "firstName": "Blue",
@@ -58,6 +65,7 @@ The response also sets authentication cookies for browser sessions.
 ```
 
 **Patient-specific fields may include**
+
 ```json
 {
   "phone": "9639740956",
@@ -81,6 +89,7 @@ The response also sets authentication cookies for browser sessions.
 ```
 
 **Doctor-specific fields may include**
+
 ```json
 {
   "phone": "9876543210",
@@ -101,6 +110,7 @@ The response also sets authentication cookies for browser sessions.
 ```
 
 #### Login
+
 ```http
 POST /api/auth/login
 ```
@@ -115,45 +125,57 @@ Returns the same token and cookie behavior as registration.
 ```
 
 #### Get Profile
+
 ```http
 GET /api/auth/profile
 ```
+
 Requires authentication.
 
 #### Update Profile
+
 ```http
 PUT /api/auth/profile
 ```
+
 Requires authentication.
 
 #### Change Password
+
 ```http
 PUT /api/auth/change-password
 ```
+
 Requires authentication.
 
 > Note: the route is `PUT`, not `POST`.
 
 #### Logout
+
 ```http
 POST /api/auth/logout
 ```
+
 Requires authentication. This invalidates the current token on the backend and clears the session cookies.
 
 #### Validate Session
+
 ```http
 GET /api/auth/validate-token
 ```
+
 Requires authentication. Returns the current authenticated user.
 
 ### Additional Routes
 
 #### Health Check
+
 ```http
 GET /health
 ```
 
 #### API Information
+
 ```http
 GET /api
 ```
@@ -178,6 +200,7 @@ NODE_ENV=development
 ## Required Fields
 
 ### For All Users
+
 - `firstName`: required, max 50 characters
 - `lastName`: required, max 50 characters
 - `email`: required, unique, valid email format
@@ -185,20 +208,24 @@ NODE_ENV=development
 - `userType`: required, one of `patient`, `doctor`, `intern`
 
 ### Optional Fields for All Users
+
 - `phone`
 - `dateOfBirth`
 - `gender`
 - `address`
 
 ### Additional Required Fields for Doctors
+
 - `specialization`
 - `licenseNumber`
 
 ### Additional Optional Fields for Doctors
+
 - `experience`
 - `qualifications`
 
 ### Additional Optional Fields for Patients
+
 - `emergencyContact`
 - `medicalHistory`
 - `allergies`

@@ -116,7 +116,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       await api.post("/auth/logout");
     } catch (error) {
-      console.error("Failed to invalidate server session during logout:", error);
+      console.error(
+        "Failed to invalidate server session during logout:",
+        error,
+      );
     }
     setToken(null);
     setGlobalToken(null);

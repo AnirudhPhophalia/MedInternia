@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const MIN_SECRET_LENGTH = 32;
 
@@ -9,19 +9,29 @@ const MIN_SECRET_LENGTH = 32;
  * fast rather than silently using a predictable default.
  */
 function assertValidSecret(name, value) {
-  if (!value || value === 'access_token_secret_key' || value === 'refresh_token_secret_key') {
-    throw new Error(`CRITICAL: ${name} must be set to a secure random value. Do not use the default placeholder.`);
+  if (
+    !value ||
+    value === "access_token_secret_key" ||
+    value === "refresh_token_secret_key"
+  ) {
+    throw new Error(
+      `CRITICAL: ${name} must be set to a secure random value. Do not use the default placeholder.`,
+    );
   }
   if (value.length < MIN_SECRET_LENGTH) {
-    throw new Error(`CRITICAL: ${name} must be at least ${MIN_SECRET_LENGTH} characters long.`);
+    throw new Error(
+      `CRITICAL: ${name} must be at least ${MIN_SECRET_LENGTH} characters long.`,
+    );
   }
 }
 
-const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
-const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+const ACCESS_TOKEN_SECRET =
+  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+const REFRESH_TOKEN_SECRET =
+  process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
 
-assertValidSecret('JWT_ACCESS_SECRET', ACCESS_TOKEN_SECRET);
-assertValidSecret('JWT_REFRESH_SECRET', REFRESH_TOKEN_SECRET);
+assertValidSecret("JWT_ACCESS_SECRET", ACCESS_TOKEN_SECRET);
+assertValidSecret("JWT_REFRESH_SECRET", REFRESH_TOKEN_SECRET);
 
 /**
  * Generate a short-lived (15-minute) Access Token.
@@ -30,12 +40,12 @@ assertValidSecret('JWT_REFRESH_SECRET', REFRESH_TOKEN_SECRET);
  */
 const generateAccessToken = (user) => {
   const payload = {
-    userId: user._id ? user._id.toString() : (user.userId || user.id),
+    userId: user._id ? user._id.toString() : user.userId || user.id,
     email: user.email,
     userType: user.userType || user.role,
   };
 
-  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
 };
 
 /**
@@ -46,12 +56,12 @@ const generateAccessToken = (user) => {
 const generateRefreshToken = (user) => {
   const jti = crypto.randomUUID();
   const payload = {
-    userId: user._id ? user._id.toString() : (user.userId || user.id),
+    userId: user._id ? user._id.toString() : user.userId || user.id,
     email: user.email,
     jti,
   };
 
-  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
 };
 
 /**
@@ -60,10 +70,10 @@ const generateRefreshToken = (user) => {
  * @param {string} refreshToken - The signed refresh token string.
  */
 const setRefreshTokenCookie = (res, refreshToken) => {
-  res.cookie('refreshToken', refreshToken, {
+  res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
   });
 };

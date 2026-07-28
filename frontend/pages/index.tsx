@@ -14,7 +14,7 @@ import {
   useTransform,
   useReducedMotion,
   useScroll,
-} from 'framer-motion';
+} from "framer-motion";
 
 // Temporary JSX intrinsic elements typing for inline SVG usage in this file.
 // This prevents "JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists." errors
@@ -45,9 +45,9 @@ import {
   Skeleton,
   Chip,
   TextField,
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   FolderOpen,
   Briefcase,
@@ -61,8 +61,8 @@ import {
   Users,
   Activity,
   ShieldCheck,
-} from 'lucide-react';
-import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
+} from "lucide-react";
+import { getLoginHref, protectedLandingPaths } from "../utils/authRedirect";
 const HeroProductPreview = dynamic(
   () => import("../components/landing/HeroProductPreview"),
   {
@@ -92,33 +92,51 @@ const fontMono = "var(--font-ibm-plex-mono), monospace";
 
 // Words the animated hero headline cycles through.
 const HERO_HEADLINE_WORDS = [
-  'Medical Learning',
-  'Clinical Cases',
-  'Medical Careers',
-  'Healthcare Opportunities',
+  "Medical Learning",
+  "Clinical Cases",
+  "Medical Careers",
+  "Healthcare Opportunities",
 ];
 
 // Deterministic particle field for the hero background (no Math.random so
 // server and client render identically and hydration never mismatches).
-const HERO_PARTICLES: { top: string; left: string; size: number; duration: number; delay: number }[] = [
-  { top: '12%', left: '8%', size: 6, duration: 7, delay: 0 },
-  { top: '22%', left: '84%', size: 4, duration: 9, delay: 1.2 },
-  { top: '68%', left: '14%', size: 5, duration: 8, delay: 0.6 },
-  { top: '78%', left: '70%', size: 7, duration: 10, delay: 2 },
-  { top: '40%', left: '92%', size: 4, duration: 6.5, delay: 1.8 },
-  { top: '58%', left: '4%', size: 5, duration: 8.5, delay: 0.3 },
-  { top: '85%', left: '46%', size: 4, duration: 7.5, delay: 2.4 },
-  { top: '6%', left: '55%', size: 5, duration: 9.5, delay: 1 },
-  { top: '30%', left: '36%', size: 3, duration: 6, delay: 0.9 },
+const HERO_PARTICLES: {
+  top: string;
+  left: string;
+  size: number;
+  duration: number;
+  delay: number;
+}[] = [
+  { top: "12%", left: "8%", size: 6, duration: 7, delay: 0 },
+  { top: "22%", left: "84%", size: 4, duration: 9, delay: 1.2 },
+  { top: "68%", left: "14%", size: 5, duration: 8, delay: 0.6 },
+  { top: "78%", left: "70%", size: 7, duration: 10, delay: 2 },
+  { top: "40%", left: "92%", size: 4, duration: 6.5, delay: 1.8 },
+  { top: "58%", left: "4%", size: 5, duration: 8.5, delay: 0.3 },
+  { top: "85%", left: "46%", size: 4, duration: 7.5, delay: 2.4 },
+  { top: "6%", left: "55%", size: 5, duration: 9.5, delay: 1 },
+  { top: "30%", left: "36%", size: 3, duration: 6, delay: 0.9 },
 ];
 
 /** A small pulsing "live" dot used across the hero's monitor-style badges. */
-function LiveDot({ color = '#00c853', size = 8 }: { color?: string; size?: number }) {
+function LiveDot({
+  color = "#00c853",
+  size = 8,
+}: {
+  color?: string;
+  size?: number;
+}) {
   return (
     <motion.div
       animate={{ scale: [1, 1.6, 1], opacity: [1, 0.35, 1] }}
-      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-      style={{ width: size, height: size, borderRadius: '50%', background: color, flexShrink: 0 }}
+      transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: color,
+        flexShrink: 0,
+      }}
     />
   );
 }
@@ -168,14 +186,7 @@ function TypewriterText({ words }: { words: string[] }) {
     );
 
     return () => clearTimeout(typeTimeout);
-  }, [
-    subIndex,
-    deleting,
-    index,
-    words,
-    shouldReduceMotion,
-    animationEnabled,
-  ]);
+  }, [subIndex, deleting, index, words, shouldReduceMotion, animationEnabled]);
 
   React.useEffect(() => {
     const blinkInterval = setInterval(() => setBlink((prev) => !prev), 500);
@@ -247,54 +258,62 @@ function HeroBackground({
     <Box
       aria-hidden="true"
       sx={{
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
-        overflow: 'hidden',
-        pointerEvents: 'none',
+        overflow: "hidden",
+        pointerEvents: "none",
         zIndex: 0,
       }}
     >
       {/* subtle radial lighting */}
       <Box
         sx={{
-          position: 'absolute',
+          position: "absolute",
           inset: 0,
-          background: 'radial-gradient(120% 90% at 15% 10%, rgba(0,114,255,0.07), transparent 55%)',
+          background:
+            "radial-gradient(120% 90% at 15% 10%, rgba(0,114,255,0.07), transparent 55%)",
         }}
       />
 
       {/* glowing blurred circles */}
       <motion.div
         style={{
-          position: 'absolute',
-          top: '-8%',
-          left: '-6%',
+          position: "absolute",
+          top: "-8%",
+          left: "-6%",
           width: 460,
           height: 460,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0,114,255,0.20), transparent 70%)',
-          filter: 'blur(30px)',
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(0,114,255,0.20), transparent 70%)",
+          filter: "blur(30px)",
           x: parallaxX,
           y: parallaxY,
         }}
         animate={shouldReduceMotion ? undefined : { scale: [1, 1.08, 1] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         style={{
-          position: 'absolute',
-          bottom: '-12%',
-          right: '-8%',
+          position: "absolute",
+          bottom: "-12%",
+          right: "-8%",
           width: 520,
           height: 520,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0,198,255,0.16), transparent 70%)',
-          filter: 'blur(36px)',
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(0,198,255,0.16), transparent 70%)",
+          filter: "blur(36px)",
           x: parallaxX,
           y: parallaxY,
         }}
         animate={shouldReduceMotion ? undefined : { scale: [1, 1.06, 1] }}
-        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
+        transition={{
+          duration: 11,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1.2,
+        }}
       />
 
       {/* floating particles */}
@@ -302,20 +321,25 @@ function HeroBackground({
         <motion.div
           key={i}
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: p.top,
             left: p.left,
             width: p.size,
             height: p.size,
-            borderRadius: '50%',
-            background: '#0072ff',
+            borderRadius: "50%",
+            background: "#0072ff",
           }}
           animate={
             shouldReduceMotion
               ? { opacity: 0.15 }
               : { y: [0, -18, 0], opacity: [0.08, 0.28, 0.08] }
           }
-          transition={{ duration: p.duration, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: p.delay,
+          }}
         />
       ))}
 
@@ -325,9 +349,9 @@ function HeroBackground({
           width="360"
           height="60"
           viewBox="0 0 360 60"
-          style={{ position: 'absolute', top: '42%', opacity: 0.09 }}
-          animate={{ x: ['-20%', '120%'] }}
-          transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
+          style={{ position: "absolute", top: "42%", opacity: 0.09 }}
+          animate={{ x: ["-20%", "120%"] }}
+          transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
         >
           <path
             d="M0 30 H90 L104 8 L122 52 L138 30 H210 L222 14 L236 46 L250 30 H360"
@@ -366,7 +390,13 @@ function FloatingCard({
   const shouldReduceMotion = useReducedMotion();
   return (
     <motion.div
-      style={{ position: 'absolute', zIndex: 3, x: parallaxX, y: parallaxY, ...sx }}
+      style={{
+        position: "absolute",
+        zIndex: 3,
+        x: parallaxX,
+        y: parallaxY,
+        ...sx,
+      }}
       initial={{ opacity: 0, y: 12 }}
       animate={
         shouldReduceMotion
@@ -377,7 +407,12 @@ function FloatingCard({
         opacity: { duration: 0.5, delay: floatDelay },
         y: shouldReduceMotion
           ? { duration: 0.5, delay: floatDelay }
-          : { duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: floatDelay },
+          : {
+              duration: 4.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: floatDelay,
+            },
       }}
     >
       <Paper
@@ -385,16 +420,16 @@ function FloatingCard({
         sx={{
           py: 1.25,
           px: 2,
-          borderRadius: '14px',
-          display: 'flex',
-          alignItems: 'center',
+          borderRadius: "14px",
+          display: "flex",
+          alignItems: "center",
           gap: 1.25,
-          bgcolor: 'rgba(255,255,255,0.72)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-          border: '1px solid rgba(255,255,255,0.6)',
+          bgcolor: "rgba(255,255,255,0.72)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
+          border: "1px solid rgba(255,255,255,0.6)",
           borderLeft: `3px solid ${accent}`,
-          boxShadow: '0 12px 28px rgba(10,37,64,0.14)',
+          boxShadow: "0 12px 28px rgba(10,37,64,0.14)",
         }}
       >
         {icon}
@@ -402,16 +437,21 @@ function FloatingCard({
           <Typography
             sx={{
               fontFamily: fontMono,
-              fontSize: '0.62rem',
+              fontSize: "0.62rem",
               fontWeight: 600,
-              letterSpacing: '0.08em',
-              color: '#64748b',
-              textTransform: 'uppercase',
+              letterSpacing: "0.08em",
+              color: "#64748b",
+              textTransform: "uppercase",
             }}
           >
             {eyebrow}
           </Typography>
-          <Typography variant="body2" fontWeight={700} color="#0a2540" sx={{ whiteSpace: 'nowrap' }}>
+          <Typography
+            variant="body2"
+            fontWeight={700}
+            color="#0a2540"
+            sx={{ whiteSpace: "nowrap" }}
+          >
             {label}
           </Typography>
         </Box>
@@ -431,13 +471,21 @@ function GlowRippleButton({
   sx?: object;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const [ripples, setRipples] = React.useState<{ x: number; y: number; id: number }[]>([]);
+  const [ripples, setRipples] = React.useState<
+    { x: number; y: number; id: number }[]
+  >([]);
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const id = Date.now();
-    setRipples((prev) => [...prev, { x: e.clientX - rect.left, y: e.clientY - rect.top, id }]);
-    setTimeout(() => setRipples((prev) => prev.filter((r) => r.id !== id)), 650);
+    setRipples((prev) => [
+      ...prev,
+      { x: e.clientX - rect.left, y: e.clientY - rect.top, id },
+    ]);
+    setTimeout(
+      () => setRipples((prev) => prev.filter((r) => r.id !== id)),
+      650,
+    );
     onClick?.();
   };
 
@@ -447,16 +495,21 @@ function GlowRippleButton({
         shouldReduceMotion
           ? undefined
           : {
-            boxShadow: [
-              '0 10px 24px rgba(0,114,255,0.28)',
-              '0 16px 40px rgba(0,114,255,0.48)',
-              '0 10px 24px rgba(0,114,255,0.28)',
-            ],
-            scale: [1, 1.02, 1],
-          }
+              boxShadow: [
+                "0 10px 24px rgba(0,114,255,0.28)",
+                "0 16px 40px rgba(0,114,255,0.48)",
+                "0 10px 24px rgba(0,114,255,0.28)",
+              ],
+              scale: [1, 1.02, 1],
+            }
       }
-      transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', repeatDelay: 2 }}
-      style={{ borderRadius: '14px', display: 'inline-block' }}
+      transition={{
+        duration: 3.2,
+        repeat: Infinity,
+        ease: "easeInOut",
+        repeatDelay: 2,
+      }}
+      style={{ borderRadius: "14px", display: "inline-block" }}
       whileHover={{ y: -3 }}
       whileTap={{ scale: 0.97 }}
     >
@@ -465,16 +518,16 @@ function GlowRippleButton({
         size="large"
         onClick={handleClick}
         sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          bgcolor: '#0072ff',
+          position: "relative",
+          overflow: "hidden",
+          bgcolor: "#0072ff",
           px: 4.5,
           py: 1.4,
-          borderRadius: '14px',
+          borderRadius: "14px",
           fontWeight: 700,
-          textTransform: 'none',
-          fontSize: '1rem',
-          '&:hover': { bgcolor: '#005bd6' },
+          textTransform: "none",
+          fontSize: "1rem",
+          "&:hover": { bgcolor: "#005bd6" },
           ...sx,
         }}
       >
@@ -484,16 +537,16 @@ function GlowRippleButton({
             key={r.id}
             initial={{ width: 0, height: 0, opacity: 0.45 }}
             animate={{ width: 260, height: 260, opacity: 0 }}
-            transition={{ duration: 0.65, ease: 'easeOut' }}
+            transition={{ duration: 0.65, ease: "easeOut" }}
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: r.x,
               top: r.y,
-              x: '-50%',
-              y: '-50%',
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.5)',
-              pointerEvents: 'none',
+              x: "-50%",
+              y: "-50%",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.5)",
+              pointerEvents: "none",
             }}
           />
         ))}
@@ -506,33 +559,38 @@ export default function HomePage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
-  const [waitlistEmail, setWaitlistEmail] = React.useState('');
+  const [waitlistEmail, setWaitlistEmail] = React.useState("");
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
   const [waitlistLoading, setWaitlistLoading] = React.useState(false);
-  const [waitlistError, setWaitlistError] = React.useState('');
+  const [waitlistError, setWaitlistError] = React.useState("");
 
   // Needed by the feature cards below, and also by the hero mouse-parallax setup.
   const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
-    const token = typeof window !== 'undefined' ? getAuthToken() : null;
+    const token = typeof window !== "undefined" ? getAuthToken() : null;
     setIsLoggedIn(!!token);
   }, []);
 
   const getAuthAwareHref = (path: string) =>
-    !isLoggedIn && protectedLandingPaths.includes(path) ? getLoginHref(path) : path;
+    !isLoggedIn && protectedLandingPaths.includes(path)
+      ? getLoginHref(path)
+      : path;
 
-  const handleWaitlistSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleWaitlistSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
-    setWaitlistError('');
+    setWaitlistError("");
     setWaitlistLoading(true);
     try {
-      await api.post('/waitlist', { email: waitlistEmail });
+      await api.post("/waitlist", { email: waitlistEmail });
       setWaitlistSubmitted(true);
-      setWaitlistEmail('');
+      setWaitlistEmail("");
     } catch (error: any) {
       const message =
-        error?.response?.data?.message || 'Something went wrong. Please try again.';
+        error?.response?.data?.message ||
+        "Something went wrong. Please try again.";
       setWaitlistError(message);
     } finally {
       setWaitlistLoading(false);
@@ -540,12 +598,16 @@ export default function HomePage() {
   };
 
   const navItems = isLoggedIn
-    ? ['Cases', 'Jobs', 'Webinars', 'Leaderboard', 'About']
-    : ['Jobs', 'Webinars', 'Leaderboard', 'About'];
+    ? ["Cases", "Jobs", "Webinars", "Leaderboard", "About"]
+    : ["Jobs", "Webinars", "Leaderboard", "About"];
 
   const fadeInUp: Variants = {
     hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: 'easeOut' } },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.7, ease: "easeOut" },
+    },
   };
 
   const staggerContainer: Variants = {
@@ -621,49 +683,60 @@ export default function HomePage() {
       <Box
         component="header"
         sx={{
-          position: 'fixed',
+          position: "fixed",
           top: 0,
           left: 0,
           right: 0,
           px: { xs: 2, md: 6 },
           py: 2,
-          display: isLoggedIn ? 'none' : 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
+          display: isLoggedIn ? "none" : "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "rgba(255, 255, 255, 0.9)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
           zIndex: 1100,
-
-
-
         }}
       >
         <Box
-          sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-          onClick={() => router.push('/')}
+          sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+          onClick={() => router.push("/")}
           role="button"
           tabIndex={0}
           aria-label="Go to MedInternia home"
-          onKeyDown={(e) => e.key === 'Enter' && router.push('/')}
+          onKeyDown={(e) => e.key === "Enter" && router.push("/")}
         >
-          <Image src="/med-internia-logo.jpg" alt="MedInternia Logo" width={36} height={36} style={{ borderRadius: '50%' }} />
+          <Image
+            src="/med-internia-logo.jpg"
+            alt="MedInternia Logo"
+            width={36}
+            height={36}
+            style={{ borderRadius: "50%" }}
+          />
           <Typography variant="h6" fontWeight={800} color="#1a202c" ml={1}>
             MedInternia
           </Typography>
         </Box>
 
-        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 4 }}>
+        <Box sx={{ display: { xs: "none", md: "flex" }, gap: 4 }}>
           {navItems.map((item) => (
-            <Link key={item} href={getAuthAwareHref(`/${item.toLowerCase()}`)} passHref legacyBehavior>
+            <Link
+              key={item}
+              href={getAuthAwareHref(`/${item.toLowerCase()}`)}
+              passHref
+              legacyBehavior
+            >
               <Typography
                 component="a"
                 fontWeight={600}
                 color="#4a5568"
                 sx={{
-                  textDecoration: 'none',
-                  transition: 'color 0.2s',
-                  '&:hover': { color: '#0072ff', borderBottom: 'none !important' },
+                  textDecoration: "none",
+                  transition: "color 0.2s",
+                  "&:hover": {
+                    color: "#0072ff",
+                    borderBottom: "none !important",
+                  },
                 }}
               >
                 {item}
@@ -672,9 +745,14 @@ export default function HomePage() {
           ))}
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: { xs: 1, sm: 2 } }}
+        >
           <IconButton
-            sx={{ display: { xs: 'inline-flex', md: 'none' }, color: '#1a202c' }}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              color: "#1a202c",
+            }}
             aria-label="Open navigation menu"
             onClick={() => setMobileNavOpen(true)}
           >
@@ -683,29 +761,29 @@ export default function HomePage() {
           <Button
             variant="text"
             sx={{
-              color: '#0072ff',
+              color: "#0072ff",
               fontWeight: 700,
-              display: { xs: 'none', sm: 'inline-flex' },
-              '&:hover': { bgcolor: 'rgba(0,114,255,0.08)' },
+              display: { xs: "none", sm: "inline-flex" },
+              "&:hover": { bgcolor: "rgba(0,114,255,0.08)" },
             }}
-            onClick={() => router.push('/auth/login')}
+            onClick={() => router.push("/auth/login")}
           >
             Log in
           </Button>
           <Button
             variant="contained"
             sx={{
-              bgcolor: '#0072ff',
-              color: '#fff',
-              borderRadius: '24px',
+              bgcolor: "#0072ff",
+              color: "#fff",
+              borderRadius: "24px",
               px: { xs: 2, sm: 3 },
               fontWeight: 700,
-              textTransform: 'none',
-              boxShadow: '0 4px 14px rgba(0,114,255,0.2)',
-              '&:hover': { bgcolor: '#005bb5', transform: 'translateY(-1px)' },
-              transition: 'all 0.2s',
+              textTransform: "none",
+              boxShadow: "0 4px 14px rgba(0,114,255,0.2)",
+              "&:hover": { bgcolor: "#005bb5", transform: "translateY(-1px)" },
+              transition: "all 0.2s",
             }}
-            onClick={() => router.push('/auth/register')}
+            onClick={() => router.push("/auth/register")}
           >
             Sign Up
           </Button>
@@ -720,7 +798,8 @@ export default function HomePage() {
             width: "100%",
             height: "3px",
             background: "linear-gradient(90deg,#2563EB,#06B6D4,#3B82F6)",
-            boxShadow: "0 0 12px rgba(37,99,235,.45), 0 0 24px rgba(6,182,212,.25)",
+            boxShadow:
+              "0 0 12px rgba(37,99,235,.45), 0 0 24px rgba(6,182,212,.25)",
             zIndex: 1200,
           }}
         />
@@ -736,11 +815,22 @@ export default function HomePage() {
         onClose={() => setMobileNavOpen(false)}
         PaperProps={{ sx: { width: 280 } }}
       >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
+        <Box
+          sx={{
+            p: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
           <Typography fontWeight={700} color="#1a202c">
             Menu
           </Typography>
-          <IconButton aria-label="Close navigation menu" onClick={() => setMobileNavOpen(false)}>
+          <IconButton
+            aria-label="Close navigation menu"
+            onClick={() => setMobileNavOpen(false)}
+          >
             <CloseIcon />
           </IconButton>
         </Box>
@@ -752,12 +842,19 @@ export default function HomePage() {
                 href={getAuthAwareHref(`/${item.toLowerCase()}`)}
                 onClick={() => setMobileNavOpen(false)}
               >
-                <ListItemText primary={item} primaryTypographyProps={{ fontWeight: 600 }} />
+                <ListItemText
+                  primary={item}
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
               </ListItemButton>
             </ListItem>
           ))}
           <ListItem disablePadding>
-            <ListItemButton component={Link} href="/auth/login" onClick={() => setMobileNavOpen(false)}>
+            <ListItemButton
+              component={Link}
+              href="/auth/login"
+              onClick={() => setMobileNavOpen(false)}
+            >
               <ListItemText primary="Log in" />
             </ListItemButton>
           </ListItem>
@@ -769,30 +866,47 @@ export default function HomePage() {
         ref={heroRef}
         onMouseMove={handleHeroMouseMove}
         onMouseLeave={handleHeroMouseLeave}
-        sx={{ position: 'relative', overflow: 'hidden' }}
+        sx={{ position: "relative", overflow: "hidden" }}
       >
         <HeroBackground parallaxX={bgParallaxX} parallaxY={bgParallaxY} />
 
-        <Container maxWidth="xl" sx={{ pt: { xs: 6, md: 12 }, pb: { xs: 8, md: 12 }, position: 'relative', zIndex: 1 }}>
+        <Container
+          maxWidth="xl"
+          sx={{
+            pt: { xs: 6, md: 12 },
+            pb: { xs: 8, md: 12 },
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           <Grid container spacing={6} alignItems="center">
             <Grid size={{ xs: 12, md: 6 }}>
-              <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer}
+              >
                 {/* Eyebrow: slides in from the left, sets the "vitals monitor" tone */}
                 <motion.div
                   initial={{ opacity: 0, x: -32 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                  <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 3 }}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={1.25}
+                    sx={{ mb: 3 }}
+                  >
                     <LiveDot />
                     <Typography
                       sx={{
                         fontFamily: fontMono,
-                        fontSize: '0.75rem',
+                        fontSize: "0.75rem",
                         fontWeight: 600,
-                        letterSpacing: '0.14em',
-                        color: '#0072ff',
-                        textTransform: 'uppercase',
+                        letterSpacing: "0.14em",
+                        color: "#0072ff",
+                        textTransform: "uppercase",
                       }}
                     >
                       Medical Learning Network
@@ -800,18 +914,21 @@ export default function HomePage() {
                   </Stack>
                 </motion.div>
 
-                <motion.div style={{ x: textParallaxX, y: textParallaxY }} variants={fadeInUp}>
+                <motion.div
+                  style={{ x: textParallaxX, y: textParallaxY }}
+                  variants={fadeInUp}
+                >
                   <Typography
                     variant="h1"
                     sx={{
                       fontFamily: fontDisplay,
                       fontWeight: 800,
-                      fontSize: { xs: '2.4rem', sm: '3.2rem', md: '3.7rem' },
-                      color: '#0a2540',
+                      fontSize: { xs: "2.4rem", sm: "3.2rem", md: "3.7rem" },
+                      color: "#0a2540",
                       lineHeight: 1.14,
-                      letterSpacing: '-0.01em',
+                      letterSpacing: "-0.01em",
                       mb: 3,
-                      minHeight: { xs: '7.5rem', sm: '8.5rem', md: '8.8rem' },
+                      minHeight: { xs: "7.5rem", sm: "8.5rem", md: "8.8rem" },
                     }}
                   >
                     Your gateway to
@@ -821,39 +938,64 @@ export default function HomePage() {
                 </motion.div>
 
                 <motion.div variants={fadeInUp}>
-                  <Typography variant="body1" sx={{ color: '#4a5568', fontSize: '1.1rem', mb: 4, maxWidth: 480, lineHeight: 1.65 }}>
-                    Join a community of learners and professionals collaborating to shape the future of healthcare.
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: "#4a5568",
+                      fontSize: "1.1rem",
+                      mb: 4,
+                      maxWidth: 480,
+                      lineHeight: 1.65,
+                    }}
+                  >
+                    Join a community of learners and professionals collaborating
+                    to shape the future of healthcare.
                   </Typography>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.5, ease: 'easeOut' }}
+                  transition={{ duration: 0.5, delay: 0.5, ease: "easeOut" }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 5 }}>
-                    <GlowRippleButton onClick={() => router.push('/auth/register')}>Join now</GlowRippleButton>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      flexWrap: "wrap",
+                      mb: 5,
+                    }}
+                  >
+                    <GlowRippleButton
+                      onClick={() => router.push("/auth/register")}
+                    >
+                      Join now
+                    </GlowRippleButton>
                     <Button
                       variant="text"
                       size="large"
                       endIcon={
                         <Box
                           className="hero-arrow"
-                          sx={{ display: 'inline-flex', transition: 'transform 0.25s ease' }}
+                          sx={{
+                            display: "inline-flex",
+                            transition: "transform 0.25s ease",
+                          }}
                         >
                           <ChevronRight size={18} />
                         </Box>
                       }
                       sx={{
-                        color: '#0a2540',
+                        color: "#0a2540",
                         fontWeight: 700,
-                        textTransform: 'none',
-                        fontSize: '1rem',
+                        textTransform: "none",
+                        fontSize: "1rem",
                         px: 2,
-                        '&:hover': { bgcolor: 'transparent', color: '#0072ff' },
-                        '&:hover .hero-arrow': { transform: 'translateX(4px)' },
+                        "&:hover": { bgcolor: "transparent", color: "#0072ff" },
+                        "&:hover .hero-arrow": { transform: "translateX(4px)" },
                       }}
-                      onClick={() => router.push('/auth/login')}
+                      onClick={() => router.push("/auth/login")}
                     >
                       Log in
                     </Button>
@@ -864,18 +1006,18 @@ export default function HomePage() {
                 <motion.div
                   initial={{ opacity: 0, x: -40 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6, delay: 0.75, ease: 'easeOut' }}
+                  transition={{ duration: 0.6, delay: 0.75, ease: "easeOut" }}
                 >
                   <Stack direction="row" alignItems="center" spacing={1.5}>
                     <Box
                       sx={{
                         width: 40,
                         height: 40,
-                        borderRadius: '12px',
-                        bgcolor: '#eff6ff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        borderRadius: "12px",
+                        bgcolor: "#eff6ff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
                       <Activity size={19} color="#0072ff" aria-hidden />
@@ -883,13 +1025,22 @@ export default function HomePage() {
                     <Box>
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         <Users size={15} color="#0072ff" aria-hidden />
-                        <Typography fontWeight={700} color="#0a2540" fontSize="0.92rem">
+                        <Typography
+                          fontWeight={700}
+                          color="#0a2540"
+                          fontSize="0.92rem"
+                        >
                           Growing community
                         </Typography>
                       </Stack>
                       <Typography
                         variant="caption"
-                        sx={{ color: '#718096', fontFamily: fontMono, letterSpacing: '0.02em', fontSize: '0.72rem' }}
+                        sx={{
+                          color: "#718096",
+                          fontFamily: fontMono,
+                          letterSpacing: "0.02em",
+                          fontSize: "0.72rem",
+                        }}
                       >
                         Doctors · interns · students
                       </Typography>
@@ -903,19 +1054,19 @@ export default function HomePage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.25, ease: 'easeOut' }}
+                transition={{ duration: 0.7, delay: 0.25, ease: "easeOut" }}
               >
-                <Box sx={{ position: 'relative', px: { xs: 1, sm: 2 }, py: 2 }}>
+                <Box sx={{ position: "relative", px: { xs: 1, sm: 2 }, py: 2 }}>
                   {/* Clinical chart-paper backdrop, replaces the generic blurred blob */}
                   <Box
                     aria-hidden="true"
                     sx={{
-                      position: 'absolute',
+                      position: "absolute",
                       inset: { xs: 18, sm: 28 },
-                      borderRadius: '32px',
+                      borderRadius: "32px",
                       backgroundImage:
-                        'linear-gradient(rgba(0,114,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,114,255,0.08) 1px, transparent 1px)',
-                      backgroundSize: '22px 22px',
+                        "linear-gradient(rgba(0,114,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,114,255,0.08) 1px, transparent 1px)",
+                      backgroundSize: "22px 22px",
                       zIndex: 0,
                     }}
                   />
@@ -923,31 +1074,38 @@ export default function HomePage() {
                   {/* Gradient-bordered glass container with an animated light sweep */}
                   <motion.div
                     style={{ x: videoParallaxX, y: videoParallaxY }}
-                    whileHover={shouldReduceMotion ? undefined : { scale: 1.015, rotate: 0.4 }}
-                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    whileHover={
+                      shouldReduceMotion
+                        ? undefined
+                        : { scale: 1.015, rotate: 0.4 }
+                    }
+                    transition={{ duration: 0.35, ease: "easeOut" }}
                   >
                     <Box
                       sx={{
-                        position: 'relative',
+                        position: "relative",
                         zIndex: 1,
                         maxWidth: 540,
-                        mx: 'auto',
-                        p: '2px',
-                        borderRadius: '30px',
-                        background: 'linear-gradient(135deg, rgba(0,114,255,0.65), rgba(0,198,255,0.35), rgba(79,172,254,0.65))',
-                        boxShadow: '0 24px 56px rgba(10, 37, 64, 0.2)',
-                        transition: 'box-shadow 0.35s ease',
-                        '&:hover': { boxShadow: '0 30px 70px rgba(0,114,255,0.34)' },
+                        mx: "auto",
+                        p: "2px",
+                        borderRadius: "30px",
+                        background:
+                          "linear-gradient(135deg, rgba(0,114,255,0.65), rgba(0,198,255,0.35), rgba(79,172,254,0.65))",
+                        boxShadow: "0 24px 56px rgba(10, 37, 64, 0.2)",
+                        transition: "box-shadow 0.35s ease",
+                        "&:hover": {
+                          boxShadow: "0 30px 70px rgba(0,114,255,0.34)",
+                        },
                       }}
                     >
                       <Box
                         sx={{
-                          position: 'relative',
-                          borderRadius: '28px',
-                          overflow: 'hidden',
-                          bgcolor: '#000',
-                          backdropFilter: 'blur(20px)',
-                          WebkitBackdropFilter: 'blur(20px)',
+                          position: "relative",
+                          borderRadius: "28px",
+                          overflow: "hidden",
+                          bgcolor: "#000",
+                          backdropFilter: "blur(20px)",
+                          WebkitBackdropFilter: "blur(20px)",
                         }}
                       >
                         <Image
@@ -968,18 +1126,23 @@ export default function HomePage() {
                         {!shouldReduceMotion && (
                           <motion.div
                             aria-hidden="true"
-                            initial={{ x: '-150%' }}
-                            animate={{ x: '150%' }}
-                            transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 3.5, ease: 'easeInOut' }}
+                            initial={{ x: "-150%" }}
+                            animate={{ x: "150%" }}
+                            transition={{
+                              duration: 2.2,
+                              repeat: Infinity,
+                              repeatDelay: 3.5,
+                              ease: "easeInOut",
+                            }}
                             style={{
-                              position: 'absolute',
+                              position: "absolute",
                               top: 0,
                               left: 0,
-                              width: '40%',
-                              height: '100%',
+                              width: "40%",
+                              height: "100%",
                               background:
-                                'linear-gradient(105deg, transparent, rgba(255,255,255,0.22), transparent)',
-                              pointerEvents: 'none',
+                                "linear-gradient(105deg, transparent, rgba(255,255,255,0.22), transparent)",
+                              pointerEvents: "none",
                             }}
                           />
                         )}
@@ -995,12 +1158,23 @@ export default function HomePage() {
                     floatDelay={0.7}
                     parallaxX={cardParallaxX}
                     parallaxY={cardParallaxY}
-                    sx={{ top: -10, right: 16, display: { xs: 'none', sm: 'block' } }}
+                    sx={{
+                      top: -10,
+                      right: 16,
+                      display: { xs: "none", sm: "block" },
+                    }}
                   />
 
                   <FloatingCard
                     icon={
-                      <Box sx={{ bgcolor: '#eff6ff', p: 1, borderRadius: '10px', display: 'flex' }}>
+                      <Box
+                        sx={{
+                          bgcolor: "#eff6ff",
+                          p: 1,
+                          borderRadius: "10px",
+                          display: "flex",
+                        }}
+                      >
                         <FolderOpen size={20} color="#0072ff" />
                       </Box>
                     }
@@ -1015,7 +1189,14 @@ export default function HomePage() {
 
                   <FloatingCard
                     icon={
-                      <Box sx={{ bgcolor: '#f0fdf4', p: 1, borderRadius: '10px', display: 'flex' }}>
+                      <Box
+                        sx={{
+                          bgcolor: "#f0fdf4",
+                          p: 1,
+                          borderRadius: "10px",
+                          display: "flex",
+                        }}
+                      >
                         <ShieldCheck size={20} color="#16a34a" />
                       </Box>
                     }
@@ -1025,7 +1206,11 @@ export default function HomePage() {
                     floatDelay={1.3}
                     parallaxX={cardParallaxXInv}
                     parallaxY={cardParallaxY}
-                    sx={{ top: '38%', right: -18, display: { xs: 'none', md: 'block' } }}
+                    sx={{
+                      top: "38%",
+                      right: -18,
+                      display: { xs: "none", md: "block" },
+                    }}
                   />
                 </Box>
               </motion.div>
@@ -1036,42 +1221,81 @@ export default function HomePage() {
 
       {/* Feature cards */}
       <Container maxWidth="xl" sx={{ mb: 12 }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-50px' }} variants={staggerContainer}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={staggerContainer}
+        >
           <Grid container spacing={3}>
             {[
-              { title: 'Cases', desc: 'Explore and analyze real medical cases.', icon: <FolderOpen size={28} color="#0072ff" />, color: '#eff6ff', link: '/cases', authRequired: true },
-              { title: 'Jobs', desc: 'Find internships and career opportunities.', icon: <Briefcase size={28} color="#38a169" />, color: '#f0fdf4', link: '/jobs' },
-              { title: 'Webinars', desc: 'Join live AMAs and sessions.', icon: <Video size={28} color="#8b5cf6" />, color: '#f5f3ff', link: '/webinars' },
-              { title: 'Leaderboard', desc: 'Track contributors and ranks.', icon: <Award size={28} color="#d97706" />, color: '#fffbeb', link: '/leaderboard' },
+              {
+                title: "Cases",
+                desc: "Explore and analyze real medical cases.",
+                icon: <FolderOpen size={28} color="#0072ff" />,
+                color: "#eff6ff",
+                link: "/cases",
+                authRequired: true,
+              },
+              {
+                title: "Jobs",
+                desc: "Find internships and career opportunities.",
+                icon: <Briefcase size={28} color="#38a169" />,
+                color: "#f0fdf4",
+                link: "/jobs",
+              },
+              {
+                title: "Webinars",
+                desc: "Join live AMAs and sessions.",
+                icon: <Video size={28} color="#8b5cf6" />,
+                color: "#f5f3ff",
+                link: "/webinars",
+              },
+              {
+                title: "Leaderboard",
+                desc: "Track contributors and ranks.",
+                icon: <Award size={28} color="#d97706" />,
+                color: "#fffbeb",
+                link: "/leaderboard",
+              },
             ]
               .filter((item) => !item.authRequired || isLoggedIn)
               .map((item, i) => (
                 <Grid size={{ xs: 12, sm: 6, md: isLoggedIn ? 3 : 4 }} key={i}>
                   <motion.div
                     variants={fadeInUp}
-                    style={{ height: '100%' }}
+                    style={{ height: "100%" }}
                     whileHover={
                       shouldReduceMotion
                         ? undefined
-                        : { y: -10, scale: 1.035, transition: { duration: 0.25, ease: 'easeOut' } }
+                        : {
+                            y: -10,
+                            scale: 1.035,
+                            transition: { duration: 0.25, ease: "easeOut" },
+                          }
                     }
                   >
                     <Paper
                       elevation={0}
                       sx={{
                         p: 4,
-                        borderRadius: '24px',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        bgcolor: '#fff',
-                        border: '1px solid #e2e8f0',
-                        transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
-                        '&:hover': {
-                          borderColor: '#0072ff',
-                          boxShadow: '0 20px 45px rgba(0, 114, 255, 0.22)',
-                          '& .explore-underline': { width: '100%' },
-                          '& .explore-arrow': { transform: shouldReduceMotion ? 'none' : 'translateX(6px)' },
+                        borderRadius: "24px",
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        bgcolor: "#fff",
+                        border: "1px solid #e2e8f0",
+                        transition:
+                          "box-shadow 0.3s ease, border-color 0.3s ease",
+                        "&:hover": {
+                          borderColor: "#0072ff",
+                          boxShadow: "0 20px 45px rgba(0, 114, 255, 0.22)",
+                          "& .explore-underline": { width: "100%" },
+                          "& .explore-arrow": {
+                            transform: shouldReduceMotion
+                              ? "none"
+                              : "translateX(6px)",
+                          },
                         },
                       }}
                     >
@@ -1081,55 +1305,77 @@ export default function HomePage() {
                           backgroundColor: item.color,
                           width: 64,
                           height: 64,
-                          borderRadius: '20px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          borderRadius: "20px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           marginBottom: 24,
                         }}
                         whileHover={
                           shouldReduceMotion
                             ? undefined
                             : {
-                              rotate: [0, -12, 10, -6, 0],
-                              scale: 1.12,
-                              transition: { duration: 0.55, ease: 'easeInOut' },
-                            }
+                                rotate: [0, -12, 10, -6, 0],
+                                scale: 1.12,
+                                transition: {
+                                  duration: 0.55,
+                                  ease: "easeInOut",
+                                },
+                              }
                         }
                       >
                         {item.icon}
                       </motion.div>
 
-                      <Typography variant="h5" fontWeight={800} color="#1a202c" mb={1.5}>
+                      <Typography
+                        variant="h5"
+                        fontWeight={800}
+                        color="#1a202c"
+                        mb={1.5}
+                      >
                         {item.title}
                       </Typography>
-                      <Typography variant="body1" color="#64748b" mb={4} flexGrow={1} lineHeight={1.6}>
+                      <Typography
+                        variant="body1"
+                        color="#64748b"
+                        mb={4}
+                        flexGrow={1}
+                        lineHeight={1.6}
+                      >
                         {item.desc}
                       </Typography>
                       <Link
                         href={getAuthAwareHref(item.link)}
                         style={{
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          color: '#0072ff',
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          color: "#0072ff",
                           fontWeight: 700,
-                          position: 'relative',
-                          width: 'fit-content',
+                          position: "relative",
+                          width: "fit-content",
                           paddingBottom: 2,
                         }}
                       >
-                        Explore <ChevronRight className="explore-arrow" size={18} style={{ marginLeft: 4, transition: 'transform 0.25s ease' }} />
+                        Explore{" "}
+                        <ChevronRight
+                          className="explore-arrow"
+                          size={18}
+                          style={{
+                            marginLeft: 4,
+                            transition: "transform 0.25s ease",
+                          }}
+                        />
                         <Box
                           className="explore-underline"
                           sx={{
-                            position: 'absolute',
+                            position: "absolute",
                             bottom: 0,
                             left: 0,
-                            width: '0%',
+                            width: "0%",
                             height: 2,
-                            bgcolor: '#0072ff',
-                            transition: 'width 0.3s ease',
+                            bgcolor: "#0072ff",
+                            transition: "width 0.3s ease",
                             borderRadius: 2,
                           }}
                         />
@@ -1144,17 +1390,42 @@ export default function HomePage() {
 
       {/* Top Contributors — skeleton / coming soon */}
       <Container maxWidth="xl" sx={{ mb: 12 }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeInUp}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 5,
+            }}
+          >
             <Box>
               <Typography variant="h4" fontWeight={800} color="#1a202c">
                 Top Contributors
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
                 Leaderboard rankings coming soon
               </Typography>
             </Box>
-            <Link href={getAuthAwareHref('/leaderboard')} style={{ textDecoration: 'none', color: '#0072ff', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
+            <Link
+              href={getAuthAwareHref("/leaderboard")}
+              style={{
+                textDecoration: "none",
+                color: "#0072ff",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+              }}
+            >
               View Leaderboard <ChevronRight size={20} />
             </Link>
           </Box>
@@ -1165,18 +1436,42 @@ export default function HomePage() {
                   elevation={0}
                   sx={{
                     p: 3,
-                    borderRadius: '20px',
-                    border: '1px dashed #cbd5e1',
-                    bgcolor: '#fafbfc',
+                    borderRadius: "20px",
+                    border: "1px dashed #cbd5e1",
+                    bgcolor: "#fafbfc",
                   }}
                 >
                   <Stack direction="row" alignItems="center" spacing={2.5}>
-                    <Skeleton variant="circular" width={56} height={56} animation="wave" />
+                    <Skeleton
+                      variant="circular"
+                      width={56}
+                      height={56}
+                      animation="wave"
+                    />
                     <Box sx={{ flex: 1 }}>
-                      <Skeleton variant="text" width="70%" height={28} animation="wave" sx={{ mb: 0.5 }} />
-                      <Skeleton variant="text" width="40%" height={20} animation="wave" />
+                      <Skeleton
+                        variant="text"
+                        width="70%"
+                        height={28}
+                        animation="wave"
+                        sx={{ mb: 0.5 }}
+                      />
+                      <Skeleton
+                        variant="text"
+                        width="40%"
+                        height={20}
+                        animation="wave"
+                      />
                     </Box>
-                    <Chip label="Coming Soon" size="small" sx={{ fontWeight: 600, bgcolor: '#e8f4ff', color: '#0056cc' }} />
+                    <Chip
+                      label="Coming Soon"
+                      size="small"
+                      sx={{
+                        fontWeight: 600,
+                        bgcolor: "#e8f4ff",
+                        color: "#0056cc",
+                      }}
+                    />
                   </Stack>
                 </Paper>
               </Grid>
@@ -1187,49 +1482,78 @@ export default function HomePage() {
 
       {/* Notify CTA */}
       <Container maxWidth="xl" sx={{ mb: 12 }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-40px' }} variants={fadeInUp}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-40px" }}
+          variants={fadeInUp}
+        >
           <Paper
             elevation={0}
             sx={{
               p: { xs: 3, sm: 4, md: 5 },
               borderRadius: 4,
-              border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
+              border: "1px solid",
+              borderColor: "divider",
+              bgcolor: "background.paper",
               boxShadow: (theme) => theme.custom.cardShadow,
-              overflow: 'hidden',
+              overflow: "hidden",
             }}
           >
             <Grid container spacing={4} alignItems="center">
               <Grid size={{ xs: 12, md: 6 }}>
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="center"
+                  sx={{ mb: 2 }}
+                >
                   <Box
                     sx={{
                       width: 44,
                       height: 44,
                       borderRadius: 2,
-                      bgcolor: 'primary.light',
-                      color: 'primary.main',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      bgcolor: "primary.light",
+                      color: "primary.main",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                     aria-hidden
                   >
                     <Mail size={22} />
                   </Box>
-                  <Chip label="Mobile apps coming soon" color="primary" variant="outlined" />
+                  <Chip
+                    label="Mobile apps coming soon"
+                    color="primary"
+                    variant="outlined"
+                  />
                 </Stack>
-                <Typography variant="h4" component="h2" fontWeight={800} color="text.primary" gutterBottom>
+                <Typography
+                  variant="h4"
+                  component="h2"
+                  fontWeight={800}
+                  color="text.primary"
+                  gutterBottom
+                >
                   Get notified when MedInternia mobile launches
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560 }}>
-                  We are replacing inactive app download buttons with a waitlist so users can hear when iOS and Android access is ready.
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  sx={{ maxWidth: 560 }}
+                >
+                  We are replacing inactive app download buttons with a waitlist
+                  so users can hear when iOS and Android access is ready.
                 </Typography>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <Box component="form" onSubmit={handleWaitlistSubmit} noValidate>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <Box
+                  component="form"
+                  onSubmit={handleWaitlistSubmit}
+                  noValidate
+                >
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                     <TextField
                       fullWidth
                       required
@@ -1239,18 +1563,21 @@ export default function HomePage() {
                       onChange={(event) => {
                         setWaitlistEmail(event.target.value);
                         setWaitlistSubmitted(false);
-                        setWaitlistError('');
+                        setWaitlistError("");
                       }}
-                      inputProps={{ 'aria-label': 'Email address for mobile launch notifications' }}
+                      inputProps={{
+                        "aria-label":
+                          "Email address for mobile launch notifications",
+                      }}
                     />
                     <Button
                       type="submit"
                       variant="contained"
                       size="large"
                       disabled={waitlistLoading}
-                      sx={{ px: 4, whiteSpace: 'nowrap' }}
+                      sx={{ px: 4, whiteSpace: "nowrap" }}
                     >
-                      {waitlistLoading ? 'Submitting...' : 'Notify Me'}
+                      {waitlistLoading ? "Submitting..." : "Notify Me"}
                     </Button>
                   </Stack>
                   {waitlistError && (
@@ -1260,7 +1587,8 @@ export default function HomePage() {
                   )}
                   {waitlistSubmitted && (
                     <Alert severity="success" sx={{ mt: 2 }}>
-                      You are on the notify list. We will share updates when mobile access opens.
+                      You are on the notify list. We will share updates when
+                      mobile access opens.
                     </Alert>
                   )}
                 </Box>
@@ -1271,42 +1599,73 @@ export default function HomePage() {
       </Container>
 
       {/* Why MedInternia */}
-      <Container maxWidth="xl" sx={{ mb: 12, overflow: 'hidden' }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, alignItems: 'center', gap: { xs: 6, lg: 8 } }}>
-            <Box sx={{ flex: 1, width: '100%' }}>
-              <Box sx={{ width: 40, height: 4, bgcolor: '#0072ff', mb: 3, borderRadius: 2 }} />
-              <Typography variant="h3" fontWeight={800} color="#0f172a" mb={1} sx={{ fontSize: { xs: '2.2rem', md: '2.8rem' } }}>
+      <Container maxWidth="xl" sx={{ mb: 12, overflow: "hidden" }}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeInUp}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", lg: "row" },
+              alignItems: "center",
+              gap: { xs: 6, lg: 8 },
+            }}
+          >
+            <Box sx={{ flex: 1, width: "100%" }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 4,
+                  bgcolor: "#0072ff",
+                  mb: 3,
+                  borderRadius: 2,
+                }}
+              />
+              <Typography
+                variant="h3"
+                fontWeight={800}
+                color="#0f172a"
+                mb={1}
+                sx={{ fontSize: { xs: "2.2rem", md: "2.8rem" } }}
+              >
                 Why MedInternia?
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 520 }}>
-                Everything you need to learn, collaborate, and grow — in one platform.
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ mb: 4, maxWidth: 520 }}
+              >
+                Everything you need to learn, collaborate, and grow — in one
+                platform.
               </Typography>
 
               <Grid container spacing={3}>
                 {[
                   {
-                    label: 'Learning',
+                    label: "Learning",
                     items: [
-                      'Case-based learning and analysis',
-                      'Peer review and feedback system',
-                      'AI-powered suggestions',
+                      "Case-based learning and analysis",
+                      "Peer review and feedback system",
+                      "AI-powered suggestions",
                     ],
                   },
                   {
-                    label: 'Career & Growth',
+                    label: "Career & Growth",
                     items: [
-                      'Badges and certification achievements',
-                      'Job opportunities board',
-                      'Leaderboard and advanced search',
+                      "Badges and certification achievements",
+                      "Job opportunities board",
+                      "Leaderboard and advanced search",
                     ],
                   },
                   {
-                    label: 'Collaboration',
+                    label: "Collaboration",
                     items: [
-                      'Webinars and live AMAs',
-                      'LinkedIn/GitHub export',
-                      'Video conferencing',
+                      "Webinars and live AMAs",
+                      "LinkedIn/GitHub export",
+                      "Video conferencing",
                     ],
                   },
                 ].map((group) => (
@@ -1315,25 +1674,46 @@ export default function HomePage() {
                       elevation={0}
                       sx={{
                         p: 2.5,
-                        height: '100%',
+                        height: "100%",
                         borderRadius: 3,
-                        border: '1px solid #e2e8f0',
-                        bgcolor: '#fff',
+                        border: "1px solid #e2e8f0",
+                        bgcolor: "#fff",
                       }}
                     >
                       <Typography
                         variant="overline"
                         fontWeight={800}
                         color="primary.main"
-                        sx={{ letterSpacing: '0.08em', display: 'block', mb: 1.5 }}
+                        sx={{
+                          letterSpacing: "0.08em",
+                          display: "block",
+                          mb: 1.5,
+                        }}
                       >
                         {group.label}
                       </Typography>
                       <Stack spacing={1.5}>
                         {group.items.map((text) => (
-                          <Box key={text} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                            <CheckCircle2 size={18} color="#fff" fill="#0072ff" style={{ flexShrink: 0, marginTop: 2 }} />
-                            <Typography variant="body2" fontWeight={600} color="#1e293b" sx={{ lineHeight: 1.5 }}>
+                          <Box
+                            key={text}
+                            sx={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 1.5,
+                            }}
+                          >
+                            <CheckCircle2
+                              size={18}
+                              color="#fff"
+                              fill="#0072ff"
+                              style={{ flexShrink: 0, marginTop: 2 }}
+                            />
+                            <Typography
+                              variant="body2"
+                              fontWeight={600}
+                              color="#1e293b"
+                              sx={{ lineHeight: 1.5 }}
+                            >
                               {text}
                             </Typography>
                           </Box>
@@ -1344,7 +1724,7 @@ export default function HomePage() {
                 ))}
               </Grid>
             </Box>
-            <Box sx={{ flex: 1, width: '100%', maxWidth: { lg: 520 } }}>
+            <Box sx={{ flex: 1, width: "100%", maxWidth: { lg: 520 } }}>
               <HeroProductPreview />
             </Box>
           </Box>
@@ -1353,55 +1733,134 @@ export default function HomePage() {
 
       {/* How It Works */}
       <Container maxWidth="xl" sx={{ mb: { xs: 8, md: 14 } }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
-          <Typography variant="h3" fontWeight={800} color="#0f172a" mb={{ xs: 6, md: 10 }} sx={{ fontSize: { xs: '2.2rem', md: '2.8rem' }, textAlign: 'center' }}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeInUp}
+        >
+          <Typography
+            variant="h3"
+            fontWeight={800}
+            color="#0f172a"
+            mb={{ xs: 6, md: 10 }}
+            sx={{
+              fontSize: { xs: "2.2rem", md: "2.8rem" },
+              textAlign: "center",
+            }}
+          >
             How It Works
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'center', md: 'flex-start' }, justifyContent: 'space-between', gap: { xs: 6, md: 0 } }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              alignItems: { xs: "center", md: "flex-start" },
+              justifyContent: "space-between",
+              gap: { xs: 6, md: 0 },
+            }}
+          >
             {[
-              { num: '01', title: 'Sign Up', desc: 'Create your free account and set up your medical profile.', icon: <UserPlus size={26} color="#fff" /> },
-              { num: '02', title: 'Learn & Collaborate', desc: 'Join cases, webinars, and discussions to learn and share knowledge.', icon: <Video size={26} color="#fff" /> },
-              { num: '03', title: 'Grow Your Career', desc: 'Earn achievements, connect with peers, and find job opportunities.', icon: <Briefcase size={26} color="#fff" /> },
+              {
+                num: "01",
+                title: "Sign Up",
+                desc: "Create your free account and set up your medical profile.",
+                icon: <UserPlus size={26} color="#fff" />,
+              },
+              {
+                num: "02",
+                title: "Learn & Collaborate",
+                desc: "Join cases, webinars, and discussions to learn and share knowledge.",
+                icon: <Video size={26} color="#fff" />,
+              },
+              {
+                num: "03",
+                title: "Grow Your Career",
+                desc: "Earn achievements, connect with peers, and find job opportunities.",
+                icon: <Briefcase size={26} color="#fff" />,
+              },
             ].map((step, i) => (
               <React.Fragment key={i}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2.5, width: { xs: '100%', sm: '80%', md: '28%' } }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2.5,
+                    width: { xs: "100%", sm: "80%", md: "28%" },
+                  }}
+                >
                   <Box
                     sx={{
                       width: 68,
                       height: 68,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      borderRadius: "50%",
+                      background:
+                        "linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       flexShrink: 0,
-                      boxShadow: '0 8px 20px rgba(0, 114, 255, 0.25)',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      '&:hover': {
-                        transform: 'scale(1.08)',
-                        boxShadow: '0 12px 28px rgba(0, 114, 255, 0.35)',
+                      boxShadow: "0 8px 20px rgba(0, 114, 255, 0.25)",
+                      transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                      "&:hover": {
+                        transform: "scale(1.08)",
+                        boxShadow: "0 12px 28px rgba(0, 114, 255, 0.35)",
                       },
                     }}
                   >
                     {step.icon}
                   </Box>
-                  <Box sx={{ textAlign: 'left', pt: 0.5 }}>
-                    <Typography fontWeight={800} color="primary.main" mb={0.5} fontSize="0.95rem">
+                  <Box sx={{ textAlign: "left", pt: 0.5 }}>
+                    <Typography
+                      fontWeight={800}
+                      color="primary.main"
+                      mb={0.5}
+                      fontSize="0.95rem"
+                    >
                       {step.num}
                     </Typography>
-                    <Typography variant="h6" fontWeight={800} color="#0f172a" mb={1}>
+                    <Typography
+                      variant="h6"
+                      fontWeight={800}
+                      color="#0f172a"
+                      mb={1}
+                    >
                       {step.title}
                     </Typography>
-                    <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                    <Typography
+                      variant="body2"
+                      color="#475569"
+                      sx={{ lineHeight: 1.6 }}
+                    >
                       {step.desc}
                     </Typography>
                   </Box>
                 </Box>
                 {i < 2 && (
-                  <Box sx={{ flexGrow: 1, minWidth: 40, height: 30, mt: '34px', mx: 2, display: { xs: 'none', md: 'block' } }}>
-                    <svg width="100%" height="100%" viewBox="0 0 100 30" preserveAspectRatio="none">
+                  <Box
+                    sx={{
+                      flexGrow: 1,
+                      minWidth: 40,
+                      height: 30,
+                      mt: "34px",
+                      mx: 2,
+                      display: { xs: "none", md: "block" },
+                    }}
+                  >
+                    <svg
+                      width="100%"
+                      height="100%"
+                      viewBox="0 0 100 30"
+                      preserveAspectRatio="none"
+                    >
                       <circle cx="2" cy="15" r="2.5" fill="#0072ff" />
-                      <path d="M 5 15 C 30 35, 70 35, 95 15" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" fill="none" />
+                      <path
+                        d="M 5 15 C 30 35, 70 35, 95 15"
+                        stroke="#94a3b8"
+                        strokeWidth="1.5"
+                        strokeDasharray="4 4"
+                        fill="none"
+                      />
                       <circle cx="98" cy="15" r="2.5" fill="#0072ff" />
                     </svg>
                   </Box>
@@ -1414,55 +1873,75 @@ export default function HomePage() {
 
       {/* Need Help */}
       <Container maxWidth="xl" sx={{ mt: 10, mb: 10 }}>
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeInUp}
+        >
           <Paper
             elevation={0}
             sx={{
               p: { xs: 4, md: 5 },
-              borderRadius: '24px',
-              background: 'linear-gradient(to right, #f0fdf4, #f8fafc)',
-              display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              borderRadius: "24px",
+              background: "linear-gradient(to right, #f0fdf4, #f8fafc)",
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              alignItems: "center",
+              justifyContent: "space-between",
               gap: 4,
-              border: '1px solid #e2e8f0',
+              border: "1px solid #e2e8f0",
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexDirection: { xs: 'column', sm: 'row' }, textAlign: { xs: 'center', sm: 'left' } }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+                flexDirection: { xs: "column", sm: "row" },
+                textAlign: { xs: "center", sm: "left" },
+              }}
+            >
               <Box
                 sx={{
                   width: 80,
                   height: 80,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #34d399, #06b6d4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #34d399, #06b6d4)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
                 <HeadphonesIcon size={36} color="#fff" />
               </Box>
               <Box>
-                <Typography variant="h5" fontWeight={800} color="#0f172a" mb={1}>
+                <Typography
+                  variant="h5"
+                  fontWeight={800}
+                  color="#0f172a"
+                  mb={1}
+                >
                   Need Help or Have Questions?
                 </Typography>
-                <Typography color="#475569">Reach out to the MedInternia team for support and inquiries.</Typography>
+                <Typography color="#475569">
+                  Reach out to the MedInternia team for support and inquiries.
+                </Typography>
               </Box>
             </Box>
             <Button
               variant="contained"
               sx={{
-                bgcolor: '#0072ff',
-                borderRadius: '10px',
+                bgcolor: "#0072ff",
+                borderRadius: "10px",
                 px: 5,
                 py: 1.5,
                 fontWeight: 700,
-                textTransform: 'none',
-                '&:hover': { bgcolor: '#0056cc' },
+                textTransform: "none",
+                "&:hover": { bgcolor: "#0056cc" },
               }}
-              onClick={() => router.push('/contact')}
+              onClick={() => router.push("/contact")}
             >
               Contact Us
             </Button>

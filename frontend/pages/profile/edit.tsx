@@ -1,5 +1,11 @@
-import React, { useState, FormEvent, ChangeEvent, useRef, useEffect } from "react";
-import { useRouter } from 'next/router';
+import React, {
+  useState,
+  FormEvent,
+  ChangeEvent,
+  useRef,
+  useEffect,
+} from "react";
+import { useRouter } from "next/router";
 import {
   Box,
   Typography,
@@ -21,16 +27,16 @@ import {
   DialogActions,
   SelectChangeEvent,
   Tooltip,
-  Grid
+  Grid,
 } from "@mui/material";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PersonIcon from '@mui/icons-material/Person';
-import ContactsIcon from '@mui/icons-material/Contacts';
-import WorkIcon from '@mui/icons-material/Work';
-import KeyIcon from '@mui/icons-material/Key';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PersonIcon from "@mui/icons-material/Person";
+import ContactsIcon from "@mui/icons-material/Contacts";
+import WorkIcon from "@mui/icons-material/Work";
+import KeyIcon from "@mui/icons-material/Key";
+import DeleteIcon from "@mui/icons-material/Delete";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import api from "../../utils/api";
@@ -61,71 +67,71 @@ interface ProfileFormData {
   yearsOfExperience: number | string;
   // Shared fields
   linkedInUrl: string;
-  messagePrivacy: 'anyone' | 'verified_only' | 'none';
+  messagePrivacy: "anyone" | "verified_only" | "none";
 }
 
 // Custom theme for a cohesive look and feel
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#0072ff', // A professional, calming blue
+      main: "#0072ff", // A professional, calming blue
     },
     secondary: {
-      main: '#00b09b', // An accent green for success
+      main: "#00b09b", // An accent green for success
     },
     background: {
-      default: '#eef2f5', // A soft, light gray background
+      default: "#eef2f5", // A soft, light gray background
     },
   },
   typography: {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Inter, sans-serif",
     h5: {
       fontWeight: 600,
-      color: '#333',
+      color: "#333",
     },
     subtitle1: {
       fontWeight: 600,
-      color: '#555',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      mb: 1
+      color: "#555",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      mb: 1,
     },
     body2: {
       fontWeight: 500,
-    }
+    },
   },
   components: {
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0px 12px 30px rgba(0, 0, 0, 0.08)',
-          borderRadius: '20px',
-          transition: 'transform 0.3s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-2px)'
-          }
+          boxShadow: "0px 12px 30px rgba(0, 0, 0, 0.08)",
+          borderRadius: "20px",
+          transition: "transform 0.3s ease-in-out",
+          "&:hover": {
+            transform: "translateY(-2px)",
+          },
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '10px',
-          textTransform: 'none',
+          borderRadius: "10px",
+          textTransform: "none",
           fontWeight: 600,
-          boxShadow: 'none',
-          '&:hover': {
-            boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)'
-          }
+          boxShadow: "none",
+          "&:hover": {
+            boxShadow: "0px 4px 15px rgba(0, 0, 0, 0.1)",
+          },
         },
       },
     },
     MuiTextField: {
       styleOverrides: {
         root: {
-          '& .MuiOutlinedInput-root': {
-            borderRadius: '10px',
+          "& .MuiOutlinedInput-root": {
+            borderRadius: "10px",
           },
         },
       },
@@ -149,9 +155,9 @@ const HUMAN_SILHOUETTE_SVG = `
 
 // Updated: Map roles to the single silhouette avatar with lighter background colors
 const ROLE_AVATARS = {
-  Doctor: getAvatarSvg(HUMAN_SILHOUETTE_SVG, '#A3CCEC'), // A light, calming blue
-  Intern: getAvatarSvg(HUMAN_SILHOUETTE_SVG, '#C8F0E8'), // A light minty green
-  Patient: getAvatarSvg(HUMAN_SILHOUETTE_SVG, '#F8C8D0'), // A soft pastel pink
+  Doctor: getAvatarSvg(HUMAN_SILHOUETTE_SVG, "#A3CCEC"), // A light, calming blue
+  Intern: getAvatarSvg(HUMAN_SILHOUETTE_SVG, "#C8F0E8"), // A light minty green
+  Patient: getAvatarSvg(HUMAN_SILHOUETTE_SVG, "#F8C8D0"), // A soft pastel pink
 };
 
 // Define the initial state of the form
@@ -177,14 +183,13 @@ const initialFormState: ProfileFormData = {
   specialtyExpertise: "",
   hospitalAffiliation: "",
   yearsOfExperience: "",
-  messagePrivacy: 'anyone',
+  messagePrivacy: "anyone",
 };
 
 const resolveProfileUser = (payload: any) =>
   payload?.data?.user || payload?.user || payload?.data || payload;
 
 export default function EditProfilePage() {
-
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
@@ -195,7 +200,7 @@ export default function EditProfilePage() {
 
   // New state to track if a custom image has been uploaded
   const [hasCustomImage, setHasCustomImage] = useState<boolean>(false);
-  
+
   // State to manage UI feedback and dialogs
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
@@ -203,9 +208,9 @@ export default function EditProfilePage() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState<boolean>(false);
   const [openImageMenu, setOpenImageMenu] = useState<boolean>(false);
   const [errors, setErrors] = useState({
-    email: '',
-    phone: '',
-    zip: '',
+    email: "",
+    phone: "",
+    zip: "",
   });
 
   const handleResumeUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -213,34 +218,41 @@ export default function EditProfilePage() {
       const file = event.target.files[0];
       setResumeParsing(true);
       setMessage("");
-      
+
       const formData = new FormData();
-      formData.append('resume', file);
-      
+      formData.append("resume", file);
+
       try {
-        const res = await api.post('/users/profile/parse-resume', formData, {
+        const res = await api.post("/users/profile/parse-resume", formData, {
           headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+            "Content-Type": "multipart/form-data",
+          },
         });
-        
+
         if (res.data?.success) {
           const { user } = res.data.data;
           setMessage("Resume parsed successfully! Profile details updated.");
-          
-          setForm(prevForm => ({
+
+          setForm((prevForm) => ({
             ...prevForm,
-            skills: user.skills ? (Array.isArray(user.skills) ? user.skills.join(', ') : user.skills) : "",
+            skills: user.skills
+              ? Array.isArray(user.skills)
+                ? user.skills.join(", ")
+                : user.skills
+              : "",
             medicalSchool: user.medicalSchool || prevForm.medicalSchool,
             graduationYear: user.yearOfStudy || prevForm.graduationYear,
-            bio: user.bio || prevForm.bio
+            bio: user.bio || prevForm.bio,
           }));
         } else {
           setMessage(res.data?.message || "Failed to parse resume.");
         }
       } catch (err: any) {
         console.error("Resume parsing error:", err);
-        setMessage(err.response?.data?.message || "An error occurred during resume parsing.");
+        setMessage(
+          err.response?.data?.message ||
+            "An error occurred during resume parsing.",
+        );
       } finally {
         setResumeParsing(false);
       }
@@ -251,7 +263,7 @@ export default function EditProfilePage() {
   useEffect(() => {
     // Only update the image if a custom image has not been uploaded
     if (!hasCustomImage) {
-      setForm(prevForm => ({
+      setForm((prevForm) => ({
         ...prevForm,
         image: prevForm.image || ROLE_AVATARS[prevForm.role],
       }));
@@ -261,56 +273,80 @@ export default function EditProfilePage() {
   // Function to validate form fields
   const validateForm = () => {
     let isValid = true;
-    const newErrors = { email: '', phone: '', zip: '' };
+    const newErrors = { email: "", phone: "", zip: "" };
     const phoneRegex = /^\d{10}$/; // Simple 10-digit check
     const zipRegex = /^\d{5}$/; // Simple 5-digit check
 
     if (form.phone && !phoneRegex.test(form.phone)) {
-      newErrors.phone = 'Enter a valid 10-digit phone number.';
+      newErrors.phone = "Enter a valid 10-digit phone number.";
       isValid = false;
     }
     if (form.address.zip && !zipRegex.test(form.address.zip)) {
-      newErrors.zip = 'Enter a valid 5-digit zip code.';
+      newErrors.zip = "Enter a valid 5-digit zip code.";
       isValid = false;
     }
 
     setErrors(newErrors);
     return isValid;
   };
-   React.useEffect(() => {
+  React.useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const userId = localStorage.getItem('userId');
+        const userId = localStorage.getItem("userId");
         const response = userId
           ? await api.get(`/users/${userId}/profile`)
-          : await api.get('/auth/profile');
+          : await api.get("/auth/profile");
         const user = resolveProfileUser(response.data);
         if (user) {
-            setForm(prevForm => ({
-              ...prevForm,
-              name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-              bio: user.bio || "",
-              email: user.email || "",
-              phone: user.phone || "",
-              address: {
-                street: user.address?.street || "",
-                city: user.address?.city || "",
-                state: user.address?.state || "",
-                zip: user.address?.zipCode || user.address?.zip || "",
-              },
-              image: user.profilePicture || ROLE_AVATARS[user.userType === "doctor" ? "Doctor" : user.userType === "intern" ? "Intern" : "Patient"],
-              role: user.userType === "doctor" ? "Doctor" : user.userType === "intern" ? "Intern" : "Patient",
-              medicalSchool: user.medicalSchool || "",
-              graduationYear: user.yearOfStudy || user.graduationYear || "",
-              specialtiesOfInterest: user.interests ? Array.isArray(user.interests) ? user.interests.join(', ') : user.interests : "",
-              skills: user.skills ? Array.isArray(user.skills) ? user.skills.join(', ') : user.skills : "",
-              linkedInUrl: user.linkedInProfile || user.linkedInUrl || "",
-              medicalLicenseNumber: user.licenseNumber || user.medicalLicenseNumber || "",
-              specialtyExpertise: user.specialization || user.specialtyExpertise || "",
-              hospitalAffiliation: user.hospitalAffiliation || user.hospital || "",
-              yearsOfExperience: user.experience || user.yearsOfExperience || "",
-              messagePrivacy: user.messagePrivacy || 'anyone',
-            }));
+          setForm((prevForm) => ({
+            ...prevForm,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+            bio: user.bio || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            address: {
+              street: user.address?.street || "",
+              city: user.address?.city || "",
+              state: user.address?.state || "",
+              zip: user.address?.zipCode || user.address?.zip || "",
+            },
+            image:
+              user.profilePicture ||
+              ROLE_AVATARS[
+                user.userType === "doctor"
+                  ? "Doctor"
+                  : user.userType === "intern"
+                    ? "Intern"
+                    : "Patient"
+              ],
+            role:
+              user.userType === "doctor"
+                ? "Doctor"
+                : user.userType === "intern"
+                  ? "Intern"
+                  : "Patient",
+            medicalSchool: user.medicalSchool || "",
+            graduationYear: user.yearOfStudy || user.graduationYear || "",
+            specialtiesOfInterest: user.interests
+              ? Array.isArray(user.interests)
+                ? user.interests.join(", ")
+                : user.interests
+              : "",
+            skills: user.skills
+              ? Array.isArray(user.skills)
+                ? user.skills.join(", ")
+                : user.skills
+              : "",
+            linkedInUrl: user.linkedInProfile || user.linkedInUrl || "",
+            medicalLicenseNumber:
+              user.licenseNumber || user.medicalLicenseNumber || "",
+            specialtyExpertise:
+              user.specialization || user.specialtyExpertise || "",
+            hospitalAffiliation:
+              user.hospitalAffiliation || user.hospital || "",
+            yearsOfExperience: user.experience || user.yearsOfExperience || "",
+            messagePrivacy: user.messagePrivacy || "anyone",
+          }));
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
@@ -321,7 +357,9 @@ export default function EditProfilePage() {
   }, []);
 
   // Handles input changes for top-level form fields
-  const handleInputChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = event.target;
     setForm({ ...form, [name]: value });
   };
@@ -339,13 +377,18 @@ export default function EditProfilePage() {
   };
 
   // Handles change in user role via the Select component
-  const handleRoleChange = (event: SelectChangeEvent<"Intern" | "Doctor" | "Patient">) => {
+  const handleRoleChange = (
+    event: SelectChangeEvent<"Intern" | "Doctor" | "Patient">,
+  ) => {
     const role = event.target.value as "Intern" | "Doctor" | "Patient";
     setForm({ ...form, role });
   };
 
-  const handleMessagePrivacyChange = (event: SelectChangeEvent<"anyone" | "verified_only" | "none">) => {
-    const messagePrivacy = event.target.value as "anyone" | "verified_only" | "none";
+  const handleMessagePrivacyChange = (
+    event: SelectChangeEvent<"anyone" | "verified_only" | "none">,
+  ) => {
+    const messagePrivacy = event.target.value as
+      "anyone" | "verified_only" | "none";
     setForm({ ...form, messagePrivacy });
   };
 
@@ -387,28 +430,36 @@ export default function EditProfilePage() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
-      if (!token || !userId) throw new Error('Missing auth');
-      let profilePictureUrl = (typeof form.image === 'string' && /^https?:\/\//.test(form.image)) ? form.image : '';
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+      if (!token || !userId) throw new Error("Missing auth");
+      let profilePictureUrl =
+        typeof form.image === "string" && /^https?:\/\//.test(form.image)
+          ? form.image
+          : "";
       // If a new image file is selected, upload it first
       if (selectedImageFile) {
         const formData = new FormData();
-        formData.append('profilePicture', selectedImageFile);
-        const resImg = await api.post('/auth/profile/upload-picture', formData);
+        formData.append("profilePicture", selectedImageFile);
+        const resImg = await api.post("/auth/profile/upload-picture", formData);
         const dataImg = resImg.data;
-        if (dataImg.success && dataImg.data && dataImg.data.user && dataImg.data.user.profilePicture) {
+        if (
+          dataImg.success &&
+          dataImg.data &&
+          dataImg.data.user &&
+          dataImg.data.user.profilePicture
+        ) {
           profilePictureUrl = dataImg.data.user.profilePicture;
         } else {
-          setMessage(dataImg.message || 'Failed to upload image.');
+          setMessage(dataImg.message || "Failed to upload image.");
           setLoading(false);
           return;
         }
       }
       // Prepare payload for backend
       const payload = {
-        firstName: form.name.split(' ')[0] || '',
-        lastName: form.name.split(' ').slice(1).join(' ') || '',
+        firstName: form.name.split(" ")[0] || "",
+        lastName: form.name.split(" ").slice(1).join(" ") || "",
         bio: form.bio,
         phone: form.phone,
         address: {
@@ -419,19 +470,31 @@ export default function EditProfilePage() {
         },
         profilePicture: profilePictureUrl,
         medicalSchool: form.medicalSchool,
-        yearOfStudy: form.graduationYear ? Number(form.graduationYear) : undefined,
+        yearOfStudy: form.graduationYear
+          ? Number(form.graduationYear)
+          : undefined,
         interests: Array.isArray(form.specialtiesOfInterest)
           ? form.specialtiesOfInterest
-          : (typeof form.specialtiesOfInterest === 'string' && form.specialtiesOfInterest.length > 0
-              ? form.specialtiesOfInterest.split(',').map(s => s.trim()).filter(Boolean)
-              : []),
-        skills: typeof form.skills === 'string' && form.skills.length > 0
-          ? form.skills.split(',').map(s => s.trim()).filter(Boolean)
-          : [],
+          : typeof form.specialtiesOfInterest === "string" &&
+              form.specialtiesOfInterest.length > 0
+            ? form.specialtiesOfInterest
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
+        skills:
+          typeof form.skills === "string" && form.skills.length > 0
+            ? form.skills
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
         licenseNumber: form.medicalLicenseNumber,
         specialization: form.specialtyExpertise,
         hospitalAffiliation: form.hospitalAffiliation,
-        experience: form.yearsOfExperience ? Number(form.yearsOfExperience) : undefined,
+        experience: form.yearsOfExperience
+          ? Number(form.yearsOfExperience)
+          : undefined,
         linkedInProfile: form.linkedInUrl,
         messagePrivacy: form.messagePrivacy,
       };
@@ -461,20 +524,23 @@ export default function EditProfilePage() {
     setMessage("");
 
     try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) throw new Error('Missing user ID');
+      const userId = localStorage.getItem("userId");
+      if (!userId) throw new Error("Missing user ID");
 
       await api.delete(`/users/${userId}`);
 
       // Clear all auth-related data from localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('user');
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("user");
 
-      router.replace('/auth/login');
+      router.replace("/auth/login");
     } catch (error: any) {
       console.error("Deletion failed:", error);
-      setMessage(error?.response?.data?.message || "An error occurred during deletion. Please try again.");
+      setMessage(
+        error?.response?.data?.message ||
+          "An error occurred during deletion. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -486,49 +552,59 @@ export default function EditProfilePage() {
     setHasCustomImage(false);
     setMessage("");
     setIsSaved(false);
-    setErrors({ email: '', phone: '', zip: '' });
+    setErrors({ email: "", phone: "", zip: "" });
   };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box 
+      <Box
         sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #eef2f5 0%, #f7f9fc 100%)',
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #eef2f5 0%, #f7f9fc 100%)",
           p: 4,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          fontFamily: 'Inter, sans-serif'
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontFamily: "Inter, sans-serif",
         }}
       >
-        <Card sx={{ p: 4, width: '100%', maxWidth: 650, borderRadius: '20px' }}>
+        <Card sx={{ p: 4, width: "100%", maxWidth: 650, borderRadius: "20px" }}>
           {/* Profile Header Section */}
-          <Box display="flex" alignItems="center" flexDirection="column" gap={3} mb={5}>
-            <Box sx={{ position: 'relative', width: 130, height: 130, mb: 1 }}>
+          <Box
+            display="flex"
+            alignItems="center"
+            flexDirection="column"
+            gap={3}
+            mb={5}
+          >
+            <Box sx={{ position: "relative", width: 130, height: 130, mb: 1 }}>
               <Avatar
                 src={
-                  form.image && !form.image.startsWith('data:image/svg+xml') && form.image !== ''
-                  ? form.image
-                  : undefined
+                  form.image &&
+                  !form.image.startsWith("data:image/svg+xml") &&
+                  form.image !== ""
+                    ? form.image
+                    : undefined
                 }
                 sx={{
                   width: 130,
                   height: 130,
-                  border: '5px solid #fff',
-                  boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                  border: "5px solid #fff",
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
                   fontSize: 44,
-                  bgcolor: '#0072ff',
-                  color: '#fff',
-                  transition: 'box-shadow 0.3s',
+                  bgcolor: "#0072ff",
+                  color: "#fff",
+                  transition: "box-shadow 0.3s",
                 }}
               >
-                {(!form.image || form.image.startsWith('data:image/svg+xml') || form.image === '') &&
+                {(!form.image ||
+                  form.image.startsWith("data:image/svg+xml") ||
+                  form.image === "") &&
                   form.name
-                    .split(' ')
+                    .split(" ")
                     .map((n) => n[0])
-                    .join('')
+                    .join("")
                     .toUpperCase()
                     .slice(0, 2)}
               </Avatar>
@@ -536,22 +612,22 @@ export default function EditProfilePage() {
                 <Box
                   component="div"
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     bottom: 10,
                     right: 10,
-                    bgcolor: 'primary.main',
-                    color: 'white',
+                    bgcolor: "primary.main",
+                    color: "white",
                     p: 1.5,
-                    borderRadius: '50%',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'transform 0.2s ease-in-out',
-                    '&:hover': {
-                      transform: 'scale(1.12)'
-                    }
+                    borderRadius: "50%",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "transform 0.2s ease-in-out",
+                    "&:hover": {
+                      transform: "scale(1.12)",
+                    },
                   }}
                   onClick={() => setOpenImageMenu(true)}
                 >
@@ -561,14 +637,22 @@ export default function EditProfilePage() {
               <input
                 ref={fileInputRef}
                 accept="image/*"
-                style={{ display: 'none' }}
+                style={{ display: "none" }}
                 id="avatar-upload-button"
                 type="file"
                 onChange={handleImageChange}
               />
             </Box>
-            <Box display="flex" flexDirection="column" alignItems="center" mt={1}>
-              <Typography variant="h5" sx={{ mb: 0.5, letterSpacing: 0.5, fontWeight: 700 }}>
+            <Box
+              display="flex"
+              flexDirection="column"
+              alignItems="center"
+              mt={1}
+            >
+              <Typography
+                variant="h5"
+                sx={{ mb: 0.5, letterSpacing: 0.5, fontWeight: 700 }}
+              >
                 Edit Profile
               </Typography>
             </Box>
@@ -633,7 +717,7 @@ export default function EditProfilePage() {
                 value={form.address.street}
                 onChange={handleAddressChange}
               />
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <TextField
                   label="City"
                   name="city"
@@ -681,41 +765,57 @@ export default function EditProfilePage() {
                   <MenuItem value="Patient">Patient</MenuItem>
                 </Select>
               </FormControl>
-            
+
               {form.role === "Intern" && (
                 <Stack spacing={2}>
                   {/* Resume Upload Dropzone */}
-                  <Box sx={{ 
-                    p: 3, 
-                    border: '2px dashed #0072ff', 
-                    borderRadius: 3, 
-                    bgcolor: 'rgba(0, 114, 255, 0.02)', 
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    mb: 1,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: 'rgba(0, 114, 255, 0.05)',
-                      borderColor: '#005ed6'
-                    }
-                  }}
-                  onClick={() => resumeInputRef.current?.click()}
+                  <Box
+                    sx={{
+                      p: 3,
+                      border: "2px dashed #0072ff",
+                      borderRadius: 3,
+                      bgcolor: "rgba(0, 114, 255, 0.02)",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      mb: 1,
+                      transition: "all 0.2s",
+                      "&:hover": {
+                        bgcolor: "rgba(0, 114, 255, 0.05)",
+                        borderColor: "#005ed6",
+                      },
+                    }}
+                    onClick={() => resumeInputRef.current?.click()}
                   >
                     <input
                       ref={resumeInputRef}
                       type="file"
                       accept=".pdf,.docx,.txt"
-                      style={{ display: 'none' }}
+                      style={{ display: "none" }}
                       onChange={handleResumeUpload}
                     />
-                    <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        mb: 1,
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
                       {resumeParsing && <CircularProgress size={20} />}
-                      <Typography variant="body2" fontWeight={600} color="primary">
-                        {resumeParsing ? 'Extracting Resume Details...' : 'Click to Upload Resume (PDF, DOCX, TXT)'}
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        color="primary"
+                      >
+                        {resumeParsing
+                          ? "Extracting Resume Details..."
+                          : "Click to Upload Resume (PDF, DOCX, TXT)"}
                       </Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                      We'll automatically extract your skills, medical school, and profile bio!
+                      We'll automatically extract your skills, medical school,
+                      and profile bio!
                     </Typography>
                   </Box>
 
@@ -806,7 +906,9 @@ export default function EditProfilePage() {
             </Typography>
             <Stack spacing={2} mb={4}>
               <FormControl fullWidth>
-                <InputLabel id="message-privacy-label">Who can direct message you?</InputLabel>
+                <InputLabel id="message-privacy-label">
+                  Who can direct message you?
+                </InputLabel>
                 <Select
                   labelId="message-privacy-label"
                   id="messagePrivacy"
@@ -815,17 +917,19 @@ export default function EditProfilePage() {
                   onChange={handleMessagePrivacyChange}
                 >
                   <MenuItem value="anyone">Anyone</MenuItem>
-                  <MenuItem value="verified_only">Connections / Verified Users Only</MenuItem>
+                  <MenuItem value="verified_only">
+                    Connections / Verified Users Only
+                  </MenuItem>
                   <MenuItem value="none">No one (Disable DMs)</MenuItem>
                 </Select>
               </FormControl>
 
               <Button
-                  variant="outlined"
-                  color="primary"
-                  fullWidth
-                  onClick={() => router.push('/auth/change-password')}
-                >
+                variant="outlined"
+                color="primary"
+                fullWidth
+                onClick={() => router.push("/auth/change-password")}
+              >
                 Change Password
               </Button>
             </Stack>
@@ -848,10 +952,25 @@ export default function EditProfilePage() {
             </Stack>
 
             {/* Action Buttons */}
-            <Box display="flex" justifyContent="flex-end" alignItems="center" mt={3} gap={2}>
-              {loading && <CircularProgress size={24} sx={{ color: "primary.main" }} />}
+            <Box
+              display="flex"
+              justifyContent="flex-end"
+              alignItems="center"
+              mt={3}
+              gap={2}
+            >
+              {loading && (
+                <CircularProgress size={24} sx={{ color: "primary.main" }} />
+              )}
               {!loading && message && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mr: 'auto', gap: '8px' }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    mr: "auto",
+                    gap: "8px",
+                  }}
+                >
                   {isSaved ? (
                     <CheckCircleIcon color="success" />
                   ) : (
@@ -888,10 +1007,7 @@ export default function EditProfilePage() {
       </Box>
 
       {/* Image Change Options Dialog */}
-      <Dialog
-        open={openImageMenu}
-        onClose={() => setOpenImageMenu(false)}
-      >
+      <Dialog open={openImageMenu} onClose={() => setOpenImageMenu(false)}>
         <DialogTitle>Change Profile Picture</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
@@ -926,14 +1042,19 @@ export default function EditProfilePage() {
         <DialogTitle>{"Confirm Deletion"}</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete your profile? This action cannot be undone. All of your data will be permanently removed.
+            Are you sure you want to delete your profile? This action cannot be
+            undone. All of your data will be permanently removed.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
             Cancel
           </Button>
-          <Button onClick={handleDeleteProfile} color="error" variant="contained">
+          <Button
+            onClick={handleDeleteProfile}
+            color="error"
+            variant="contained"
+          >
             Delete Profile
           </Button>
         </DialogActions>

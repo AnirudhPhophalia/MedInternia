@@ -1,7 +1,13 @@
 /* MedInternia Design System — global tokens & base styles */
 /* Disable text selection only on interactive UI elements, not on content */
-button, nav, .MuiButton-root, .MuiIconButton-root, .MuiMenuItem-root,
-.MuiTab-root, .MuiChip-root, .MuiBreadcrumbs-root {
+button,
+nav,
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiMenuItem-root,
+.MuiTab-root,
+.MuiChip-root,
+.MuiBreadcrumbs-root {
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -29,7 +35,9 @@ button, nav, .MuiButton-root, .MuiIconButton-root, .MuiMenuItem-root,
   font-weight: 500;
   padding-top: 1.2em;
   padding-bottom: 1.2em;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 .MuiMenuItem-root:hover {
   background: #e0eafc;
@@ -73,8 +81,10 @@ body {
   --brand-text-muted: #64748b;
   --brand-border: #e2e8f0;
   --brand-radius: 12px;
-  --brand-shadow: 0 1px 3px rgba(0, 114, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
-  --brand-shadow-hover: 0 4px 24px rgba(0, 114, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.06);
+  --brand-shadow:
+    0 1px 3px rgba(0, 114, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --brand-shadow-hover:
+    0 4px 24px rgba(0, 114, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.06);
 }
 
 html {
@@ -94,11 +104,10 @@ html {
   box-sizing: border-box;
 }
 
-
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-family: "Inter", "Segoe UI", "Roboto", "Helvetica", "Arial", sans-serif;
   background-color: var(--brand-bg);
   color: var(--brand-text);
   font-size: 1rem;
@@ -125,12 +134,20 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(120deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  background: linear-gradient(
+    120deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(120deg, var(--brand-primary-dark) 0%, var(--brand-primary) 100%);
+  background: linear-gradient(
+    120deg,
+    var(--brand-primary-dark) 0%,
+    var(--brand-primary) 100%
+  );
 }
 
 /* Accessible focus ring */
@@ -151,7 +168,11 @@ a:hover {
 }
 
 .button-primary {
-  background: linear-gradient(90deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -159,7 +180,9 @@ a:hover {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
 }
 
 .button-primary:hover {
@@ -176,7 +199,9 @@ a:hover {
   margin-bottom: 1.5rem;
   box-sizing: border-box;
   font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .input-bar:focus {

@@ -43,7 +43,7 @@ const DiaryEntrySchema = new Schema(
     tags: [{ type: String }],
     symptomsChecklist: [{ type: String }],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const DiarySchema = new Schema(
@@ -60,7 +60,7 @@ const DiarySchema = new Schema(
     },
     entries: [DiaryEntrySchema],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model<IDiary>("Diary", DiarySchema);

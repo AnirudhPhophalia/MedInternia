@@ -34,21 +34,11 @@ export default function Custom404() {
         404
       </Typography>
 
-      <Typography
-        variant="h5"
-        fontWeight={700}
-        color="text.primary"
-        mb={1}
-      >
+      <Typography variant="h5" fontWeight={700} color="text.primary" mb={1}>
         Page Not Found
       </Typography>
 
-      <Typography
-        variant="body1"
-        color="text.secondary"
-        mb={4}
-        maxWidth={400}
-      >
+      <Typography variant="body1" color="text.secondary" mb={4} maxWidth={400}>
         Oops! The page you are looking for does not exist or has been moved.
       </Typography>
 

@@ -18,14 +18,17 @@ export default function ConnectionsPage() {
   const [following, setFollowing] = useState<any[]>([]);
   const [followers, setFollowers] = useState<any[]>([]);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
   useEffect(() => {
-    api.get("/users/connections", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => {
-      setFollowing(res.data.following || []);
-      setFollowers(res.data.followers || []);
-    });
+    api
+      .get("/users/connections", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        setFollowing(res.data.following || []);
+        setFollowers(res.data.followers || []);
+      });
   }, [token]);
 
   return (
@@ -48,10 +51,16 @@ export default function ConnectionsPage() {
                     variant="outlined"
                     color="error"
                     onClick={async () => {
-                      await api.post("/users/unfollow", { userId: f._id }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      });
-                      setFollowing(following.filter((u: any) => u._id !== f._id));
+                      await api.post(
+                        "/users/unfollow",
+                        { userId: f._id },
+                        {
+                          headers: { Authorization: `Bearer ${token}` },
+                        },
+                      );
+                      setFollowing(
+                        following.filter((u: any) => u._id !== f._id),
+                      );
                     }}
                   >
                     Unfollow
@@ -61,9 +70,13 @@ export default function ConnectionsPage() {
                     variant="outlined"
                     color="primary"
                     onClick={async () => {
-                      await api.post("/users/follow", { userId: f._id }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      });
+                      await api.post(
+                        "/users/follow",
+                        { userId: f._id },
+                        {
+                          headers: { Authorization: `Bearer ${token}` },
+                        },
+                      );
                       setFollowing([...following, f]);
                     }}
                   >
@@ -72,9 +85,23 @@ export default function ConnectionsPage() {
                 )
               }
             >
-              <Avatar src={f.profilePicture ? f.profilePicture : undefined} sx={{ mr: 2 }}>
+              <Avatar
+                src={f.profilePicture ? f.profilePicture : undefined}
+                sx={{ mr: 2 }}
+              >
                 {!f.profilePicture && (
-                  <span style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2196f3', color: '#fff', borderRadius: '50%' }}>
+                  <span
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#2196f3",
+                      color: "#fff",
+                      borderRadius: "50%",
+                    }}
+                  >
                     {`${(f.firstName?.[0] || "").toUpperCase()}${(f.lastName?.[0] || "").toUpperCase()}`}
                   </span>
                 )}

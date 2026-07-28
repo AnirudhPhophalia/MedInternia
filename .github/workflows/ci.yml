@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
-      - 'README.md'
-      - '*.md'
+      - "README.md"
+      - "*.md"
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   backend:
@@ -39,4 +39,3 @@ jobs:
           npm install
           npm run build --if-present
           npm test --if-present
-

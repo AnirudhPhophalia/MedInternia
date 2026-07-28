@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from "mongoose";
 
 export interface ILearningPath extends Document {
   title: string;
@@ -6,7 +6,7 @@ export interface ILearningPath extends Document {
   category: string;
   badge: mongoose.Types.ObjectId;
   steps: {
-    type: 'case' | 'quiz';
+    type: "case" | "quiz";
     title: string;
     description?: string;
     caseRef?: mongoose.Types.ObjectId;
@@ -22,55 +22,61 @@ export interface ILearningPath extends Document {
   updatedAt: Date;
 }
 
-const LearningPathSchema = new Schema<ILearningPath>({
-  title: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-  category: {
-    type: String,
-    required: true,
-  },
-  badge: {
-    type: Schema.Types.ObjectId,
-    ref: 'Badge',
-    required: true,
-  },
-  steps: [
-    {
-      type: {
-        type: String,
-        enum: ['case', 'quiz'],
-        required: true,
-      },
-      title: {
-        type: String,
-        required: true,
-      },
-      description: String,
-      caseRef: {
-        type: Schema.Types.ObjectId,
-        ref: 'Case',
-      },
-      quiz: {
-        question: String,
-        options: [String],
-        correctAnswer: Number,
-        explanation: String,
-      },
+const LearningPathSchema = new Schema<ILearningPath>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
     },
-  ],
-  isActive: {
-    type: Boolean,
-    default: true,
+    description: {
+      type: String,
+      required: true,
+    },
+    category: {
+      type: String,
+      required: true,
+    },
+    badge: {
+      type: Schema.Types.ObjectId,
+      ref: "Badge",
+      required: true,
+    },
+    steps: [
+      {
+        type: {
+          type: String,
+          enum: ["case", "quiz"],
+          required: true,
+        },
+        title: {
+          type: String,
+          required: true,
+        },
+        description: String,
+        caseRef: {
+          type: Schema.Types.ObjectId,
+          ref: "Case",
+        },
+        quiz: {
+          question: String,
+          options: [String],
+          correctAnswer: Number,
+          explanation: String,
+        },
+      },
+    ],
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-}, {
-  timestamps: true,
-});
+  {
+    timestamps: true,
+  },
+);
 
-export default mongoose.model<ILearningPath>('LearningPath', LearningPathSchema);
+export default mongoose.model<ILearningPath>(
+  "LearningPath",
+  LearningPathSchema,
+);

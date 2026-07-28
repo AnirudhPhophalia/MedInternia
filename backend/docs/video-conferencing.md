@@ -16,14 +16,14 @@ After evaluating options, MedInternia will use **[Daily.co](https://daily.co)** 
 
 ### Why Daily.co?
 
-| Option | Verdict | Reason |
-|---|---|---|
-| **Daily.co** | ✅ **Selected** | Free tier (2000 participant-minutes/month), WebRTC-based, simple REST API, no infra to manage |
-| Self-hosted WebRTC (Janus/mediasoup) | ❌ | Requires TURN/STUN servers, complex infra, not suitable for a GSSoC project |
-| Agora | ❌ | Free tier limited, billing starts quickly |
-| Twilio Video | ❌ | No free tier |
-| Jitsi Meet (embedded) | 🔄 Alternative | Self-hostable, fully open source — viable if Daily.co is rejected |
-| Zoom SDK | ❌ | Requires paid plan for production use |
+| Option                               | Verdict         | Reason                                                                                        |
+| ------------------------------------ | --------------- | --------------------------------------------------------------------------------------------- |
+| **Daily.co**                         | ✅ **Selected** | Free tier (2000 participant-minutes/month), WebRTC-based, simple REST API, no infra to manage |
+| Self-hosted WebRTC (Janus/mediasoup) | ❌              | Requires TURN/STUN servers, complex infra, not suitable for a GSSoC project                   |
+| Agora                                | ❌              | Free tier limited, billing starts quickly                                                     |
+| Twilio Video                         | ❌              | No free tier                                                                                  |
+| Jitsi Meet (embedded)                | 🔄 Alternative  | Self-hostable, fully open source — viable if Daily.co is rejected                             |
+| Zoom SDK                             | ❌              | Requires paid plan for production use                                                         |
 
 > **Alternative:** If you prefer fully open source, [Jitsi Meet](https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe/)
 > can be embedded via iframe with no API key. See the Jitsi alternative section below.
@@ -31,6 +31,7 @@ After evaluating options, MedInternia will use **[Daily.co](https://daily.co)** 
 ---
 
 ## Architecture
+
 Frontend (Next.js)
 ↓ Join room request
 Backend (Express.js)
@@ -77,57 +78,64 @@ npm install @daily-co/daily-js
 
 ```typescript
 // backend/src/services/videoService.ts
-import axios from 'axios';
+import axios from "axios";
 
-const DAILY_API_URL = process.env.DAILY_API_URL || 'https://api.daily.co/v1';
+const DAILY_API_URL = process.env.DAILY_API_URL || "https://api.daily.co/v1";
 const DAILY_API_KEY = process.env.DAILY_API_KEY;
 
 if (!DAILY_API_KEY) {
-  console.warn('[Video] DAILY_API_KEY not set. Video conferencing will not work.');
+  console.warn(
+    "[Video] DAILY_API_KEY not set. Video conferencing will not work.",
+  );
 }
 
 const dailyHeaders = {
   Authorization: `Bearer ${DAILY_API_KEY}`,
-  'Content-Type': 'application/json',
+  "Content-Type": "application/json",
 };
 
 /** Create a new Daily.co room for a webinar or case discussion */
 export async function createMeetingRoom(options: {
-  name: string;       // Room name (e.g., 'case-123-discussion')
+  name: string; // Room name (e.g., 'case-123-discussion')
   expiryMinutes?: number;
 }) {
-  const expiry = Math.floor(Date.now() / 1000) + (options.expiryMinutes || 60) * 60;
+  const expiry =
+    Math.floor(Date.now() / 1000) + (options.expiryMinutes || 60) * 60;
 
   const response = await axios.post(
     `${DAILY_API_URL}/rooms`,
     {
       name: options.name,
-      privacy: 'private',      // Require a token to join
+      privacy: "private", // Require a token to join
       properties: {
         exp: expiry,
-        enable_recording: false,  // Off by default for privacy
+        enable_recording: false, // Off by default for privacy
         max_participants: 50,
       },
     },
-    { headers: dailyHeaders }
+    { headers: dailyHeaders },
   );
 
   return response.data; // { id, name, url, ... }
 }
 
 /** Generate a participant token for a specific room */
-export async function createParticipantToken(roomName: string, userId: string, isOwner: boolean) {
+export async function createParticipantToken(
+  roomName: string,
+  userId: string,
+  isOwner: boolean,
+) {
   const response = await axios.post(
     `${DAILY_API_URL}/meeting-tokens`,
     {
       properties: {
         room_name: roomName,
         user_id: userId,
-        is_owner: isOwner,   // Owners can mute/remove participants
-        exp: Math.floor(Date.now() / 1000) + 3600,  // Token expires in 1 hour
+        is_owner: isOwner, // Owners can mute/remove participants
+        exp: Math.floor(Date.now() / 1000) + 3600, // Token expires in 1 hour
       },
     },
-    { headers: dailyHeaders }
+    { headers: dailyHeaders },
   );
 
   return response.data.token;
@@ -135,7 +143,9 @@ export async function createParticipantToken(roomName: string, userId: string, i
 
 /** Delete a room when the meeting ends */
 export async function deleteMeetingRoom(roomName: string) {
-  await axios.delete(`${DAILY_API_URL}/rooms/${roomName}`, { headers: dailyHeaders });
+  await axios.delete(`${DAILY_API_URL}/rooms/${roomName}`, {
+    headers: dailyHeaders,
+  });
 }
 ```
 
@@ -143,45 +153,59 @@ export async function deleteMeetingRoom(roomName: string) {
 
 ```typescript
 // backend/src/routes/videoRoutes.ts
-import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth';
-import { createMeetingRoom, createParticipantToken } from '../services/videoService';
+import { Router, Request, Response } from "express";
+import { authenticateToken } from "../middleware/auth";
+import {
+  createMeetingRoom,
+  createParticipantToken,
+} from "../services/videoService";
 
 const router = Router();
 
 // POST /api/video/rooms — Create a new meeting room
 // Protected: only authenticated users can create rooms
-router.post('/rooms', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { name, expiryMinutes } = req.body;
+router.post(
+  "/rooms",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { name, expiryMinutes } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Room name is required' });
+      if (!name) {
+        return res.status(400).json({ error: "Room name is required" });
+      }
+
+      const room = await createMeetingRoom({
+        name,
+        expiryMinutes: expiryMinutes || 60,
+      });
+      const token = await createParticipantToken(room.name, req.user.id, true);
+
+      return res.json({
+        roomUrl: room.url,
+        roomName: room.name,
+        token, // Participant token for this user
+      });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to create meeting room" });
     }
-
-    const room = await createMeetingRoom({ name, expiryMinutes: expiryMinutes || 60 });
-    const token = await createParticipantToken(room.name, req.user.id, true);
-
-    return res.json({
-      roomUrl: room.url,
-      roomName: room.name,
-      token,            // Participant token for this user
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to create meeting room' });
-  }
-});
+  },
+);
 
 // POST /api/video/rooms/:roomName/join — Get a token to join an existing room
-router.post('/rooms/:roomName/join', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { roomName } = req.params;
-    const token = await createParticipantToken(roomName, req.user.id, false);
-    return res.json({ token });
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to join meeting room' });
-  }
-});
+router.post(
+  "/rooms/:roomName/join",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { roomName } = req.params;
+      const token = await createParticipantToken(roomName, req.user.id, false);
+      return res.json({ token });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to join meeting room" });
+    }
+  },
+);
 
 export default router;
 ```
@@ -201,15 +225,15 @@ npm install @daily-co/daily-react
 
 ```tsx
 // frontend/src/components/VideoCall/VideoCall.tsx
-'use client';
+"use client";
 
-import { DailyProvider } from '@daily-co/daily-react';
-import DailyIframe from '@daily-co/daily-js';
-import { useEffect, useRef } from 'react';
+import { DailyProvider } from "@daily-co/daily-react";
+import DailyIframe from "@daily-co/daily-js";
+import { useEffect, useRef } from "react";
 
 interface VideoCallProps {
-  roomUrl: string;   // From backend POST /api/video/rooms response
-  token: string;     // Participant token from backend
+  roomUrl: string; // From backend POST /api/video/rooms response
+  token: string; // Participant token from backend
   onLeave?: () => void;
 }
 
@@ -221,10 +245,10 @@ export function VideoCall({ roomUrl, token, onLeave }: VideoCallProps) {
 
     const call = DailyIframe.createFrame(callContainerRef.current, {
       iframeStyle: {
-        width: '100%',
-        height: '100%',
-        border: 'none',
-        borderRadius: '8px',
+        width: "100%",
+        height: "100%",
+        border: "none",
+        borderRadius: "8px",
       },
       showLeaveButton: true,
       showFullscreenButton: true,
@@ -232,7 +256,7 @@ export function VideoCall({ roomUrl, token, onLeave }: VideoCallProps) {
 
     call.join({ url: roomUrl, token });
 
-    call.on('left-meeting', () => {
+    call.on("left-meeting", () => {
       call.destroy();
       onLeave?.();
     });
@@ -245,7 +269,7 @@ export function VideoCall({ roomUrl, token, onLeave }: VideoCallProps) {
   return (
     <div
       ref={callContainerRef}
-      style={{ width: '100%', height: '600px' }}
+      style={{ width: "100%", height: "600px" }}
       aria-label="Video call"
     />
   );
@@ -277,6 +301,7 @@ curl -X POST http://localhost:3000/api/video/rooms \
 ```
 
 Expected response:
+
 ```json
 {
   "roomUrl": "https://your-domain.daily.co/test-room",
@@ -298,7 +323,7 @@ export function JitsiCall({ roomName }: { roomName: string }) {
     <iframe
       src={`https://meet.jit.si/${roomName}`}
       allow="camera; microphone; fullscreen; display-capture"
-      style={{ width: '100%', height: '600px', border: 'none' }}
+      style={{ width: "100%", height: "600px", border: "none" }}
       title="Video call"
     />
   );

@@ -18,14 +18,16 @@ describe("BadgeCard Component", () => {
 
   it("renders the badge name", () => {
     render(<BadgeCard badge={mockBadge} />);
-    
+
     // The component renders the badge name inside a Typography component
     expect(screen.getByText("Medical Hero")).toBeInTheDocument();
   });
 
   it("renders the badge description", () => {
     render(<BadgeCard badge={mockBadge} />);
-    
-    expect(screen.getByText("Awarded for exceptional care")).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Awarded for exceptional care"),
+    ).toBeInTheDocument();
   });
 });

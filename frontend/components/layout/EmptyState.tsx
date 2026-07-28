@@ -1,6 +1,6 @@
-import React from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
-import { LucideIcon } from 'lucide-react';
+import React from "react";
+import { Box, Typography, Button, Paper } from "@mui/material";
+import { LucideIcon } from "lucide-react";
 
 export interface EmptyStateProps {
   icon: LucideIcon;
@@ -26,25 +26,25 @@ export default function EmptyState({
       sx={{
         py: { xs: 6, md: 8 },
         px: 3,
-        textAlign: 'center',
+        textAlign: "center",
         borderRadius: 3,
-        border: '1px dashed',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        border: "1px dashed",
+        borderColor: "divider",
+        bgcolor: "background.paper",
       }}
     >
       <Box
         sx={{
           width: 64,
           height: 64,
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          mx: 'auto',
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mx: "auto",
           mb: 2.5,
           bgcolor: (theme) => theme.palette.primary.light,
-          color: 'primary.main',
+          color: "primary.main",
         }}
         aria-hidden
       >
@@ -58,7 +58,12 @@ export default function EmptyState({
       <Typography
         variant="body2"
         color="text.secondary"
-        sx={{ maxWidth: 420, mx: 'auto', mb: actionLabel ? 3 : 0, lineHeight: 1.7 }}
+        sx={{
+          maxWidth: 420,
+          mx: "auto",
+          mb: actionLabel ? 3 : 0,
+          lineHeight: 1.7,
+        }}
       >
         {description}
       </Typography>

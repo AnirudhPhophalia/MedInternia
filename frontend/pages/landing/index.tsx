@@ -506,10 +506,7 @@ const PostForm = () => {
           marginBottom: 20,
         }}
       >
-
         <CaseOfDayBanner />
-
-        
         Post New
       </h2>
       <div style={{ marginBottom: 20 }}>
@@ -541,7 +538,7 @@ const PostForm = () => {
               >
                 {tab}
               </button>
-            )
+            ),
           )}
         </div>
       </div>
@@ -713,7 +710,7 @@ const CaseStudyList = () => {
       apiModule.default
         .get(
           "/cases?limit=5",
-          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
         )
         .then((res) => {
           // Adjust according to your backend response structure
@@ -721,14 +718,14 @@ const CaseStudyList = () => {
           // setStudies(res.data.data.cases || []);
           // If your backend returns { data: [...] }
           setStudies(
-            res.data?.data?.cases || res.data?.cases || res.data || []
+            res.data?.data?.cases || res.data?.cases || res.data || [],
           );
         })
         .catch(() => setStudies([]))
         .finally(() => setLoading(false));
     });
   }, []);
-  
+
   return (
     <div
       style={{
@@ -800,7 +797,7 @@ const RecentCaseStudies = ({ studies }: { studies: any[] }) => {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [activeCase, setActiveCase] = React.useState<any>(null);
   const [expanded, setExpanded] = React.useState<{ [key: string]: boolean }>(
-    {}
+    {},
   );
 
   const handleOpenDiscussion = (study: any) => {
@@ -820,24 +817,23 @@ const RecentCaseStudies = ({ studies }: { studies: any[] }) => {
     );
   }
   const handleShare = async (study: any) => {
-  const shareUrl = `${window.location.origin}/cases/${study._id}`;
+    const shareUrl = `${window.location.origin}/cases/${study._id}`;
 
-  try {
-    if (navigator.share) {
-      await navigator.share({
-        title: study.title,
-        text: `Check out this case study: ${study.title}`,
-        url: shareUrl,
-      });
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      alert("Case link copied to clipboard!");
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: study.title,
+          text: `Check out this case study: ${study.title}`,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Case link copied to clipboard!");
+      }
+    } catch (error) {
+      console.error("Share failed:", error);
     }
-  } catch (error) {
-    console.error("Share failed:", error);
-  }
-};
-
+  };
 
   // Helper to check if text is long enough to truncate
   const isLong = (text: string) => {
@@ -1032,8 +1028,8 @@ const RecentCaseStudies = ({ studies }: { studies: any[] }) => {
                     {Array.isArray(study.likes)
                       ? study.likes.length
                       : typeof study.likes === "number"
-                      ? study.likes
-                      : 0}
+                        ? study.likes
+                        : 0}
                   </span>
                 </div>
                 {/* Comments */}
@@ -1058,34 +1054,34 @@ const RecentCaseStudies = ({ studies }: { studies: any[] }) => {
                     {Array.isArray(study.comments)
                       ? study.comments.length
                       : typeof study.comments === "number"
-                      ? study.comments
-                      : 0}
+                        ? study.comments
+                        : 0}
                   </span>
                 </button>
                 {/* Shares */}
-<button
-  onClick={() => handleShare(study)}
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    background: "transparent",
-    border: "none",
-    cursor: "pointer",
-    padding: 0,
-  }}
->
-  <Share2 size={22} color="#10b981" />
-  <span
-    style={{ fontSize: 16, color: "#10b981", fontWeight: 600 }}
-  >
-    {typeof study.shares === "number"
-      ? study.shares
-      : typeof study.shareCount === "number"
-      ? study.shareCount
-      : 0}
-  </span>
-</button> 
+                <button
+                  onClick={() => handleShare(study)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  <Share2 size={22} color="#10b981" />
+                  <span
+                    style={{ fontSize: 16, color: "#10b981", fontWeight: 600 }}
+                  >
+                    {typeof study.shares === "number"
+                      ? study.shares
+                      : typeof study.shareCount === "number"
+                        ? study.shareCount
+                        : 0}
+                  </span>
+                </button>
                 {/* Bookmark/Save */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <StarBorderIcon
@@ -1471,8 +1467,8 @@ const RecommendedConnections = () => {
         { userId: doctorId },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
-      )
+        },
+      ),
     );
     setFollowing((prev) => [...prev, doctorId]);
   };
@@ -1485,8 +1481,8 @@ const RecommendedConnections = () => {
         { userId: doctorId },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
-      )
+        },
+      ),
     );
     setFollowing((prev) => prev.filter((id) => id !== doctorId));
   };
@@ -1677,7 +1673,7 @@ const Landing = () => {
   // Ref for PostForm height sync
   const postFormRef = React.useRef<HTMLDivElement>(null);
   const [postFormHeight, setPostFormHeight] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   React.useEffect(() => {
     if (postFormRef.current) {
