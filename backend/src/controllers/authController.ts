@@ -739,6 +739,8 @@ export const refreshToken = asyncHandler(
       sameSite: 'lax' as const,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
+    res.cookie('token', newAccessToken, cookieOptions);
+    res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
     res.cookie('refresh_token', newRefreshToken, cookieOptions);
 
     res.json({
