@@ -124,6 +124,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.removeItem("starredCases");
       localStorage.removeItem("starredPapers");
       localStorage.removeItem("pinnedPapers");
+      document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "refresh_token=; Path=/; Max-Age=0; SameSite=Lax";
     }
   }, []);
 

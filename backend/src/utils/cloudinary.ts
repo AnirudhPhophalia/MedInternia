@@ -30,6 +30,26 @@ const ensureCloudinaryConfigured = () => {
   configured = true;
 };
 
+/**
+ * Generates a signed URL for authenticated Cloudinary resources
+ * URLs expire after 15 minutes by default
+ * @param publicId - Cloudinary public ID of the resource
+ * @param expiresIn - Expiration time in seconds (default: 900 = 15 minutes)
+ * @returns Signed URL for authenticated access
+ */
+export const generateSignedUrl = (publicId: string, expiresIn: number = 900): string => {
+  ensureCloudinaryConfigured();
+
+  const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+
+  return cloudinary.url(publicId, {
+    type: 'authenticated',
+    sign_url: true,
+    expires_at: expiresAt,
+    secure: true
+  });
+};
+
 export const uploadProfileImage = async (
   file: Express.Multer.File,
   userId: string
@@ -43,6 +63,7 @@ export const uploadProfileImage = async (
         public_id: `profile-${userId}-${Date.now()}`,
         overwrite: true,
         resource_type: 'image',
+        type: 'authenticated',
         transformation: [
           {
             width: 512,
@@ -79,6 +100,7 @@ export const uploadCaseAttachment = async (
         folder: 'medinternia/cases',
         public_id: `case-${userId}-${Date.now()}`,
         resource_type: 'auto',
+        type: 'authenticated'
       },
       (error, result) => {
         if (error || !result) {
