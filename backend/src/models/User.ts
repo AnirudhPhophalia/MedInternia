@@ -57,6 +57,7 @@ passwordResetExpires?: Date;
   }[];
   bio?: string;
   profilePicture?: string;
+  profilePicturePublicId?: string;
   // Doctor specific fields
   specialization?: string;
   licenseNumber?: string;
@@ -281,6 +282,10 @@ passwordResetExpires: {
   profilePicture: {
     type: String,
     match: [/^https?:\/\/.+/, 'Please provide a valid profile picture URL']
+  },
+  profilePicturePublicId: {
+    type: String,
+    description: 'Cloudinary public ID for profile picture (used to generate signed URLs)'
   },
   // Doctor specific fields
   specialization: {
