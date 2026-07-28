@@ -640,6 +640,7 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
 
   res.clearCookie('token');
   res.clearCookie('auth_status');
+  res.clearCookie('refresh_token');
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
