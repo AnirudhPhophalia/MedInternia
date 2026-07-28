@@ -10,14 +10,7 @@ export default function Profile() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/auth/login');
-      return;
-    }
-    api.get('/auth/profile', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get('/auth/profile')
       .then(res => {
         setProfile(res.data);
         setLoading(false);

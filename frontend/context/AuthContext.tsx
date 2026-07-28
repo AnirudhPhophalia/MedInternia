@@ -14,8 +14,8 @@ interface AuthContextType {
   user: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, userId: string, user: any) => void;
-  logout: () => void;
+  login: (userId: string, user: any) => void;
+  logout: () => Promise<void>;
   refreshUser: () => void;
 }
 
@@ -33,7 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   login: () => {},
-  logout: () => {},
+  logout: async () => {},
   refreshUser: () => {},
 });
 
@@ -53,27 +53,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       return;
     }
 
-    // Rehydrate token from localStorage immediately on mount.
-    // Without this, _globalToken stays null after every fresh page
-    // load/refresh, so the very first API call (validate-token) goes
-    // out with no Authorization header and fails even though a valid
-    // token exists in localStorage.
-    const storedToken = localStorage.getItem("token");
-
-    if (!storedToken) {
-      setToken(null);
-      setGlobalToken(null);
-      setUserId(null);
-      setUser(null);
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
-      setIsLoading(false);
-      return;
-    }
-
-    setToken(storedToken);
-    setGlobalToken(storedToken);
-
+    // Rely on HttpOnly cookies for session authentication.
     api
       .get("/auth/validate-token")
       .then((res) => {
@@ -82,42 +62,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
-          localStorage.setItem("userId", id);
-          localStorage.setItem("user", JSON.stringify(userData));
+          setToken("authenticated");
+        } else {
+          setToken(null);
+          setUserId(null);
+          setUser(null);
         }
       })
       .catch(() => {
-        // Token was invalid/expired (or missing) — clear it so
-        // isAuthenticated actually reflects reality instead of
-        // hanging onto a stale/bad token.
         setToken(null);
         setGlobalToken(null);
-        localStorage.removeItem("token");
+        setUserId(null);
+        setUser(null);
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(
-    (newToken: string, newUserId: string, newUser: any) => {
-      setToken(newToken);
-      setGlobalToken(newToken);
+    (newUserId: string, newUser: any) => {
+      // The server has already set the HttpOnly session cookie.  Do not retain
+      // a copy of its token in JavaScript memory or browser storage.
+      setToken("authenticated");
+      setGlobalToken(null);
       setUserId(newUserId);
       setUser(newUser);
       if (typeof window !== "undefined") {
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("userId", newUserId);
-        localStorage.setItem("user", JSON.stringify(newUser));
+        localStorage.removeItem("token");
+        localStorage.removeItem("userId");
+        localStorage.removeItem("user");
       }
     },
     [],
   );
 
   const logout = useCallback(async () => {
+<<<<<<< HEAD
     try {
       await api.post("/auth/logout");
     } catch (error) {
       console.error("Failed to invalidate server session during logout:", error);
     }
+=======
+    // Send this before clearing client state so the cookie-backed server
+    // session can be revoked as well as removed.
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Clear the local session even when the server session is already gone.
+    }
+
+>>>>>>> 4c0b4e7 (fix(auth): remove sensitive auth data from localStorage)
     setToken(null);
     setGlobalToken(null);
     setUserId(null);
@@ -130,28 +124,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.removeItem("starredCases");
       localStorage.removeItem("starredPapers");
       localStorage.removeItem("pinnedPapers");
-      document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
-      document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
     }
   }, []);
 
   const refreshUser = useCallback(() => {
     if (typeof window === "undefined") return;
-
-    const storedToken = localStorage.getItem("token");
-
-    if (!storedToken) {
-      setToken(null);
-      setGlobalToken(null);
-      setUserId(null);
-      setUser(null);
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
-      return;
-    }
-
-    setToken(storedToken);
-    setGlobalToken(storedToken);
 
     api
       .get("/auth/validate-token")
@@ -161,10 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("userId", id);
-            localStorage.setItem("user", JSON.stringify(userData));
-          }
+          setToken((prev) => prev || "authenticated");
         }
       })
       .catch(() => {});
@@ -176,7 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         token,
         userId,
         user,
-        isAuthenticated: !!token || !!userId,
+        isAuthenticated: !!token || !!userId || !!user,
         isLoading,
         login,
         logout,
