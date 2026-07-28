@@ -7,7 +7,7 @@ import Otp from '../models/Otp';
 import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { AuthRequest, blacklistToken } from '../middleware/auth';
-import { uploadProfileImage } from '../utils/cloudinary';
+import { uploadProfileImage, generateSignedUrl } from '../utils/cloudinary';
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 
@@ -99,7 +99,10 @@ export const uploadProfilePicture = asyncHandler(
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
-      { profilePicture: uploadResult.secure_url },
+      {
+        profilePicture: uploadResult.secure_url,
+        profilePicturePublicId: uploadResult.public_id
+      },
       { new: true, runValidators: true },
     ).select("-password");
 
@@ -107,14 +110,18 @@ export const uploadProfilePicture = asyncHandler(
       throw new AppError("User not found", 404);
     }
 
+    // Generate a signed URL for authenticated access (15-minute expiry)
+    const signedProfileUrl = generateSignedUrl(uploadResult.public_id, 900);
+
     res.json({
       success: true,
       message: "Profile picture updated successfully",
       data: {
         user: updatedUser,
         profilePicture: {
-          url: uploadResult.secure_url,
+          signedUrl: signedProfileUrl,
           publicId: uploadResult.public_id,
+          expiresIn: 900
         },
       },
     });

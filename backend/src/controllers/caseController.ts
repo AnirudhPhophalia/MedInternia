@@ -15,7 +15,7 @@ import { analyzeCase } from "../services/aiTaggerService";
 import { ingestCase, suggestCases } from "../services/ragService";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
-import { uploadCaseAttachment } from "../utils/cloudinary";
+import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
 
 const getId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
 const canModerateComments = (userType?: string) => ["admin", "doctor", "moderator"].includes(userType ?? "");
@@ -803,7 +803,19 @@ export const uploadAttachment = asyncHandler(
     if (uploadResult.resource_type === 'video') {
       type = req.file.mimetype.startsWith('audio/') ? 'audio' : 'video';
     }
-    res.status(201).json({ success: true, data: { url: uploadResult.secure_url, type } });
+
+    // Generate a signed URL for authenticated access (15-minute expiry)
+    const signedUrl = generateSignedUrl(uploadResult.public_id, 900);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        signedUrl,
+        publicId: uploadResult.public_id,
+        type,
+        expiresIn: 900
+      }
+    });
   }
 );
 
