@@ -32,9 +32,7 @@ export default function FlashcardReviewPage() {
   useEffect(() => {
     const fetchDue = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) { router.push('/auth/login'); return; }
-        const res = await api.get('/flashcards/due', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await api.get('/flashcards/due');
         setCards(res.data.data);
       } catch {
         setError('Failed to load cards');
@@ -49,10 +47,7 @@ export default function FlashcardReviewPage() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/flashcards/${cards[currentIdx]._id}/review`, { quality }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/flashcards/${cards[currentIdx]._id}/review`, { quality });
       setReviewed(r => r + 1);
       if (currentIdx + 1 >= cards.length) {
         setDone(true);

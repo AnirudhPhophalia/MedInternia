@@ -17,24 +17,25 @@ import api from '../../../utils/api';
 import PageHeader from '../../../components/layout/PageHeader';
 import Link from 'next/link';
 
+import { useAuth } from '../../../context/AuthContext';
+
 export default function CollectionsDashboard() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+      return;
+    }
+
     const fetchCollections = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
-        const res = await api.get('/collections/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/collections/me');
         setCollections(res.data.data);
       } catch (err: any) {
         console.error(err);
@@ -43,8 +44,9 @@ export default function CollectionsDashboard() {
         setLoading(false);
       }
     };
+
     fetchCollections();
-  }, [router]);
+  }, [authLoading, isAuthenticated, router]);
 
   return (
     <Box sx={{ minHeight: 'calc(100vh - 64px)', background: 'linear-gradient(135deg, #f8fbff 0%, #e8f4ff 100%)', py: 6 }}>

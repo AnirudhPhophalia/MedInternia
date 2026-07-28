@@ -25,30 +25,29 @@ import Link from 'next/link';
 import api from '../../utils/api';
 import ResumeExportButton from '../../components/ResumeExportButton';
 
+import { useAuth } from '../../context/AuthContext';
+
 export default function MeProfilePage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState<any>(null);
   const [badges, setBadges] = useState<any[]>([]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/auth/login');
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('userId');
-
-        if (!token || !userId) {
-          router.replace('/auth/login');
-          return;
-        }
-
-        const res = await api.get(`/users/${userId}/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const profileData = res.data?.data || res.data;
-        setUser(profileData?.user || profileData);
-        setBadges(profileData?.badges || []);
+        const res = await api.get('/auth/me');
+        const profileData = res.data?.user || res.data?.data?.user || res.data;
+        setUser(profileData);
+        if (res.data?.badges) setBadges(res.data.badges);
       } catch (err: any) {
         console.error('Profile fetch error:', err);
         setError('Failed to load profile.');
@@ -57,8 +56,8 @@ export default function MeProfilePage() {
       }
     };
 
-    fetchProfile();
-  }, [router]);
+  }, [authLoading, isAuthenticated, router]);
+
 
   if (loading) {
     return (

@@ -26,7 +26,6 @@ export default function CreateWebinar() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
       // Backend expects specialization as array and scheduledAt as ISO string
       const payload = {
         ...form,
@@ -34,9 +33,7 @@ export default function CreateWebinar() {
         scheduledAt: new Date(form.scheduledAt).toISOString(),
         duration: Number(form.duration)
       };
-      await api.post('/webinars', payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post('/webinars', payload);
       setSuccess('Webinar created successfully!');
       setTimeout(() => {
         router.push('/webinars');

@@ -2,24 +2,26 @@ import { useEffect, useState } from "react";
 import { Box, Chip, CircularProgress, Container, Grid, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter } from "next/router";
-import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
+import { redirectToLogin } from "../utils/authRedirect";
+import { useAuth } from "../context/AuthContext";
 
 const upcomingRanks = [1, 2, 3];
 
 export default function LeaderboardPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || isLoading) return;
 
-    if (!hasAuthToken()) {
+    if (!isAuthenticated) {
       redirectToLogin(router, "/leaderboard");
       return;
     }
 
     setAuthChecked(true);
-  }, [router]);
+  }, [router, isAuthenticated, isLoading]);
 
   if (!authChecked) {
     return (

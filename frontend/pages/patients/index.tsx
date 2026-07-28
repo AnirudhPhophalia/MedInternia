@@ -28,6 +28,7 @@ function Patients() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
 
+<<<<<<< HEAD
   const fetchPatients = useCallback(async (pageNum: number) => {
     setLoading(true);
     const token = localStorage.getItem('token');
@@ -35,6 +36,17 @@ function Patients() {
       const res = await api.get('/patients', {
         params: { page: pageNum, limit: PAGE_SIZE },
         headers: { Authorization: `Bearer ${token}` },
+=======
+  useEffect(() => {
+    api.get('/patients')
+      .then(res => {
+        setPatients(res.data.data.patients || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Failed to fetch patients');
+        setLoading(false);
+>>>>>>> 4c0b4e7 (fix(auth): remove sensitive auth data from localStorage)
       });
       const data = res.data.data;
       setPatients(data.patients || []);

@@ -4,23 +4,20 @@ import { Container, Typography, Box, CircularProgress, Alert } from '@mui/materi
 import Stack from '@mui/material/Stack';
 import api from '../../utils/api';
 import CertificateCard from '../../components/CertificateCard';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Certificates() {
+  const { userId } = useAuth();
   const [certificates, setCertificates] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
     if (!userId) {
-      setError('User ID not found. Please login again.');
       setLoading(false);
       return;
     }
-    api.get(`/certificates/user/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/certificates/user/${userId}`)
       .then(res => {
         setCertificates(res.data.data.certificates || []);
         setLoading(false);
@@ -29,7 +26,7 @@ export default function Certificates() {
         setError('Failed to fetch certificates');
         setLoading(false);
       });
-  }, []);
+  }, [userId]);
 
   if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
   if (error) return <Alert severity="error">{error}</Alert>;

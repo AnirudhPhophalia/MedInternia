@@ -43,19 +43,12 @@ const VisibilityToggle = () => {
 const ProfileSidebar = () => {
   const [user, setUser] = React.useState<Doctor | null>(null);
   React.useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const userId =
-      typeof window !== "undefined" ? localStorage.getItem("userId") : null;
-    if (!userId) return;
     import("../../utils/api").then((apiModule) => {
       apiModule.default
-        .get(`/users/${userId}/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        .get('/auth/me')
         .then((res) => {
           // Ensure correct extraction of counts from backend response
-          const userData = res.data?.data?.user || res.data?.user || res.data;
+          const userData = res.data?.user || res.data?.data?.user || res.data;
           setUser({
             ...userData,
             followersCount:
@@ -707,14 +700,9 @@ const CaseStudyList = () => {
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     import("../../utils/api").then((apiModule) => {
       apiModule.default
-        .get(
-          "/cases?limit=5",
-          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-        )
+        .get("/cases?limit=5")
         .then((res) => {
           // Adjust according to your backend response structure
           // If your backend returns { data: { cases: [...] } }
@@ -1431,8 +1419,6 @@ const RecommendedConnections = () => {
   const [following, setFollowing] = React.useState<string[]>([]);
   const [doctors, setDoctors] = React.useState<Doctor[]>([]);
   React.useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     import("../../utils/api").then((apiModule) => {
       apiModule.default
         .get("/users/leaderboard?userType=doctor&limit=10")
@@ -1450,42 +1436,30 @@ const RecommendedConnections = () => {
           leaderboard = leaderboard.reverse();
           setDoctors(leaderboard);
         });
-      if (token) {
-        apiModule.default
-          .get("/users/connections", {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          .then((res) => {
-            setFollowing((res.data.following || []).map((u: any) => u._id));
-            return res;
-          });
-      }
+
+      apiModule.default
+        .get("/users/connections")
+        .then((res) => {
+          setFollowing((res.data.following || []).map((u: any) => u._id));
+          return res;
+        })
+        .catch(() => {});
     });
   }, []);
   const handleFollow = async (doctorId: string) => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     await import("../../utils/api").then((apiModule) =>
       apiModule.default.post(
         "/users/follow",
-        { userId: doctorId },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { userId: doctorId }
       )
     );
     setFollowing((prev) => [...prev, doctorId]);
   };
   const handleUnfollow = async (doctorId: string) => {
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     await import("../../utils/api").then((apiModule) =>
       apiModule.default.post(
         "/users/unfollow",
-        { userId: doctorId },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { userId: doctorId }
       )
     );
     setFollowing((prev) => prev.filter((id) => id !== doctorId));

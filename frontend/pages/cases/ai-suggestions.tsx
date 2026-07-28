@@ -22,6 +22,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import StarIcon from '@mui/icons-material/Star';
 import api from '../../utils/api';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 
 const predefinedSpecialties = [
   "Cardiology",
@@ -37,6 +38,7 @@ const predefinedSpecialties = [
 
 export default function AISuggestions() {
   const router = useRouter();
+  const { userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -53,10 +55,7 @@ export default function AISuggestions() {
   useEffect(() => {
     const fetchInitData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const userId = localStorage.getItem('userId');
-
-        if (!token || !userId) {
+        if (!userId) {
           router.replace('/auth/login');
           return;
         }
@@ -86,17 +85,14 @@ export default function AISuggestions() {
     };
 
     fetchInitData();
-  }, [router]);
+  }, [router, userId]);
 
   const handleGetCaseSuggestions = async (caseId: string) => {
     if (!caseId) return;
     setSuggestionsLoading(true);
     setSuggestionsError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.get(`/cases/${caseId}/ai-suggestions`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${caseId}/ai-suggestions`);
       setCaseSuggestions(res.data?.data?.suggestions || res.data?.suggestions || []);
     } catch (e) {
       console.error(e);

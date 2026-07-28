@@ -36,6 +36,7 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import { withAuth } from '../../components/withAuth'; 
 
 interface DoctorMentorshipCardProps {
@@ -152,6 +153,7 @@ function DoctorMentorshipCard({ doctor, currentUserId, currentMentorId, onApplyM
 
 function Doctors() {
   const router = useRouter();
+  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
   const [doctors, setDoctors] = useState<any[]>([]);
   const [originalDoctors, setOriginalDoctors] = useState<any[]>([]);
   const [smartQuery, setSmartQuery] = useState("");
@@ -197,34 +199,39 @@ function Doctors() {
 
   const fetchInitData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const storedUserId = localStorage.getItem('userId');
-
-      if (!token || !storedUserId) {
+      if (!isAuthenticated) {
         router.replace('/auth/login');
         return;
       }
 
-      setCurrentUserId(storedUserId);
+      if (userId) {
+        setCurrentUserId(userId);
+      }
 
       // Fetch user profile to see if they are a doctor or intern
-      const userRes = await api.get(`/users/${storedUserId}/profile`);
-      const user = userRes.data?.data?.user || userRes.data?.user || userRes.data;
-      setUserRole(user.userType || '');
-      if (user.mentorDoctor) {
-        setCurrentMentorId(user.mentorDoctor._id || user.mentorDoctor);
+      const userRes = await api.get('/auth/me');
+      const user = userRes.data?.user || userRes.data?.data?.user || userRes.data;
+      if (user) {
+        setUserRole(user.userType || '');
+        if (user._id || user.id) {
+          setCurrentUserId(String(user._id || user.id));
+        }
+        if (user.mentorDoctor) {
+          setCurrentMentorId(user.mentorDoctor._id || user.mentorDoctor);
+        }
       }
 
       // Fetch doctors list
       const docsRes = await api.get('/doctors');
-      const fetchedDocs = docsRes.data.data.doctors || [];
+      const fetchedDocs = docsRes.data?.data?.doctors || docsRes.data?.doctors || [];
       setDoctors(fetchedDocs);
       setOriginalDoctors(fetchedDocs);
 
       // If doctor, fetch mentees list
-      if (user.userType === 'doctor') {
-        const menteesRes = await api.get(`/doctors/${storedUserId}/mentees`);
-        setMentees(menteesRes.data.data.mentees || []);
+      const uid = userId || user?._id || user?.id;
+      if (user?.userType === 'doctor' && uid) {
+        const menteesRes = await api.get(`/doctors/${uid}/mentees`);
+        setMentees(menteesRes.data?.data?.mentees || menteesRes.data?.mentees || []);
       }
 
     } catch (err) {
@@ -236,16 +243,15 @@ function Doctors() {
   };
 
   useEffect(() => {
-    fetchInitData();
-  }, [router]);
+    if (!authLoading) {
+      fetchInitData();
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   const handleApplyMentorship = async (doctorId: string) => {
     try {
-      const token = localStorage.getItem('token');
       await api.put(`/users/${currentUserId}/profile`, {
         mentorDoctor: doctorId
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       setCurrentMentorId(doctorId);
       alert('Selected doctor as your mentor successfully!');

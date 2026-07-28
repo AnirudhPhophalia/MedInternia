@@ -19,7 +19,7 @@ import StarIcon from "@mui/icons-material/Star";
 import ThumbUpAltIcon from "@mui/icons-material/ThumbUpAlt";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import { useTranslation } from 'react-i18next';
-import { setGlobalToken } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 interface ProfileDropdownProps {
   onNavigate: (path: string) => void;
@@ -31,6 +31,7 @@ interface ProfileDropdownProps {
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileImageUrl, firstName, lastName, userType }) => {
   const { t } = useTranslation('common');
+  const { logout: authLogout, userId: authUserId } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -41,24 +42,13 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
     setAnchorEl(null);
   };
 
-  // Get userId and initials from localStorage
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : '';
+  const userId = authUserId || '';
 
   // Logout logic
-  const logout = () => {
-  localStorage.removeItem("token");
-  setGlobalToken(null);
-  localStorage.removeItem("userId");
-  localStorage.removeItem("user");
-  localStorage.removeItem("starredCases");
-  localStorage.removeItem("starredPapers");
-  localStorage.removeItem("pinnedPapers");
-  localStorage.removeItem("refreshToken");
-  document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
-  document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
-  document.cookie = "refresh_token=; Path=/; Max-Age=0; SameSite=Lax";
-  handleClose();
-  onNavigate("/");
+  const logout = async () => {
+    await authLogout();
+    handleClose();
+    onNavigate("/");
   };
 
   return (

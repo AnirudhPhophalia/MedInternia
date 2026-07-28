@@ -28,6 +28,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
 import BookmarkButton from '../../components/BookmarkButton';
+import { useAuth } from '../../context/AuthContext';
 import GlossaryText from '../../components/GlossaryText';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
@@ -65,32 +66,27 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [totalLikes, setTotalLikes] = useState(0);
   const [liking, setLiking] = useState(false);
 
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+  const { userId } = useAuth();
   const canModerate = currentUser && ['admin', 'doctor', 'moderator'].includes(currentUser.userType);
 
   // Fetch Case Data & Profile details
   useEffect(() => {
     if (!id) return;
-    const token = localStorage.getItem('token');
     
     // Fetch profile to check solved list
-    if (token) {
-      api.get('/auth/profile', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+    api.get('/auth/profile')
       .then(res => {
-        const user = res.data.data.user;
-        setCurrentUser(user);
-        if (user.solvedCases) {
-          setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
+        const user = res.data?.data?.user || res.data?.user || res.data;
+        if (user) {
+          setCurrentUser(user);
+          if (user.solvedCases) {
+            setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
+          }
         }
       })
       .catch(err => console.warn('Failed to fetch profile', err));
-    }
 
-    api.get(`/cases/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/cases/${id}`)
       .then(res => {
         setCaseData(res.data.data.case);
         const all = res.data.data.case.comments || [];
@@ -110,17 +106,14 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         }
         setLoading(false);
       });
-  }, [id]);
+  }, [id, userId]);
 
   // NEW: toggle case-level like
   const handleToggleCaseLike = async () => {
     if (liking) return;
     setLiking(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.post(`/cases/${id}/like`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post(`/cases/${id}/like`);
       setIsLiked(res.data.data.isLiked);
       setTotalLikes(res.data.data.totalLikes);
     } catch {
@@ -132,14 +125,9 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleLike = async (commentId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${id}/comments/${commentId}/like`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${id}/comments/${commentId}/like`);
       
-      const res = await api.get(`/cases/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
       setPinned(all.filter((c: any) => c.pinned));
       setDiscussions(all.filter((c: any) => !c.pinned));
@@ -150,14 +138,9 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleRate = async (commentId: string, rating: number) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${id}/comments/${commentId}/rate`, { rating }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${id}/comments/${commentId}/rate`, { rating });
       
-      const res = await api.get(`/cases/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
       setPinned(all.filter((c: any) => c.pinned));
       setDiscussions(all.filter((c: any) => !c.pinned));
@@ -168,23 +151,16 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleDiscussion = async () => {
     try {
-      const token = localStorage.getItem('token');
       if (replyTo) {
-        await api.post(`/cases/${id}/comments/${replyTo._id}/reply`, { content: replyContent }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/cases/${id}/comments/${replyTo._id}/reply`, { content: replyContent });
       } else {
-        await api.post(`/cases/${id}/comments`, { content: comment }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/cases/${id}/comments`, { content: comment });
       }
       setComment('');
       setReplyTo(null);
       setReplyContent('');
       
-      const res = await api.get(`/cases/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
       setPinned(all.filter((c: any) => c.pinned));
       setDiscussions(all.filter((c: any) => !c.pinned));
@@ -205,14 +181,9 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handlePin = async (commentId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${id}/comments/${commentId}/pin`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${id}/comments/${commentId}/pin`);
       
-      const res = await api.get(`/cases/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
       setPinned(all.filter((c: any) => c.pinned));
       setDiscussions(all.filter((c: any) => !c.pinned));
@@ -223,14 +194,9 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleUnpin = async (commentId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${id}/comments/${commentId}/unpin`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${id}/comments/${commentId}/unpin`);
       
-      const res = await api.get(`/cases/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
       setPinned(all.filter((c: any) => c.pinned));
       setDiscussions(all.filter((c: any) => !c.pinned));
@@ -242,10 +208,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const handleSolveCase = async () => {
     setSolving(true);
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${id}/solve`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${id}/solve`);
       setIsSolved(true);
       setSolving(false);
       setSuccess('Case marked as solved successfully! You earned +5 points.');
@@ -535,7 +498,6 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
                     startIcon={<SchoolIcon />}
                     onClick={async () => {
                       try {
-                        const token = localStorage.getItem('token');
                         await api.post('/flashcards', {
                           question: caseData.title,
                           answer: caseData.specialization
@@ -543,7 +505,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
                             : (caseData.description || '').slice(0, 200),
                           tags: caseData.tags || [],
                           caseId: caseData._id
-                        }, { headers: { Authorization: `Bearer ${token}` } });
+                        });
                         setSuccess('Flashcard created! View it in your deck.');
                       } catch {
                         setError('Failed to create flashcard');

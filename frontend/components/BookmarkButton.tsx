@@ -9,19 +9,21 @@ interface BookmarkButtonProps {
   itemId: string;
 }
 
+import { useAuth } from '../context/AuthContext';
+
 export default function BookmarkButton({ itemType, itemId }: BookmarkButtonProps) {
+  const { userId, user } = useAuth();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Fetch initial status from user profile
     const checkStatus = async () => {
-      const userId = localStorage.getItem('userId');
-      if (!userId) return;
+      if (!userId && !user) return;
       
       try {
-        const res = await api.get(`/users/${userId}/profile`);
-        const userData = res.data?.data?.user || res.data?.user || res.data;
+        const userData = user || (await api.get('/auth/me')).data?.user;
+        if (!userData) return;
         
         let arrayToCheck: string[] = [];
         if (itemType === 'case') arrayToCheck = userData.savedCases || [];
@@ -34,18 +36,18 @@ export default function BookmarkButton({ itemType, itemId }: BookmarkButtonProps
       }
     };
     checkStatus();
-  }, [itemType, itemId]);
+  }, [itemType, itemId, userId, user]);
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation(); // prevent clicking the card underneath
     e.preventDefault();
     
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
+    const uid = userId || user?._id || user?.id;
+    if (!uid) return;
 
     setLoading(true);
     try {
-      const res = await api.post(`/users/${userId}/save/${itemType}/${itemId}`);
+      const res = await api.post(`/users/${uid}/save/${itemType}/${itemId}`);
       if (res.data?.success) {
         setIsBookmarked(res.data.data.isBookmarked);
       }

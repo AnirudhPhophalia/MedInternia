@@ -14,10 +14,7 @@ function CaseFollowUp() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${caseId}/follow-ups`, { content: followUp }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${caseId}/follow-ups`, { content: followUp });
       setSuccess('Follow-up added successfully!');
       setFollowUp('');
     } catch (err: any) {

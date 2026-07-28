@@ -3,10 +3,7 @@ import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
 
 // Maintain backward compatibility for files importing getAuthToken
 export const getAuthToken = (): string | null => {
-  const globalToken = getGlobalToken();
-  if (globalToken) return globalToken;
-  if (typeof window !== 'undefined') return localStorage.getItem('token');
-  return null;
+  return getGlobalToken();
 };
 
 export const getSocketUrl = (): string => {
@@ -34,13 +31,10 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Add interceptor to include JWT token in all requests
+// Add interceptor to include JWT token in requests if held in memory
 api.interceptors.request.use(
   (config) => {
-    // Fall back to localStorage if the in-memory global token hasn't
-    // been hydrated yet (e.g. this is the very first request after a
-    // fresh page load, before AuthContext's mount effect has run).
-    const token = getGlobalToken() || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    const token = getGlobalToken();
     if (token) {
       config.headers = config.headers || {};
       config.headers['Authorization'] = `Bearer ${token}`;

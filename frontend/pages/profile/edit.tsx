@@ -277,13 +277,10 @@ export default function EditProfilePage() {
     setErrors(newErrors);
     return isValid;
   };
-   React.useEffect(() => {
+  React.useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const userId = localStorage.getItem('userId');
-        const response = userId
-          ? await api.get(`/users/${userId}/profile`)
-          : await api.get('/auth/profile');
+        const response = await api.get('/auth/profile');
         const user = resolveProfileUser(response.data);
         if (user) {
             setForm(prevForm => ({
@@ -387,9 +384,6 @@ export default function EditProfilePage() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
-      if (!token || !userId) throw new Error('Missing auth');
       let profilePictureUrl = (typeof form.image === 'string' && /^https?:\/\//.test(form.image)) ? form.image : '';
       // If a new image file is selected, upload it first
       if (selectedImageFile) {
@@ -435,7 +429,7 @@ export default function EditProfilePage() {
         linkedInProfile: form.linkedInUrl,
         messagePrivacy: form.messagePrivacy,
       };
-      const res = await api.put(`/users/${userId}/profile`, payload);
+      const res = await api.put('/auth/profile', payload);
       const data = res.data;
       if (data.success) {
         setMessage("Profile updated successfully!");
@@ -453,23 +447,14 @@ export default function EditProfilePage() {
     }
   };
 
-  // Handles profile deletion — calls the real DELETE /users/:userId endpoint,
-  // clears auth state from localStorage, and redirects to login.
+  // Handles profile deletion
   const handleDeleteProfile = async () => {
     setOpenDeleteDialog(false);
     setLoading(true);
     setMessage("");
 
     try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) throw new Error('Missing user ID');
-
-      await api.delete(`/users/${userId}`);
-
-      // Clear all auth-related data from localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('user');
+      await api.delete('/auth/me');
 
       router.replace('/auth/login');
     } catch (error: any) {

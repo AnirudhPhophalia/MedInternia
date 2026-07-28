@@ -18,15 +18,12 @@ export default function ConnectionsPage() {
   const [following, setFollowing] = useState<any[]>([]);
   const [followers, setFollowers] = useState<any[]>([]);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   useEffect(() => {
-    api.get("/users/connections", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => {
+    api.get("/users/connections").then(res => {
       setFollowing(res.data.following || []);
       setFollowers(res.data.followers || []);
-    });
-  }, [token]);
+    }).catch(console.error);
+  }, []);
 
   return (
     <Box maxWidth={600} mx="auto" my={4}>
@@ -48,9 +45,7 @@ export default function ConnectionsPage() {
                     variant="outlined"
                     color="error"
                     onClick={async () => {
-                      await api.post("/users/unfollow", { userId: f._id }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      });
+                      await api.post("/users/unfollow", { userId: f._id });
                       setFollowing(following.filter((u: any) => u._id !== f._id));
                     }}
                   >
@@ -61,9 +56,7 @@ export default function ConnectionsPage() {
                     variant="outlined"
                     color="primary"
                     onClick={async () => {
-                      await api.post("/users/follow", { userId: f._id }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      });
+                      await api.post("/users/follow", { userId: f._id });
                       setFollowing([...following, f]);
                     }}
                   >

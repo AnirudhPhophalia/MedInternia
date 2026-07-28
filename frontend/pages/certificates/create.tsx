@@ -45,7 +45,6 @@ export default function CreateCertificate() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
       const payload = {
         internId: form.internId,
         title: form.title,
@@ -59,9 +58,7 @@ export default function CreateCertificate() {
         skills: form.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
 
-      await api.post('/certificates/generate', payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post('/certificates/generate', payload);
       setSuccess('Certificate created successfully!');
       setForm(emptyForm);
     } catch (err: any) {

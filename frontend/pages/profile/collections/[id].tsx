@@ -31,15 +31,7 @@ export default function CollectionDetail() {
     
     const fetchCollection = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
-        const res = await api.get(`/collections/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get(`/collections/${id}`);
         setCollection(res.data.data);
       } catch (err: any) {
         console.error(err);
@@ -53,10 +45,7 @@ export default function CollectionDetail() {
 
   const handleRemoveCase = async (caseId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.delete(`/collections/${id}/cases/${caseId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/collections/${id}/cases/${caseId}`);
       // Remove from local state
       setCollection((prev: any) => ({
         ...prev,

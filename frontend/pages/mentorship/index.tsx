@@ -19,15 +19,9 @@ export default function MentorshipDashboard() {
   useEffect(() => {
     const init = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
         const [profileRes, mentorshipsRes] = await Promise.all([
-          api.get('/users/profile', { headers: { Authorization: `Bearer ${token}` } }),
-          api.get('/mentorship/me', { headers: { Authorization: `Bearer ${token}` } })
+          api.get('/auth/profile'),
+          api.get('/mentorship/me')
         ]);
 
         setUser(profileRes.data.data);
