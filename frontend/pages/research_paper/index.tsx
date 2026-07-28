@@ -80,7 +80,6 @@ export default function ResearchPaperUpload() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
       // For now, just simulate file upload by sending file name as fileUrl
       // In production, you should upload the file and get a URL
       const payload = {
@@ -90,7 +89,7 @@ export default function ResearchPaperUpload() {
         difficulty: form.difficulty,
         fileUrl: file ? file.name : '',
       };
-      await api.post('/research-papers', payload, { headers: { Authorization: `Bearer ${token}` } });
+      await api.post('/research-papers', payload);
       setSuccess('Research paper uploaded successfully!');
       setForm({ title: '', description: '', field: '', difficulty: 'beginner' });
       setFile(null);

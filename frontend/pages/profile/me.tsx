@@ -35,17 +35,14 @@ export default function MeProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
 
-        if (!token || !userId) {
+        if (!userId) {
           router.replace('/auth/login');
           return;
         }
 
-        const res = await api.get(`/users/${userId}/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get(`/users/${userId}/profile`);
         const profileData = res.data?.data || res.data;
         setUser(profileData?.user || profileData);
         setBadges(profileData?.badges || []);

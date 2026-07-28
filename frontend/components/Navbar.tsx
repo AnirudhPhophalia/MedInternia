@@ -47,7 +47,6 @@ import { ThemeContext } from '../context/ThemeContext';
 import { useContext } from 'react';
 
 import { getCurrentUserRole } from '../utils/permissions';
-import { getAuthToken } from "../utils/api";
 import { useScroll, useSpring, motion } from 'framer-motion';
 
 interface NavButtonProps {
@@ -122,19 +121,15 @@ const NavButton: React.FC<NavButtonProps> = ({
   );
 };
 
-export default function Navbar({ route }: { route?: string }) {
-  const { t } = useTranslation('common');
+export default function Navbar() {
   const router = useRouter();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
   const { mode, toggleColorMode } = useContext(ThemeContext);
   const { isAuthenticated, userId: authUserId, user: authUser } = useAuth();
   const [mounted, setMounted] = React.useState(false);
 
   const handleHomeNav = () => {
     if (typeof window !== 'undefined') {
-      const token = getAuthToken();
-      if (token) {
+      if (isAuthenticated) {
         router.push('/landing');
         return;
       }

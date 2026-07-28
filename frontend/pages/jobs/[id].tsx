@@ -48,10 +48,7 @@ export default function JobDetail() {
 
   const handleApply = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/jobs/${id}/apply`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/jobs/${id}/apply`, {});
       alert('Applied successfully!');
     } catch {
       setError('Failed to apply');

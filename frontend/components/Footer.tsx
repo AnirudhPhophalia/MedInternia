@@ -68,8 +68,11 @@ export default function Footer() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
 
   React.useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    setIsLoggedIn(Boolean(token));
+    // Check auth_status cookie (non-HttpOnly, set by backend on login)
+    const isAuth = typeof document !== 'undefined'
+      ? document.cookie.split(';').some(c => c.trim().startsWith('auth_status='))
+      : false;
+    setIsLoggedIn(isAuth);
   }, []);
 
   const getAuthAwareHref = (path: string) =>

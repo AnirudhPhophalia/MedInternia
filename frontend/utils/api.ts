@@ -1,11 +1,6 @@
 import axios from 'axios';
-import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
-
 // Maintain backward compatibility for files importing getAuthToken
 export const getAuthToken = (): string | null => {
-  const globalToken = getGlobalToken();
-  if (globalToken) return globalToken;
-  if (typeof window !== 'undefined') return localStorage.getItem('token');
   return null;
 };
 
@@ -34,17 +29,10 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Add interceptor to include JWT token in all requests
+// Ensure HttpOnly authentication cookies are sent with requests
 api.interceptors.request.use(
   (config) => {
-    // Fall back to localStorage if the in-memory global token hasn't
-    // been hydrated yet (e.g. this is the very first request after a
-    // fresh page load, before AuthContext's mount effect has run).
-    const token = getGlobalToken() || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    config.withCredentials = true;
     return config;
   },
   (error) => Promise.reject(error)
@@ -65,7 +53,6 @@ api.interceptors.response.use(
       !isSessionBootstrapCheck &&
       typeof window !== 'undefined'
     ) {
-      setGlobalToken(null);
 
       const alreadyOnLoginPage = window.location.pathname.startsWith('/auth/login');
       if (!isRedirectingToLogin && !alreadyOnLoginPage) {

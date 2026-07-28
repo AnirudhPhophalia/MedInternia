@@ -515,8 +515,11 @@ export default function HomePage() {
   const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
-    const token = typeof window !== 'undefined' ? getAuthToken() : null;
-    setIsLoggedIn(!!token);
+    // Use auth_status cookie (non-HttpOnly) to detect login without reading JWT
+    const isAuth = typeof document !== 'undefined'
+      ? document.cookie.split(';').some(c => c.trim().startsWith('auth_status='))
+      : false;
+    setIsLoggedIn(isAuth);
   }, []);
 
   const getAuthAwareHref = (path: string) =>

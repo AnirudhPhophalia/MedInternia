@@ -8,19 +8,8 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { getSafeRedirectPath } from '../../utils/authRedirect';
 import AuthLayout, { AuthCard } from '../../components/auth/AuthLayout';
-import { useAuth, setGlobalToken } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
-const persistAuthSession = (token: string, userId: string, user: any) => {
-  if (typeof window === 'undefined') return;
-
-  localStorage.setItem('token', token);
-  localStorage.setItem('userId', userId);
-  localStorage.setItem('user', JSON.stringify(user));
-
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `token=${encodeURIComponent(token)}; Path=/; SameSite=Lax${secure}`;
-  document.cookie = `auth_status=authenticated; Path=/; SameSite=Lax${secure}`;
-};
 
 export default function Login() {
   const { login: authLogin } = useAuth();
@@ -44,13 +33,10 @@ export default function Login() {
     // GSSoC: Show loading spinner while login request is in-flight
     setLoading(true);
     try {
-  const res = await api.post('/auth/login', { email, password });
-  const token = res.data?.data?.token;
-  const user = res.data?.data?.user;
-  const userId = user?._id || user?.id || '';
-  persistAuthSession(token, userId, user);
-  setGlobalToken(token);
-  authLogin(token, userId, user);
+      const res = await api.post('/auth/login', { email, password });
+      const user = res.data?.data?.user;
+      const userId = user?._id || user?.id || '';
+      authLogin(userId, user);
   router.push(getSafeRedirectPath(router.query.redirect));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');

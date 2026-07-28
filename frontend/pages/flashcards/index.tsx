@@ -25,12 +25,9 @@ export default function FlashcardsPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) { router.push('/auth/login'); return; }
-
       const [allRes, dueRes] = await Promise.all([
-        api.get('/flashcards/me', { headers: { Authorization: `Bearer ${token}` } }),
-        api.get('/flashcards/due', { headers: { Authorization: `Bearer ${token}` } }),
+        api.get('/flashcards/me'),
+        api.get('/flashcards/due'),
       ]);
       const fetchedCards = allRes.data.data || [];
       setFlashcards(fetchedCards);
@@ -47,8 +44,7 @@ export default function FlashcardsPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.delete(`/flashcards/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await api.delete(`/flashcards/${id}`);
       setFlashcards(prev => prev.filter(f => f._id !== id));
     } catch { setError('Failed to delete flashcard'); }
   };
@@ -57,12 +53,11 @@ export default function FlashcardsPage() {
     if (!newCard.question.trim() || !newCard.answer.trim()) return;
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await api.post('/flashcards', {
         question: newCard.question,
         answer: newCard.answer,
         tags: newCard.tags.split(',').map(t => t.trim()).filter(Boolean)
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      });
       setFlashcards(prev => [res.data.data, ...prev]);
       setAddModal(false);
       setNewCard({ question: '', answer: '', tags: '' });

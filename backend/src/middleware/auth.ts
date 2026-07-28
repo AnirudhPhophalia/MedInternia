@@ -21,15 +21,11 @@ export interface AuthRequest extends Request {
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
 
+    let token: string | undefined = req.cookies?.token;
     const authHeader = req.headers.authorization;
 
-    let token: string | undefined;
-
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (!token && authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
-    } else if (req.cookies?.token) {
-      token = req.cookies.token;
     }
 
     if (!token) {
@@ -106,13 +102,11 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
 export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    let token: string | undefined;
-
+    let token: string | undefined = req.cookies?.token;
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+
+    if (!token && authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
-    } else if (req.cookies?.token) {
-      token = req.cookies.token;
     }
 
     if (!token) {

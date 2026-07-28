@@ -51,8 +51,6 @@ export default function CreateJob() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      
       const payload = {
         title: form.title,
         company: form.company,
@@ -75,9 +73,7 @@ export default function CreateJob() {
         visaSponsorship: form.visaSponsorship
       };
 
-      await api.post('/jobs', payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post('/jobs', payload);
       setSuccess('Job created successfully!');
       setTimeout(() => router.push('/jobs'), 1500);
     } catch (err: any) {

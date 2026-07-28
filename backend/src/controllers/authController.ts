@@ -286,7 +286,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'strict' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
@@ -299,8 +299,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     message: "User registered successfully",
     data: {
       user: userResponse,
-      token,
-      refreshToken,
     },
   });
 });
@@ -422,7 +420,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'strict' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
@@ -435,8 +433,6 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     message: "Login successful",
     data: {
       user: userResponse,
-      token,
-      refreshToken,
     },
   });
 });
@@ -617,13 +613,11 @@ export const resetPassword = asyncHandler(
 
 // Logout
 export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
+  let token: string | undefined = req.cookies?.token;
   const authHeader = req.headers.authorization;
-  let token: string | undefined;
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (!token && authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.substring(7);
-  } else if (req.cookies?.token) {
-    token = req.cookies.token;
   }
 
   if (!token) {
@@ -735,17 +729,18 @@ export const refreshToken = asyncHandler(
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      sameSite: 'strict' as const,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
+    res.cookie('token', newAccessToken, cookieOptions);
+    res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
     res.cookie('refresh_token', newRefreshToken, cookieOptions);
 
     res.json({
       success: true,
       message: 'Token refreshed successfully',
       data: {
-        token: newAccessToken,
-        refreshToken: newRefreshToken,
+        user,
       },
     });
   },

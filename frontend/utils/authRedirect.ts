@@ -1,5 +1,4 @@
 import type { NextRouter } from "next/router";
-import { getGlobalToken } from "../context/AuthContext";
 
 export const protectedLandingPaths = [
   "/cases",

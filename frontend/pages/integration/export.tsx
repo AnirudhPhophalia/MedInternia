@@ -10,10 +10,7 @@ export default function ExportBadges() {
     setMessage('');
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.post(`/integration/${platform}/export`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post(`/integration/${platform}/export`, {});
       setMessage(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Export failed');

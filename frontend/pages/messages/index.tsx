@@ -75,12 +75,10 @@ export default function MessagesPage() {
         setLoading(false);
 
         // Connect socket
-        const token = localStorage.getItem('token');
-        if (token) {
-          const socketUrl = getSocketUrl();
-          socketRef.current = io(socketUrl, {
-            auth: { token }
-          });
+        const socketUrl = getSocketUrl();
+        socketRef.current = io(socketUrl, {
+          withCredentials: true
+        });
 
           socketRef.current.on('new_message', (data: { message: Message, conversationId: string }) => {
             // Update conversation lastMessage
