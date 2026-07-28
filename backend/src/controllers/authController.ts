@@ -385,6 +385,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   if (user.lockoutUntil && user.lockoutUntil > new Date()) {
     const remainingMs = user.lockoutUntil.getTime() - Date.now();
     const remainingMin = Math.ceil(remainingMs / 60000);
+    console.warn(`[SECURITY] Account lockout detected: ${email} (remaining: ${remainingMin}m)`);
     throw new AppError(`Account is locked. Try again in ${remainingMin} minute(s).`, 429);
   }
 
@@ -396,6 +397,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     const update: any = { $inc: { loginAttempts: 1 } };
     if (newAttempts >= 5) {
       update.$set = { lockoutUntil: new Date(Date.now() + 15 * 60 * 1000) };
+      console.error(`[SECURITY] Account locked due to brute-force: ${email} (IP: ${req.ip})`);
+    } else {
+      console.warn(`[SECURITY] Failed login attempt for ${email} (attempt ${newAttempts}/5, IP: ${req.ip})`);
     }
     await User.findByIdAndUpdate(user._id, update);
     throw new AppError("Invalid email or password", 401);
@@ -405,6 +409,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   await User.findByIdAndUpdate(user._id, {
     $set: { loginAttempts: 0, lockoutUntil: null }
   });
+  console.log(`[AUTH] Successful login: ${email} (attempts reset)`);
 
   // Generate JWT tokens
   const tokenPayload = {
