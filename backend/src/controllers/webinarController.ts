@@ -1,8 +1,33 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import Webinar from '../models/Webinar';
+import Webinar, { IWebinar } from '../models/Webinar';
 import Notification from '../models/Notification';
 import User from '../models/User';
+import { Document } from 'mongoose';
+
+export type SanitizedWebinar = ReturnType<typeof sanitizeWebinarForSocket>;
+
+export const sanitizeWebinarForSocket = (webinar: Document & IWebinar): any => {
+  const obj = webinar.toObject ? webinar.toObject() : { ...webinar };
+  if (obj.polls) {
+    obj.polls = obj.polls.map((poll: any) => ({
+      _id: poll._id,
+      question: poll.question,
+      options: poll.options,
+      active: poll.active,
+      createdAt: poll.createdAt,
+      results: poll.options.map((_: string, idx: number) => ({
+        optionIndex: idx,
+        count: poll.votes ? Array.from(Object.values(poll.votes)).filter((v: any) => v === idx).length : 0,
+      })),
+    }));
+  }
+  if (obj.participants) {
+    obj.participantCount = obj.participants.length;
+    delete obj.participants;
+  }
+  return obj;
+};
 import { getSocketIO } from '../utils/socket';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
@@ -159,7 +184,7 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     res.status(201).json({
       success: true,
       message: 'Webinar created successfully',
-      data: { webinar, meetingLink: webinar.meetingLink }
+      data: { webinar: sanitizeWebinarForSocket(webinar), meetingLink: webinar.meetingLink }
     });
   } catch (error: any) {
     console.error('Create webinar error:', error);
@@ -293,7 +318,7 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
     if (isHostOrAdmin) {
       return res.json({
         success: true,
-        data: { webinar }
+        data: { webinar: sanitizeWebinarForSocket(webinar) }
       });
     }
 
@@ -326,7 +351,7 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
       const participantWebinar = {
         ...publicWebinar,
         meetingLink: webinar.meetingLink,
-        polls: webinar.polls,
+        polls: sanitizeWebinarForSocket(webinar).polls,
         qna: webinar.qna,
         participants: webinar.participants.map(p => ({
           user: (p.user as any)._id?.toString() || p.user.toString()
@@ -341,7 +366,7 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: { webinar: publicWebinar }
+      data: { webinar: sanitizeWebinarForSocket(webinar) }
     });
   } catch (error: any) {
     console.error('Get webinar error:', error);
@@ -414,7 +439,7 @@ export const registerForWebinar = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       message: 'Successfully registered for webinar',
-      data: { webinar }
+      data: { webinar: sanitizeWebinarForSocket(webinar) }
     });
   } catch (error: any) {
     console.error('Register for webinar error:', error);
@@ -501,7 +526,7 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       message: 'Webinar updated successfully',
-      data: { webinar }
+      data: { webinar: sanitizeWebinarForSocket(webinar) }
     });
   } catch (error: any) {
     console.error('Update webinar error:', error);
@@ -697,7 +722,7 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
       message: 'Meeting link generated successfully',
       data: { 
         meetingLink,
-        webinar 
+        webinar: sanitizeWebinarForSocket(webinar)
       }
     });
   } catch (error: any) {

@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import type { SanitizedWebinar } from '../controllers/webinarController';
 
 let io: Server;
 
@@ -16,4 +17,9 @@ export const getSocketIO = (): Server => {
 export const emitToUser = (userId: string, event: string, data: any): void => {
   if (!io) return; // Silently skip if socket not ready
   io.to(`user:${userId}`).emit(event, data);
+};
+
+export const emitSanitizedWebinar = (userId: string, event: string, webinar: any, sanitize: (w: any) => SanitizedWebinar): void => {
+  if (!io) return;
+  io.to(`user:${userId}`).emit(event, sanitize(webinar));
 };
