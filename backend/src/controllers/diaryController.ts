@@ -17,7 +17,19 @@ export const getDiaries = async (req: AuthRequest, res: Response) => {
 
     const filter = { user: req.user._id };
 
-    return res.status(200).json({ success: true, data: diaries });
+    const [diaries, total] = await Promise.all([
+      Diary.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Diary.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: { diaries },
+      meta: buildPaginationMeta(total, page, limit),
+    });
   } catch (error) {
     console.error("Error fetching diaries:", error);
 
