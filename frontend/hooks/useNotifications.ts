@@ -21,6 +21,11 @@ export function useNotifications() {
   const [newToast, setNewToast]           = useState<Notification | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
+  // Resolve token at render time so it can be used as an effect dependency.
+  // When auth state changes a re-render will produce a new token value and
+  // trigger the effect to tear-down the old socket and connect a new one.
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
+
   // ── Recalculate unread count whenever notifications change ──
   useEffect(() => {
     setUnreadCount(notifications.filter((n) => !n.isRead).length);
@@ -28,10 +33,12 @@ export function useNotifications() {
 
   // ── Connect socket + fetch initial notifications ────────────
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!token) return;
 
-    const token = getAuthToken();
-    if (!token) return; // Not logged in — do nothing
+    // Disconnect any stale socket before opening a new connection
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
 
     // 1. Fetch existing notifications from REST API
     fetch(`${BACKEND_URL}/api/notifications`, {
@@ -52,29 +59,16 @@ export function useNotifications() {
 
     socketRef.current = socket;
 
-    // 3. Request browser notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
-    // 4. Listen for real-time notifications
+    // 3. Listen for real-time notifications
     socket.on('new_notification', (notification: Notification) => {
       setNotifications((prev) => [notification, ...prev]);
       setNewToast(notification); // Triggers toast popup
-      
-      // Trigger native browser push notification if permitted
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new window.Notification('MedInternia Alert', {
-          body: notification.message,
-          icon: '/favicon.ico'
-        });
-      }
     });
 
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [token]);
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
