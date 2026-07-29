@@ -23,14 +23,14 @@ export function parsePagination(query: Record<string, any>): PaginationParams {
   let limit = DEFAULT_LIMIT;
 
   if (rawPage !== undefined) {
-    const parsed = parseInt(String(rawPage), 10);
+    const parsed = parseInt(String(rawPage, 10), 10);
     if (!isNaN(parsed) && parsed >= 1) {
       page = parsed;
     }
   }
 
   if (rawLimit !== undefined) {
-    const parsed = parseInt(String(rawLimit), 10);
+    const parsed = parseInt(String(rawLimit, 10), 10);
     if (!isNaN(parsed) && parsed >= 1) {
       limit = Math.min(parsed, MAX_LIMIT);
     }
