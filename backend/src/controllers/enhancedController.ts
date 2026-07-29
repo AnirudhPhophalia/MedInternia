@@ -271,7 +271,7 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
       pipeline = [
         { $match: { userType: 'intern' } },
         { $sort: { points: -1, averageRating: -1 } },
-        { $limit: parseInt(limit as string) },
+        { $limit: parseInt(limit as string, 10) },
         {
           $project: {
             firstName: 1,
@@ -288,7 +288,7 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
       pipeline = [
         { $match: { userType: 'doctor' } },
         { $sort: { points: -1 } },
-        { $limit: parseInt(limit as string) },
+        { $limit: parseInt(limit as string, 10) },
         {
           $project: {
             firstName: 1,
@@ -354,8 +354,8 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       limit = 10
     } = req.query;
 
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
     let results: any[] = [];

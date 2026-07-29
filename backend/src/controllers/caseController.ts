@@ -59,8 +59,8 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
     filter.isRareDisease = String(req.query.isRareDisease) === "true";
   }
 
-  const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
-  const limit = Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10);
+  const page = Math.max(1, parseInt(String(req.query.page ?? "1", 10), 10) || 1);
+  const limit = Math.max(1, parseInt(String(req.query.limit ?? "10", 10), 10) || 10);
   const skip = (page - 1) * limit;
 
   const [cases, total] = await Promise.all([
