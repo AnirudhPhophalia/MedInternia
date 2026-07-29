@@ -51,7 +51,7 @@ const consumeOtp = async (
 
   if (!record) {
     // Best-effort diagnostic: check why the OTP was rejected
-    const existing = await Otp.findOne({ email, purpose }).select('expiresAt attempts');
+    const existing = await Otp.findOne({ email, purpose });
     if (!existing) {
       return { valid: false, message: 'OTP not found or already used. Please request a new one.' };
     }
