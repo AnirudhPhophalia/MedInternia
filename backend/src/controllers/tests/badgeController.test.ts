@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import {
   createBadge,
   getAllBadges,
@@ -84,10 +85,6 @@ describe("Badge Controller", () => {
       const res = mockResponse();
 
       const saveMock = jest.fn().mockResolvedValue(undefined);
-      // We mock the Badge constructor behavior by mocking the model's implementation
-      // Actually, jest.mock automatically mocks constructor functions.
-      // But we need to ensure `.save` exists on the returned instance.
-      // Easiest way in Jest when a module exports a class model is to mock its prototype.
       jest.spyOn(Badge.prototype, 'save').mockImplementation(saveMock);
 
       await createBadge(req as any, res as any);
@@ -95,7 +92,91 @@ describe("Badge Controller", () => {
       expect(saveMock).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
-      
+
+      saveMock.mockRestore();
+    });
+
+    it("returns 400 with validation errors when body is empty", async () => {
+      const req = mockRequest("admin-1", {});
+      const res = mockResponse();
+
+      const validationError = new mongoose.Error.ValidationError();
+      validationError.errors = {
+        name: new mongoose.Error.ValidatorError({ message: "Badge name is required", path: "name" }),
+        description: new mongoose.Error.ValidatorError({ message: "Badge description is required", path: "description" }),
+        icon: new mongoose.Error.ValidatorError({ message: "Badge icon is required", path: "icon" }),
+        category: new mongoose.Error.ValidatorError({ message: "Badge category is required", path: "category" })
+      };
+      const saveMock = jest.fn().mockRejectedValue(validationError);
+      jest.spyOn(Badge.prototype, 'save').mockImplementation(saveMock);
+
+      await createBadge(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        message: "Validation error",
+        errors: expect.arrayContaining([
+          "Badge name is required",
+          "Badge description is required"
+        ])
+      }));
+
+      saveMock.mockRestore();
+    });
+
+    it("returns 400 with specific field error when one required field is missing", async () => {
+      const req = mockRequest("admin-1", {
+        name: "Expert",
+        description: "Expert badge",
+        icon: "star",
+        category: "achievement",
+        criteria: { type: "points", threshold: 100 }
+      });
+      const res = mockResponse();
+
+      const validationError = new mongoose.Error.ValidationError();
+      validationError.errors = {
+        color: new mongoose.Error.ValidatorError({ message: "Badge color is required", path: "color" })
+      };
+      const saveMock = jest.fn().mockRejectedValue(validationError);
+      jest.spyOn(Badge.prototype, 'save').mockImplementation(saveMock);
+
+      await createBadge(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        message: "Validation error",
+        errors: ["Badge color is required"]
+      }));
+
+      saveMock.mockRestore();
+    });
+
+    it("returns 500 for non-validation database errors", async () => {
+      const req = mockRequest("admin-1", {
+        name: "Expert",
+        description: "Expert level badge",
+        icon: "star",
+        category: "points",
+        criteria: { type: "points", threshold: 100 },
+        color: "#fff"
+      });
+      const res = mockResponse();
+
+      const dbError = new Error("Database connection lost");
+      const saveMock = jest.fn().mockRejectedValue(dbError);
+      jest.spyOn(Badge.prototype, 'save').mockImplementation(saveMock);
+
+      await createBadge(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        message: "Internal server error"
+      }));
+
       saveMock.mockRestore();
     });
   });
