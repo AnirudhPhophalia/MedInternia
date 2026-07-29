@@ -670,7 +670,8 @@ export const syncOrcidPublications = asyncHandler(async (req: AuthRequest, res: 
     const response = await fetch(`https://pub.orcid.org/v3.0/${user.orcidId}/works`, {
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: AbortSignal.timeout(10_000)
     });
 
     if (!response.ok) {
