@@ -4,6 +4,7 @@ import Webinar from '../models/Webinar';
 import Notification from '../models/Notification';
 import User from '../models/User';
 import { getSocketIO } from '../utils/socket';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) => {
   const durationInMinutes = webinar.duration || 0;
@@ -601,6 +602,7 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!._id;
     const { type = 'all' } = req.query; // 'hosted', 'attended', 'registered', 'all'
+    const { page, limit, skip } = parsePagination(req.query);
 
     let query: any = {};
     
@@ -620,16 +622,22 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
       };
     }
 
-    const webinars = await Webinar.find(query)
-      .populate('host', 'firstName lastName specialization')
-      .sort({ scheduledAt: -1 });
+    const [webinars, total] = await Promise.all([
+      Webinar.find(query)
+        .populate('host', 'firstName lastName specialization')
+        .sort({ scheduledAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Webinar.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
       data: {
         webinars,
-        total: webinars.length
-      }
+        total
+      },
+      pagination: buildPaginationMeta(page, limit, total)
     });
   } catch (error: any) {
     console.error('Get user webinars error:', error);

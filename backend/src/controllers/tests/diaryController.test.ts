@@ -26,18 +26,26 @@ describe("Diary Controller", () => {
   });
 
   describe("getDiaries", () => {
-    it("fetches diaries scoped to the logged-in user", async () => {
+    it("fetches diaries scoped to the logged-in user with pagination", async () => {
       const req = mockRequest("user-1");
+      (req as any).query = {};
       const res = mockResponse();
 
-      const sortMock = jest.fn().mockResolvedValue([{ _id: "diary-1" }]);
+      const limitMock = jest.fn().mockResolvedValue([{ _id: "diary-1" }]);
+      const skipMock = jest.fn().mockReturnValue({ limit: limitMock });
+      const sortMock = jest.fn().mockReturnValue({ skip: skipMock });
       mockedDiary.find.mockReturnValue({ sort: sortMock } as any);
+      mockedDiary.countDocuments.mockResolvedValue(1);
 
       await getDiaries(req as any, res as any);
 
       expect(mockedDiary.find).toHaveBeenCalledWith({ user: "user-1" });
+      expect(mockedDiary.countDocuments).toHaveBeenCalledWith({ user: "user-1" });
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(expect.any(Array));
+      expect(res.json).toHaveBeenCalledWith({
+        data: [{ _id: "diary-1" }],
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 }
+      });
     });
 
     it("returns 401 if unauthenticated", async () => {
