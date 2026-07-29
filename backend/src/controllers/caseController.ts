@@ -16,6 +16,7 @@ import { ingestCase, suggestCases } from "../services/ragService";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination";
 
 const getId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
 const canModerateComments = (userType?: string) => ["admin", "doctor", "moderator"].includes(userType ?? "");
@@ -65,7 +66,6 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
   const [cases, total] = await Promise.all([
     Case.find(filter)
       .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
-      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
     Case.countDocuments(filter),
@@ -228,6 +228,8 @@ export const getStarredCases = asyncHandler(async (req: AuthRequest, res: Respon
   if (!user) {
     throw new AppError("User not authenticated", 401);
   }
+  const { page, limit, skip } = parsePagination(req.query);
+
   const baseFilter = {
     isActive: { $ne: false },
     $or: [
@@ -235,12 +237,34 @@ export const getStarredCases = asyncHandler(async (req: AuthRequest, res: Respon
       { moderationStatus: { $exists: false } },
     ],
   };
-  const userDoc = await User.findById(user._id).populate({
-    path: "savedCases",
-    match: baseFilter,
-    populate: { path: "doctor", select: "firstName lastName specialization avatar" },
+
+  const userDoc = await User.findById(user._id).select("savedCases");
+  const savedCaseIds = (userDoc as any)?.savedCases || [];
+
+  if (savedCaseIds.length === 0) {
+    res.json({
+      success: true,
+      data: { cases: [] },
+      pagination: buildPaginationMeta(page, limit, 0)
+    });
+    return;
+  }
+
+  const filter = { _id: { $in: savedCaseIds }, ...baseFilter };
+
+  const [cases, total] = await Promise.all([
+    Case.find(filter)
+      .populate("doctor", "firstName lastName specialization avatar")
+      .skip(skip)
+      .limit(limit),
+    Case.countDocuments(filter)
+  ]);
+
+  res.json({
+    success: true,
+    data: { cases },
+    pagination: buildPaginationMeta(page, limit, total)
   });
-  res.json({ success: true, data: { cases: (userDoc as any)?.savedCases || [] } });
 });
 
 export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -248,6 +272,8 @@ export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response
   if (!user) {
     throw new AppError("User not authenticated", 401);
   }
+  const { page, limit, skip } = parsePagination(req.query);
+
   const baseFilter = {
     isActive: { $ne: false },
     $or: [
@@ -255,9 +281,22 @@ export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response
       { moderationStatus: { $exists: false } },
     ],
   };
-  const cases = await Case.find({ likes: user._id, ...baseFilter })
-    .populate("doctor", "firstName lastName specialization avatar");
-  res.json({ success: true, data: { cases } });
+
+  const filter = { likes: user._id, ...baseFilter };
+
+  const [cases, total] = await Promise.all([
+    Case.find(filter)
+      .populate("doctor", "firstName lastName specialization avatar")
+      .skip(skip)
+      .limit(limit),
+    Case.countDocuments(filter)
+  ]);
+
+  res.json({
+    success: true,
+    data: { cases },
+    pagination: buildPaginationMeta(page, limit, total)
+  });
 });
 
 // Add comment (w/ notification & corrected error signature)

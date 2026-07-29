@@ -113,7 +113,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.removeItem("starredCases");
       localStorage.removeItem("starredPapers");
       localStorage.removeItem("pinnedPapers");
-      // Note: No need to clear token-related items since they're no longer stored locally
+      // Note: httpOnly cookies are cleared server-side via /auth/logout
+      // Frontend cannot clear httpOnly cookies (that's the security benefit)
     }
   }, []);
 
