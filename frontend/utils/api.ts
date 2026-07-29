@@ -94,19 +94,19 @@ export const getInternCredits = async () => {
 // Fetch all diaries for the intern
 export const getDiaries = async () => {
   const res = await api.get('/diaries');
-  return res.data;
+  return res.data.data;
 };
 
 // Create a new diary
 export const createDiary = async (title: string) => {
   const res = await api.post('/diaries', { title });
-  return res.data;
+  return res.data.data.diary;
 };
 
 // Add a new entry to a diary
 export const addDiaryEntry = async (diaryId: string, entry: Record<string, any>) => {
   const res = await api.post(`/diaries/${diaryId}/entries`, entry);
-  return res.data;
+  return res.data.data.diary;
 };
 
 export default api;
