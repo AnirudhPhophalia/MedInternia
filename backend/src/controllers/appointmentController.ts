@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import Appointment, { AppointmentStatus } from '../models/Appointment';
-import User from '../models/User';
+import User, { IUser } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
@@ -12,7 +12,7 @@ import { AppError } from '../utils/AppError';
  */
 export const createAppointment = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user;
+    const user = req.user as IUser;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
@@ -74,7 +74,7 @@ export const createAppointment = asyncHandler(
  */
 export const getAppointments = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user;
+    const user = req.user as IUser;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
@@ -131,7 +131,7 @@ export const getAppointments = asyncHandler(
  */
 export const getAppointmentById = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user;
+    const user = req.user as IUser;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
@@ -170,7 +170,7 @@ export const getAppointmentById = asyncHandler(
  */
 export const rescheduleAppointment = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user;
+    const user = req.user as IUser;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
@@ -225,7 +225,7 @@ export const rescheduleAppointment = asyncHandler(
  */
 export const cancelAppointment = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user;
+    const user = req.user as IUser;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
@@ -276,7 +276,7 @@ export const cancelAppointment = asyncHandler(
  */
 export const completeAppointment = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const user = req.user;
+    const user = req.user as IUser;
     if (!user) {
       throw new AppError('User not authenticated', 401);
     }
