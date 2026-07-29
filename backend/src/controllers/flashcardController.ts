@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Flashcard from '../models/Flashcard';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 /**
  * SM-2 Spaced Repetition Algorithm
@@ -58,8 +59,22 @@ export const createFlashcard = async (req: Request, res: Response): Promise<void
 // @desc  Get all flashcards for logged-in user
 export const getMyFlashcards = async (req: Request, res: Response): Promise<void> => {
   try {
-    const flashcards = await Flashcard.find({ user: (req as any).user.id }).sort({ nextReview: 1 });
-    res.status(200).json({ success: true, data: flashcards });
+    const { page, limit, skip } = parsePagination(req.query);
+    const filter = { user: (req as any).user.id };
+
+    const [flashcards, total] = await Promise.all([
+      Flashcard.find(filter)
+        .sort({ nextReview: 1 })
+        .skip(skip)
+        .limit(limit),
+      Flashcard.countDocuments(filter)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: flashcards,
+      pagination: buildPaginationMeta(page, limit, total)
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -69,13 +84,27 @@ export const getMyFlashcards = async (req: Request, res: Response): Promise<void
 // @desc  Get flashcards due for review today
 export const getDueFlashcards = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { page, limit, skip } = parsePagination(req.query);
     const now = new Date();
-    const flashcards = await Flashcard.find({
+    const filter = {
       user: (req as any).user.id,
       nextReview: { $lte: now }
-    }).sort({ nextReview: 1 });
+    };
 
-    res.status(200).json({ success: true, data: flashcards, count: flashcards.length });
+    const [flashcards, total] = await Promise.all([
+      Flashcard.find(filter)
+        .sort({ nextReview: 1 })
+        .skip(skip)
+        .limit(limit),
+      Flashcard.countDocuments(filter)
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: flashcards,
+      count: total,
+      pagination: buildPaginationMeta(page, limit, total)
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
