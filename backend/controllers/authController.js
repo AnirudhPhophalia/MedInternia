@@ -10,18 +10,8 @@ const {
 } = require('../utils/tokenUtils');
 const { enqueueOTP } = require('../queues/emailQueue');
 
-let User;
-try {
-  User = require('../src/models/User');
-  if (User && User.default) User = User.default;
-} catch (e) {
-  try {
-    User = require('../models/User');
-    if (User && User.default) User = User.default;
-  } catch (err) {
-    User = null;
-  }
-}
+const User = require('../src/models/User');
+if (User && User.default) User = User.default;
 
 /**
  * Handle user login: authenticate credentials, generate token pair, and set HTTP-only cookie.
@@ -37,26 +27,20 @@ const login = async (req, res) => {
       });
     }
 
-    let user;
-    if (User) {
-      user = await User.findOne({ email }).select('+password');
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials',
-        });
-      }
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
 
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials',
-        });
-      }
-    } else {
-      // Fallback object structure when model is uninitialized
-      user = { _id: 'dummy_id', email, userType: 'doctor' };
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
     }
 
     const accessToken = generateAccessToken(user);
