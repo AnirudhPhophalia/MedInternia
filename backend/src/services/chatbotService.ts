@@ -17,7 +17,8 @@ const askGemini = async (message: string): Promise<string> => {
             ]
           }
         ]
-      })
+      }),
+      signal: AbortSignal.timeout(15_000)
     }
   );
 
@@ -43,7 +44,8 @@ const askOpenAI = async (message: string): Promise<string> => {
         },
         { role: 'user', content: message }
       ]
-    })
+    }),
+    signal: AbortSignal.timeout(15_000)
   });
 
   if (!response.ok) throw new Error('OpenAI API failed');
