@@ -123,18 +123,32 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     // Ensure webinar.host is a populated document
     const host = webinar.host as any;
 
-    // Respond immediately — notify interns asynchronously in batches
+    // Respond immediately — notify interns asynchronously using a cursor
     setImmediate(async () => {
       try {
-        const internIds = await User.find({ userType: 'intern' }).select('_id');
         const batchSize = 500;
-        for (let i = 0; i < internIds.length; i += batchSize) {
-          const batch = internIds.slice(i, i + batchSize).map(intern => ({
+        const cursor = User.find({ userType: 'intern' })
+          .select('_id')
+          .lean()
+          .cursor({ batchSize });
+
+        const batch: Array<{ recipient: any; message: string; type: string; link?: string }> = [];
+
+        await cursor.eachAsync(async (intern: any) => {
+          batch.push({
             recipient: intern._id,
             message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
             type: 'webinar',
             link: webinar.meetingLink
-          }));
+          });
+
+          if (batch.length >= batchSize) {
+            await Notification.insertMany(batch);
+            batch.length = 0;
+          }
+        });
+
+        if (batch.length > 0) {
           await Notification.insertMany(batch);
         }
       } catch (notifyErr) {
