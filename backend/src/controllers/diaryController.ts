@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import Diary from "../models/Diary";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination";
 
 // Get all diaries of the logged-in user
 export const getDiaries = async (req: AuthRequest, res: Response) => {
@@ -12,9 +13,9 @@ export const getDiaries = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const diaries = await Diary.find({
-      user: req.user._id,
-    }).sort({ createdAt: -1 });
+    const { page, limit, skip } = parsePagination(req.query);
+
+    const filter = { user: req.user._id };
 
     return res.status(200).json({ success: true, data: diaries });
   } catch (error) {

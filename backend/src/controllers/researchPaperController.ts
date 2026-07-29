@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import ResearchPaper from '../models/ResearchPaper';
 import path from 'path';
 import fs from 'fs';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 export const getResearchPaperById = async (req: Request, res: Response) => {
   try {
