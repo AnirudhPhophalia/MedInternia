@@ -41,43 +41,32 @@ const consumeOtp = async (
   purpose: 'signup' | 'reset',
   submittedOtp: string
 ): Promise<{ valid: boolean; message?: string }> => {
-  const record = await Otp.findOne({ email, purpose });
+  // Atomically find and delete a valid OTP document to prevent TOCTOU races.
+  const record = await Otp.findOneAndDelete({
+    email,
+    purpose,
+    expiresAt: { $gt: new Date() },
+    attempts: { $lt: OTP_MAX_ATTEMPTS },
+  });
 
   if (!record) {
-    return { valid: false, message: 'OTP not found or already used. Please request a new one.' };
-  }
-
-  if (record.expiresAt.getTime() < Date.now()) {
-    await Otp.deleteOne({ _id: record._id });
-    return { valid: false, message: 'OTP has expired. Please request a new one.' };
-  }
-
-  if (record.attempts >= OTP_MAX_ATTEMPTS) {
-    await Otp.deleteOne({ _id: record._id });
+    // Best-effort diagnostic: check why the OTP was rejected
+    const existing = await Otp.findOne({ email, purpose }).select('expiresAt attempts');
+    if (!existing) {
+      return { valid: false, message: 'OTP not found or already used. Please request a new one.' };
+    }
+    if (existing.expiresAt.getTime() < Date.now()) {
+      return { valid: false, message: 'OTP has expired. Please request a new one.' };
+    }
     return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
   }
 
   const isMatch = await bcrypt.compare(submittedOtp, record.otpHash);
 
   if (!isMatch) {
-    // Atomic increment to avoid race conditions with concurrent verification attempts
-    const updated = await Otp.findOneAndUpdate(
-      { _id: record._id, attempts: { $lt: OTP_MAX_ATTEMPTS } },
-      { $inc: { attempts: 1 } },
-      { new: true }
-    );
-
-    const attemptsNow = updated ? updated.attempts : OTP_MAX_ATTEMPTS;
-
-    if (attemptsNow >= OTP_MAX_ATTEMPTS) {
-      await Otp.deleteOne({ _id: record._id });
-      return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
-    }
-
     return { valid: false, message: 'Invalid OTP' };
   }
 
-  await Otp.deleteOne({ _id: record._id });
   return { valid: true };
 };
 
