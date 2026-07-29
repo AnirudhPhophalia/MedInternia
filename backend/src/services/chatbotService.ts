@@ -1,22 +1,35 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+const SYSTEM_PROMPT = 'You are a medical AI assistant helping doctors and interns discuss cases. Answer clearly and concisely.';
+const MAX_MESSAGE_LENGTH = 2000;
+
 const askGemini = async (message: string): Promise<string> => {
+  // Bug fix: API key moved to x-goog-api-key header — keeps it out of server
+  // access logs and reverse-proxy logs that record request URLs.
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY ?? '',
+      },
       body: JSON.stringify({
+        // Bug fix: user message is sent as a separate 'user' role turn rather
+        // than being string-interpolated into the system prompt. This prevents
+        // prompt injection — a user cannot override the system instruction by
+        // embedding instructions like "Ignore previous instructions..." in
+        // their message.
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }],
+        },
         contents: [
           {
-            parts: [
-              {
-                text: `You are a medical AI assistant helping doctors and interns discuss cases. Answer clearly and concisely.\n\nUser: ${message}`
-              }
-            ]
-          }
-        ]
+            role: 'user',
+            parts: [{ text: message }],
+          },
+        ],
       }),
       signal: AbortSignal.timeout(15_000)
     }
@@ -40,7 +53,7 @@ const askOpenAI = async (message: string): Promise<string> => {
       messages: [
         {
           role: 'system',
-          content: 'You are a medical AI assistant helping doctors and interns discuss cases.'
+          content: SYSTEM_PROMPT,
         },
         { role: 'user', content: message }
       ]
@@ -55,6 +68,13 @@ const askOpenAI = async (message: string): Promise<string> => {
 };
 
 export const getChatbotResponse = async (message: string): Promise<string> => {
+  // Guard against excessively long messages that would consume paid API tokens.
+  // The route already enforces 500 chars; this defence-in-depth check catches
+  // direct service calls that bypass the route middleware.
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    throw new Error(`Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters.`);
+  }
+
   if (GEMINI_API_KEY) {
     try {
       return await askGemini(message);
