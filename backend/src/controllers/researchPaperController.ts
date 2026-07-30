@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import ResearchPaper from '../models/ResearchPaper';
 import path from 'path';
 import fs from 'fs';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 export const getResearchPaperById = async (req: Request, res: Response) => {
   try {
@@ -34,8 +35,20 @@ export const createResearchPaper = async (req: Request, res: Response) => {
 
 export const getAllResearchPapers = async (req: Request, res: Response) => {
   try {
-    const papers = await ResearchPaper.find().sort({ createdAt: -1 });
-    res.json(papers);
+    const { page, limit, skip } = parsePagination(req.query);
+
+    const [papers, total] = await Promise.all([
+      ResearchPaper.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      ResearchPaper.countDocuments()
+    ]);
+
+    res.json({
+      data: papers,
+      pagination: buildPaginationMeta(page, limit, total)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch research papers.' });
   }

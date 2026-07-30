@@ -293,7 +293,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'strict' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
@@ -434,7 +434,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    sameSite: 'strict' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
@@ -670,7 +670,8 @@ export const syncOrcidPublications = asyncHandler(async (req: AuthRequest, res: 
     const response = await fetch(`https://pub.orcid.org/v3.0/${user.orcidId}/works`, {
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: AbortSignal.timeout(10_000)
     });
 
     if (!response.ok) {

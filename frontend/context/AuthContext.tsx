@@ -53,23 +53,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       return;
     }
 
-    // Rely on HttpOnly cookies for session authentication.
+    // SECURITY: Tokens are now managed via httpOnly cookies (not localStorage)
+    // Validate token with backend using cookies automatically sent via withCredentials
     api
       .get("/auth/validate-token")
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
         if (userData) {
           const id = String(userData._id || userData.id);
+          // Set in-memory state for UI, but don't persist to localStorage
           setUserId(id);
           setUser(userData);
-          setToken("authenticated");
+          setToken("authenticated"); // Marker that session exists via cookie
+          setGlobalToken("authenticated");
         } else {
           setToken(null);
+          setGlobalToken(null);
           setUserId(null);
           setUser(null);
         }
       })
       .catch(() => {
+        // Token was invalid/expired (or missing) — clear in-memory state
         setToken(null);
         setGlobalToken(null);
         setUserId(null);
@@ -79,30 +84,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const login = useCallback(
-    (newUserId: string, newUser: any) => {
-      // The server has already set the HttpOnly session cookie.  Do not retain
-      // a copy of its token in JavaScript memory or browser storage.
-      setToken("authenticated");
-      setGlobalToken(null);
+    (newToken: string, newUserId: string, newUser: any) => {
+      // SECURITY: Tokens are stored in httpOnly cookies by the backend
+      // Frontend only maintains in-memory state for UI purposes
+      setToken("authenticated"); // Marker that session exists
+      setGlobalToken("authenticated");
       setUserId(newUserId);
       setUser(newUser);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userId");
-        localStorage.removeItem("user");
-      }
+      // Note: No localStorage usage to prevent XSS token theft
     },
     [],
   );
 
   const logout = useCallback(async () => {
-<<<<<<< HEAD
-    try {
-      await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Failed to invalidate server session during logout:", error);
-    }
-=======
     // Send this before clearing client state so the cookie-backed server
     // session can be revoked as well as removed.
     try {
@@ -111,28 +105,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Clear the local session even when the server session is already gone.
     }
 
->>>>>>> 4c0b4e7 (fix(auth): remove sensitive auth data from localStorage)
     setToken(null);
     setGlobalToken(null);
     setUserId(null);
     setUser(null);
+
     if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
-      localStorage.removeItem("refreshToken");
+      // Clear non-auth localStorage items only (starred cases, papers, etc)
       localStorage.removeItem("starredCases");
       localStorage.removeItem("starredPapers");
       localStorage.removeItem("pinnedPapers");
-      document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
-      document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
-      document.cookie = "refresh_token=; Path=/; Max-Age=0; SameSite=Lax";
+      // Note: httpOnly cookies are cleared server-side via /auth/logout
+      // Frontend cannot clear httpOnly cookies (that's the security benefit)
     }
   }, []);
 
   const refreshUser = useCallback(() => {
     if (typeof window === "undefined") return;
 
+    // SECURITY: Token is now in httpOnly cookie, not localStorage
+    // Validate token with backend using cookies automatically sent via withCredentials
     api
       .get("/auth/validate-token")
       .then((res) => {
@@ -141,10 +133,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
-          setToken((prev) => prev || "authenticated");
+          setToken("authenticated");
+          setGlobalToken("authenticated");
+        } else {
+          setToken(null);
+          setGlobalToken(null);
+          setUserId(null);
+          setUser(null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setToken(null);
+        setGlobalToken(null);
+        setUserId(null);
+        setUser(null);
+      });
   }, []);
 
   return (

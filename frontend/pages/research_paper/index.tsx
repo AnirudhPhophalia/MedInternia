@@ -52,7 +52,7 @@ export default function ResearchPaperUpload() {
     setLoading(true);
     try {
       const res = await api.get('/research-papers');
-      const fetchedPapers = Array.isArray(res.data) ? res.data : [];
+      const fetchedPapers = Array.isArray(res.data?.data) ? res.data.data : [];
       setPapers(fetchedPapers);
     } catch (err) {
       setPapers([]);

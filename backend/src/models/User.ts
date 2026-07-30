@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import type { AppRole } from '../middleware/permissions';
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   following?: mongoose.Types.ObjectId[];
   followers?: mongoose.Types.ObjectId[];
   solvedCases?: mongoose.Types.ObjectId[];
