@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { Box, Chip, CircularProgress, Container, Grid, Paper, Skeleton, Stack, Typography } from "@mui/material";
-import Image from "next/image";
+import { Avatar, Box, Chip, CircularProgress, Container, Grid, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
-import { fetchTopContributors, GithubContributor } from "../utils/githubContributors";
+import { fetchTopContributors, TopContributor } from "../utils/topContributors";
 
 export default function LeaderboardPage() {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
-  const [contributors, setContributors] = useState<GithubContributor[]>([]);
+  const [contributors, setContributors] = useState<TopContributor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -70,7 +70,7 @@ export default function LeaderboardPage() {
               Leaderboard
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1, lineHeight: 1.7 }}>
-              Track top contributors and celebrate active learning across MedInternia.
+              Track our top interns and celebrate active learning across MedInternia.
             </Typography>
           </Paper>
 
@@ -80,6 +80,23 @@ export default function LeaderboardPage() {
             </Typography>
           )}
 
+          {!loading && !error && contributors.length === 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
+                borderRadius: 4,
+                border: "1px dashed rgba(33,147,176,0.25)",
+                textAlign: "center",
+              }}
+            >
+              <Typography color="text.secondary">
+                No leaderboard activity yet. Check back soon!
+              </Typography>
+            </Paper>
+          )}
+
+          {(loading || error || contributors.length > 0) && (
           <Grid container spacing={3}>
             {(loading || error ? [1, 2, 3] : contributors).map((item, i) => {
               const rank = i + 1;
@@ -154,14 +171,13 @@ export default function LeaderboardPage() {
                 );
               }
 
-              const contributor = item as GithubContributor;
+              const contributor = item as TopContributor;
+              const fullName = `${contributor.firstName} ${contributor.lastName}`.trim();
               return (
-                <Grid size={{ xs: 12, md: 4 }} key={contributor.login}>
+                <Grid size={{ xs: 12, md: 4 }} key={contributor._id}>
                   <Paper
-                    component="a"
-                    href={contributor.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    component={Link}
+                    href={`/users/${contributor._id}`}
                     elevation={0}
                     sx={{
                       p: 3,
@@ -176,33 +192,26 @@ export default function LeaderboardPage() {
                     }}
                   >
                     <Stack spacing={2} alignItems="center" textAlign="center">
-                      <Box
+                      <Avatar
+                        src={contributor.profilePicture}
+                        alt={fullName}
                         sx={{
                           width: 70,
                           height: 70,
-                          borderRadius: "50%",
-                          bgcolor: rank === 1 ? "#fffbeb" : "#eff6ff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          overflow: "hidden",
+                          bgcolor: rank === 1 ? "#d97706" : rank === 2 ? "#94a3b8" : "#b45309",
+                          fontWeight: 700,
+                          fontSize: "1.4rem",
                         }}
                       >
-                        <Image
-                          src={contributor.avatar_url}
-                          alt={contributor.login}
-                          width={70}
-                          height={70}
-                          style={{ borderRadius: "50%" }}
-                          unoptimized
-                        />
-                      </Box>
+                        {fullName.charAt(0).toUpperCase()}
+                      </Avatar>
                       <Typography variant="h5" fontWeight={900}>
                         Rank #{rank}
                       </Typography>
-                      <Typography fontWeight={700}>{contributor.login}</Typography>
+                      <Typography fontWeight={700}>{fullName}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {contributor.contributions} contribution{contributor.contributions === 1 ? "" : "s"}
+                        {contributor.points} point{contributor.points === 1 ? "" : "s"}
+                        {contributor.medicalSchool ? ` · ${contributor.medicalSchool}` : ""}
                       </Typography>
                     </Stack>
                   </Paper>
@@ -210,6 +219,7 @@ export default function LeaderboardPage() {
               );
             })}
           </Grid>
+          )}
         </Stack>
       </Container>
     </Box>

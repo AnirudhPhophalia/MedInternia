@@ -44,6 +44,7 @@ import {
   Skeleton,
   Chip,
   TextField,
+  Avatar,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -62,7 +63,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
-import { fetchTopContributors, GithubContributor } from '../utils/githubContributors';
+import { fetchTopContributors, TopContributor } from '../utils/topContributors';
 const HeroProductPreview = dynamic(
   () => import("../components/landing/HeroProductPreview"),
   {
@@ -508,7 +509,7 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
-  const [contributors, setContributors] = React.useState<GithubContributor[]>([]);
+  const [contributors, setContributors] = React.useState<TopContributor[]>([]);
   const [contributorsLoading, setContributorsLoading] = React.useState(true);
   const [contributorsError, setContributorsError] = React.useState(false);
 
@@ -1137,13 +1138,31 @@ export default function HomePage() {
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 {contributorsError
                   ? "Couldn't load rankings right now"
-                  : 'Celebrating the people building MedInternia'}
+                  : !contributorsLoading && contributors.length === 0
+                  ? 'No contributors yet — be the first!'
+                  : "This week's top-performing interns, by points earned"}
               </Typography>
             </Box>
             <Link href={getAuthAwareHref('/leaderboard')} style={{ textDecoration: 'none', color: '#0072ff', fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
               View Leaderboard <ChevronRight size={20} />
             </Link>
           </Box>
+          {!contributorsLoading && !contributorsError && contributors.length === 0 ? (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
+                borderRadius: '20px',
+                border: '1px dashed #cbd5e1',
+                bgcolor: '#fafbfc',
+                textAlign: 'center',
+              }}
+            >
+              <Typography color="text.secondary">
+                No leaderboard activity yet. Check back soon!
+              </Typography>
+            </Paper>
+          ) : (
           <Grid container spacing={3}>
             {(contributorsLoading || contributorsError ? [1, 2, 3] : contributors).map((item, i) => {
               const rank = i + 1;
@@ -1199,14 +1218,13 @@ export default function HomePage() {
                 );
               }
 
-              const contributor = item as GithubContributor;
+              const contributor = item as TopContributor;
+              const fullName = `${contributor.firstName} ${contributor.lastName}`.trim();
               return (
-                <Grid size={{ xs: 12, md: 4 }} key={contributor.login}>
+                <Grid size={{ xs: 12, md: 4 }} key={contributor._id}>
                   <Paper
-                    component="a"
-                    href={contributor.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    component={Link}
+                    href={`/users/${contributor._id}`}
                     elevation={0}
                     sx={{
                       p: 3,
@@ -1220,20 +1238,20 @@ export default function HomePage() {
                     }}
                   >
                     <Stack direction="row" alignItems="center" spacing={2.5}>
-                      <Image
-                        src={contributor.avatar_url}
-                        alt={contributor.login}
-                        width={56}
-                        height={56}
-                        style={{ borderRadius: '50%' }}
-                        unoptimized
-                      />
+                      <Avatar
+                        src={contributor.profilePicture}
+                        alt={fullName}
+                        sx={{ width: 56, height: 56, bgcolor: medalColor, fontWeight: 700 }}
+                      >
+                        {fullName.charAt(0).toUpperCase()}
+                      </Avatar>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography fontWeight={700} color="#1a202c" noWrap>
-                          {contributor.login}
+                          {fullName}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {contributor.contributions} contribution{contributor.contributions === 1 ? '' : 's'}
+                        <Typography variant="body2" color="text.secondary" noWrap>
+                          {contributor.points} point{contributor.points === 1 ? '' : 's'}
+                          {contributor.medicalSchool ? ` · ${contributor.medicalSchool}` : ''}
                         </Typography>
                       </Box>
                       <Chip
@@ -1247,6 +1265,7 @@ export default function HomePage() {
               );
             })}
           </Grid>
+          )}
         </motion.div>
       </Container>
 
