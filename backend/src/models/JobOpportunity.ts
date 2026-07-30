@@ -78,7 +78,7 @@ const JobOpportunitySchema = new Schema({
   },
   specialization: [{
     type: String,
-    enum: ['general', 'cardiology', 'neurology', 'oncology', 'pediatrics', 'surgery', 'psychiatry', 'radiology', 'emergency', 'internal-medicine']
+    enum: ['general', 'cardiology', 'neurology', 'oncology', 'pediatrics', 'surgery', 'psychiatry', 'radiology', 'emergency', 'internal-medicine', 'nursing', 'general-practice']
   }],
   description: {
     type: String,

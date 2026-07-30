@@ -53,101 +53,76 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       return;
     }
 
-    // Rehydrate token from localStorage immediately on mount.
-    // Without this, _globalToken stays null after every fresh page
-    // load/refresh, so the very first API call (validate-token) goes
-    // out with no Authorization header and fails even though a valid
-    // token exists in localStorage.
-    const storedToken = localStorage.getItem("token");
-
-    if (!storedToken) {
-      setToken(null);
-      setGlobalToken(null);
-      setUserId(null);
-      setUser(null);
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
-      setIsLoading(false);
-      return;
-    }
-
-    setToken(storedToken);
-    setGlobalToken(storedToken);
-
+    // SECURITY: Tokens are now managed via httpOnly cookies (not localStorage)
+    // Validate token with backend using cookies automatically sent via withCredentials
     api
       .get("/auth/validate-token")
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
         if (userData) {
           const id = String(userData._id || userData.id);
+          // Set in-memory state for UI, but don't persist to localStorage
           setUserId(id);
           setUser(userData);
-          localStorage.setItem("userId", id);
-          localStorage.setItem("user", JSON.stringify(userData));
+          setToken("authenticated"); // Marker that session exists via cookie
+          setGlobalToken("authenticated");
+        } else {
+          setToken(null);
+          setGlobalToken(null);
+          setUserId(null);
+          setUser(null);
         }
       })
       .catch(() => {
-        // Token was invalid/expired (or missing) — clear it so
-        // isAuthenticated actually reflects reality instead of
-        // hanging onto a stale/bad token.
+        // Token was invalid/expired (or missing) — clear in-memory state
         setToken(null);
         setGlobalToken(null);
-        localStorage.removeItem("token");
+        setUserId(null);
+        setUser(null);
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(
     (newToken: string, newUserId: string, newUser: any) => {
-      setToken(newToken);
-      setGlobalToken(newToken);
+      // SECURITY: Tokens are stored in httpOnly cookies by the backend
+      // Frontend only maintains in-memory state for UI purposes
+      setToken("authenticated"); // Marker that session exists
+      setGlobalToken("authenticated");
       setUserId(newUserId);
       setUser(newUser);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("userId", newUserId);
-        localStorage.setItem("user", JSON.stringify(newUser));
-      }
+      // Note: No localStorage usage to prevent XSS token theft
     },
     [],
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Failed to invalidate server session during logout:", error);
+    }
+
     setToken(null);
     setGlobalToken(null);
     setUserId(null);
     setUser(null);
+
     if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
-      localStorage.removeItem("refreshToken");
+      // Clear non-auth localStorage items only (starred cases, papers, etc)
       localStorage.removeItem("starredCases");
       localStorage.removeItem("starredPapers");
       localStorage.removeItem("pinnedPapers");
-      document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
-      document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
+      // Note: httpOnly cookies are cleared server-side via /auth/logout
+      // Frontend cannot clear httpOnly cookies (that's the security benefit)
     }
   }, []);
 
   const refreshUser = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    const storedToken = localStorage.getItem("token");
-
-    if (!storedToken) {
-      setToken(null);
-      setGlobalToken(null);
-      setUserId(null);
-      setUser(null);
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
-      return;
-    }
-
-    setToken(storedToken);
-    setGlobalToken(storedToken);
-
+    // SECURITY: Token is now in httpOnly cookie, not localStorage
+    // Validate token with backend using cookies automatically sent via withCredentials
     api
       .get("/auth/validate-token")
       .then((res) => {
@@ -156,13 +131,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("userId", id);
-            localStorage.setItem("user", JSON.stringify(userData));
-          }
+          setToken("authenticated");
+          setGlobalToken("authenticated");
+        } else {
+          setToken(null);
+          setGlobalToken(null);
+          setUserId(null);
+          setUser(null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setToken(null);
+        setGlobalToken(null);
+        setUserId(null);
+        setUser(null);
+      });
   }, []);
 
   return (

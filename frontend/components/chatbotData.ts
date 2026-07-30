@@ -12,4 +12,5 @@ export const quickActions = [
   { label: "FAQ", route: "/faq" },
   { label: "Contact", route: "/contact" },
   { label: "Leaderboard", route: "/leaderboard" },
+  { label: "Settings", route: "/settings" },
 ];

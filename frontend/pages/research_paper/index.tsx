@@ -56,7 +56,7 @@ export default function ResearchPaperUpload() {
     setLoading(true);
     try {
       const res = await api.get('/research-papers');
-      const fetchedPapers = Array.isArray(res.data) ? res.data : [];
+      const fetchedPapers = Array.isArray(res.data?.data) ? res.data.data : [];
       setPapers(fetchedPapers);
     } catch (err) {
       setPapers([]);
@@ -259,6 +259,7 @@ const filteredPapers = papers.filter((paper) => {
               href={openPaper.fileUrl}
               download
               target="_blank"
+              rel="noopener noreferrer"
             >
               Download PDF
             </Button>

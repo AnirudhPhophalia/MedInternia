@@ -135,6 +135,31 @@ describe("Mentorship Controller", () => {
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, message: 'Mentorship not found' }));
     });
+
+    it("sets mentorDoctor on the mentee when status is active", async () => {
+      const mentorId = "doctor-1";
+      const menteeId = "intern-1";
+      const req = mockRequest(mentorId, "doctor", { status: "active" }, { id: "req-1" });
+      const res = mockResponse();
+
+      const mockSave = jest.fn();
+      mockedMentorship.findById.mockResolvedValue({
+        _id: "req-1",
+        mentor: { toString: () => mentorId },
+        mentee: menteeId,
+        status: "pending",
+        save: mockSave,
+      } as any);
+
+      await updateMentorshipStatus(req as any, res as any);
+
+      expect(mockSave).toHaveBeenCalled();
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(menteeId, {
+        mentorDoctor: expect.objectContaining({ toString: expect.any(Function) })
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
   });
 
   describe("getMentorshipById", () => {

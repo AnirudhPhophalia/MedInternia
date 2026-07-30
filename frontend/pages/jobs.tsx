@@ -25,8 +25,7 @@ import {
   TextField,
   InputAdornment
 } from "@mui/material";
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkButton from '../components/BookmarkButton';
 import WorkIcon from '@mui/icons-material/Work';
 import BusinessIcon from '@mui/icons-material/Business';
 import RoomIcon from '@mui/icons-material/Room';
@@ -43,6 +42,7 @@ import { Briefcase } from "lucide-react";
 import RecentlyViewedInternships from "../components/RecentlyViewedInternships";
 import DeadlineCountdown from "../components/DeadlineCountdown";
 import JobFilters from "../components/layout/JobFilters";
+import InternshipCard from "../components/InternshipCard";
 
 interface JobApplication {
   id: string;
@@ -52,6 +52,30 @@ interface JobApplication {
   status: 'Applied' | 'Interviewing' | 'Offered' | 'Closed';
   appliedDate: string;
 }
+
+// Format a structured location object into a readable string.
+const formatJobLocation = (location: any): string => {
+  if (!location || typeof location !== 'object') {
+    return typeof location === 'string' ? location : 'Location not specified';
+  }
+  if (location.isRemote) return 'Remote';
+  const parts = [location.city, location.state, location.country]
+    .filter((p) => typeof p === 'string' && p.trim().length > 0);
+  return parts.length > 0 ? parts.join(', ') : 'Location not specified';
+};
+
+// Format a structured salary object into a readable range string.
+const formatJobSalary = (salary: any): string | null => {
+  if (!salary || typeof salary !== 'object') return null;
+  const { min, max, currency } = salary;
+  const cur = typeof currency === 'string' && currency.trim() ? currency : 'USD';
+  if (typeof min === 'number' && typeof max === 'number') {
+    return `${cur} ${min.toLocaleString()}-${max.toLocaleString()}`;
+  }
+  if (typeof min === 'number') return `${cur} ${min.toLocaleString()}+`;
+  if (typeof max === 'number') return `Up to ${cur} ${max.toLocaleString()}`;
+  return null;
+};
 
 const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
   <Card sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
@@ -75,7 +99,7 @@ const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
                 {j.title}
               </Typography>
               <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1.5 }}>
-                {j.location}
+                {formatJobLocation(j.location)}
               </Typography>
               <Button 
                 variant="outlined" 
@@ -113,8 +137,10 @@ export default function Jobs() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
 
   // Filter states
+  const [filterSearch, setFilterSearch] = useState<string>("");
   const [filterSpecialty, setFilterSpecialty] = useState<string[]>([]);
   const [filterExperience, setFilterExperience] = useState<string>("");
+  const [filterLocation, setFilterLocation] = useState<string>("");
   const [filterRemote, setFilterRemote] = useState<boolean>(false);
   const [filterVisa, setFilterVisa] = useState<boolean>(false);
 
@@ -173,10 +199,8 @@ export default function Jobs() {
       setCurrentUserId(storedUser._id);
     }
 
-    // Load saved / applied jobs from localstorage
+    // Load applied jobs from localstorage (bookmarks are now handled server-side)
     try {
-      const saved = JSON.parse(localStorage.getItem('savedJobs') || '[]');
-      setSavedJobIds(saved);
       const apps = JSON.parse(localStorage.getItem('jobApplications') || '[]');
       setApplications(apps);
     } catch (e) {
@@ -189,12 +213,14 @@ export default function Jobs() {
 
     setLoading(true);
     const params: any = {};
+    if (filterSearch.trim()) params.search = filterSearch.trim();
     if (filterSpecialty.length > 0) {
       params.specialization = filterSpecialty;
     }
     if (filterExperience) params.maxExperience = filterExperience;
     if (filterRemote) params.isRemote = true;
     if (filterVisa) params.visaSponsorship = true;
+    if (filterLocation.trim()) params.location = filterLocation.trim();
 
     api
       .get("/jobs", { params })
@@ -206,7 +232,7 @@ export default function Jobs() {
           return scoreB - scoreA;
         });
         setJobs(sortedJobs);
-        if (!filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa) {
+        if (!filterSearch.trim() && !filterSpecialty.length && !filterExperience && !filterRemote && !filterVisa && !filterLocation.trim()) {
           setOriginalJobs(sortedJobs);
         }
         setLoading(false);
@@ -216,18 +242,18 @@ export default function Jobs() {
         setOriginalJobs([]);
         setLoading(false);
       });
-  }, [authChecked, filterSpecialty, filterExperience, filterRemote, filterVisa, smartSearchActive]);
+  }, [authChecked, filterSearch, filterSpecialty, filterExperience, filterLocation, filterRemote, filterVisa, smartSearchActive]);
 
-  const toggleSaveJob = (id: string) => {
-    let updated;
-    if (savedJobIds.includes(id)) {
-      updated = savedJobIds.filter(savedId => savedId !== id);
-    } else {
-      updated = [...savedJobIds, id];
-    }
-    setSavedJobIds(updated);
-    localStorage.setItem('savedJobs', JSON.stringify(updated));
-  };
+  useEffect(() => {
+  if (!currentUserId) return;
+  api.get(`/users/${currentUserId}/saved`)
+    .then(res => {
+      const savedJobs = res.data?.data?.savedJobs || [];
+      // savedJobs come back populated (full job objects) from this endpoint
+      setSavedJobIds(savedJobs.map((j: any) => j._id));
+    })
+    .catch(() => setSavedJobIds([]));
+}, [currentUserId]);
 
   const handleApply = async (job: any) => {
     // Add to applications list in localstorage
@@ -241,7 +267,7 @@ export default function Jobs() {
         id: job._id,
         title: job.title,
         company: job.company || 'MedInternia Hospital Group',
-        location: job.location,
+        location: formatJobLocation(job.location),
         status: 'Applied',
         appliedDate: new Date().toLocaleDateString()
       };
@@ -317,6 +343,8 @@ export default function Jobs() {
             <Grid container spacing={4}>
               <Grid size={{ xs: 12, md: 3 }}>
                 <JobFilters
+                  searchQuery={filterSearch}
+                  onSearchQueryChange={setFilterSearch}
                   specialties={filterSpecialty}
                   onSpecialtiesChange={setFilterSpecialty}
                   experience={filterExperience}
@@ -325,9 +353,13 @@ export default function Jobs() {
                   onRemoteChange={setFilterRemote}
                   visaSponsorship={filterVisa}
                   onVisaChange={setFilterVisa}
+                  location={filterLocation}
+                  onLocationChange={setFilterLocation}
                   onClear={() => {
+                    setFilterSearch('');
                     setFilterSpecialty([]);
                     setFilterExperience('');
+                    setFilterLocation('');
                     setFilterRemote(false);
                     setFilterVisa(false);
                   }}
@@ -408,96 +440,15 @@ export default function Jobs() {
                     <Typography align="center" color="text.secondary">No job opportunities found.</Typography>
                   ) : (
                     jobs.map((j) => {
-                      const isSaved = savedJobIds.includes(j._id);
                       const isApplied = applications.some(app => app.id === j._id);
 
                       return (
-                        <Card key={j._id} sx={{ borderRadius: 4, border: '1px solid #e3eafc', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                          <CardContent sx={{ p: 3 }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                              <Box>
-                                <Typography variant="h6" fontWeight={700} color="primary">
-                                  {j.title}
-                                </Typography>
-                                <Stack direction="row" spacing={2} sx={{ mt: 1, color: 'text.secondary' }} flexWrap="wrap" useFlexGap>
-                                  <Stack direction="row" spacing={0.5} alignItems="center">
-                                    <BusinessIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="caption">{j.company || 'MedInternia Partners'}</Typography>
-                                  </Stack>
-                                  <Stack direction="row" spacing={0.5} alignItems="center">
-                                    <RoomIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="caption">{j.location}</Typography>
-                                  </Stack>
-                                </Stack>
-                              </Box>
-                              <IconButton onClick={() => toggleSaveJob(j._id)} color="primary">
-                                {isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
-                              </IconButton>
-                            </Stack>
-
-                            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                              <Chip label={j.status} color={j.status === 'Open' ? 'success' : 'default'} size="small" sx={{ fontWeight: 700 }} />
-                              {j.matchPercentage !== undefined && (
-                                <Chip
-                                  icon={<AutoAwesomeIcon sx={{ fontSize: '14px !important', color: 'inherit !important' }} />}
-                                  label={`${j.matchPercentage}% Match`}
-                                  size="small"
-                                  sx={{
-                                    borderRadius: '6px',
-                                    fontWeight: 700,
-                                    fontSize: '0.75rem',
-                                    backgroundColor: j.matchPercentage >= 80 
-                                      ? '#e6f4ea' 
-                                      : (j.matchPercentage >= 50 ? '#fef7e0' : '#fce8e6'),
-                                    color: j.matchPercentage >= 80 
-                                      ? '#137333' 
-                                      : (j.matchPercentage >= 50 ? '#b06000' : '#c5221f'),
-                                    '& .MuiChip-icon': {
-                                      color: 'inherit !important'
-                                    }
-                                  }}
-                                />
-                              )}
-                              {j.salary && <Chip label={j.salary} size="small" variant="outlined" />}
-                              <DeadlineCountdown deadline={j.applicationDeadline} />
-                            </Box>
-
-                            <Divider sx={{ my: 2 }} />
-
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Typography variant="caption" color="text.secondary">
-                                Posted: {new Date(j.createdAt || Date.now()).toLocaleDateString()}
-                              </Typography>
-                              <Stack direction="row" spacing={1}>
-                                {j.postedBy && (typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id) !== currentUserId && (
-                                  <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    onClick={() => router.push(`/messages?userId=${typeof j.postedBy === 'string' ? j.postedBy : j.postedBy._id}`)}
-                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                                  >
-                                    Message Recruiter
-                                  </Button>
-                                )}
-                                {j.status === "Open" ? (
-                                  <Button 
-                                    variant="contained" 
-                                    color={isApplied ? "success" : "primary"}
-                                    onClick={() => handleApply(j)}
-                                    disabled={isApplied}
-                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                                  >
-                                    {isApplied ? "Applied" : "Apply"}
-                                  </Button>
-                                ) : (
-                                  <Button variant="outlined" disabled sx={{ borderRadius: 2, textTransform: 'none' }}>
-                                    Closed
-                                  </Button>
-                                )}
-                              </Stack>
-                            </Stack>
-                          </CardContent>
-                        </Card>
+                        <InternshipCard
+                          key={j._id}
+                          internship={j}
+                          isApplied={isApplied}
+                          onApply={(item) => handleApply(item)}
+                        />
                       );
                     })
                   )}
@@ -527,11 +478,9 @@ export default function Jobs() {
                                 <Typography variant="h6" fontWeight={700} color="primary">
                                   {j.title}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary">{j.location}</Typography>
+                                <Typography variant="body2" color="text.secondary">{formatJobLocation(j.location)}</Typography>
                               </Box>
-                              <IconButton onClick={() => toggleSaveJob(j._id)} color="primary">
-                                <BookmarkIcon />
-                              </IconButton>
+                              <BookmarkButton itemType="job" itemId={j._id} />
                             </Stack>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 3 }}>
                               <Stack direction="row" spacing={1} alignItems="center">

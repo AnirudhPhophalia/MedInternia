@@ -1,4 +1,4 @@
-import { getAuthToken } from "../utils/api";
+import api, { getAuthToken } from "../utils/api";
 import dynamic from "next/dynamic";
 import { IBM_Plex_Mono, Sora } from "next/font/google";
 import React from "react";
@@ -13,6 +13,7 @@ import {
   useSpring,
   useTransform,
   useReducedMotion,
+  useScroll,
 } from 'framer-motion';
 
 // Temporary JSX intrinsic elements typing for inline SVG usage in this file.
@@ -448,13 +449,13 @@ function GlowRippleButton({
         shouldReduceMotion
           ? undefined
           : {
-              boxShadow: [
-                '0 10px 24px rgba(0,114,255,0.28)',
-                '0 16px 40px rgba(0,114,255,0.48)',
-                '0 10px 24px rgba(0,114,255,0.28)',
-              ],
-              scale: [1, 1.02, 1],
-            }
+            boxShadow: [
+              '0 10px 24px rgba(0,114,255,0.28)',
+              '0 16px 40px rgba(0,114,255,0.48)',
+              '0 10px 24px rgba(0,114,255,0.28)',
+            ],
+            scale: [1, 1.02, 1],
+          }
       }
       transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', repeatDelay: 2 }}
       style={{ borderRadius: '14px', display: 'inline-block' }}
@@ -541,10 +542,21 @@ export default function HomePage() {
   const getAuthAwareHref = (path: string) =>
     !isLoggedIn && protectedLandingPaths.includes(path) ? getLoginHref(path) : path;
 
-  const handleWaitlistSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleWaitlistSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setWaitlistSubmitted(true);
-    setWaitlistEmail('');
+    setWaitlistError('');
+    setWaitlistLoading(true);
+    try {
+      await api.post('/waitlist', { email: waitlistEmail });
+      setWaitlistSubmitted(true);
+      setWaitlistEmail('');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || 'Something went wrong. Please try again.';
+      setWaitlistError(message);
+    } finally {
+      setWaitlistLoading(false);
+    }
   };
 
   const navItems = isLoggedIn
@@ -596,6 +608,15 @@ export default function HomePage() {
   const cardParallaxY = useTransform(springY, [-0.5, 0.5], [-16, 16]);
   const cardParallaxXInv = useTransform(springX, [-0.5, 0.5], [16, -16]);
   const cardParallaxYInv = useTransform(springY, [-0.5, 0.5], [16, -16]);
+
+  /* SCROLL PROGRESSBAR */
+  const { scrollYProgress } = useScroll();
+
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 20,
+    restDelta: 0.001,
+  });
 
   return (
     <Box
@@ -709,6 +730,20 @@ export default function HomePage() {
             Sign Up
           </Button>
         </Box>
+        <motion.div
+          style={{
+            scaleX,
+            transformOrigin: "left",
+            position: "absolute",
+            left: 0,
+            bottom: 0,
+            width: "100%",
+            height: "3px",
+            background: "linear-gradient(90deg,#2563EB,#06B6D4,#3B82F6)",
+            boxShadow: "0 0 12px rgba(37,99,235,.45), 0 0 24px rgba(6,182,212,.25)",
+            zIndex: 1200,
+          }}
+        />
       </Box>
 
       {/* Layout Spacer Box - only active if not logged in to clear fixed header bounds */}
@@ -1076,10 +1111,10 @@ export default function HomePage() {
                           shouldReduceMotion
                             ? undefined
                             : {
-                                rotate: [0, -12, 10, -6, 0],
-                                scale: 1.12,
-                                transition: { duration: 0.55, ease: 'easeInOut' },
-                              }
+                              rotate: [0, -12, 10, -6, 0],
+                              scale: 1.12,
+                              transition: { duration: 0.55, ease: 'easeInOut' },
+                            }
                         }
                       >
                         {item.icon}
@@ -1323,6 +1358,7 @@ export default function HomePage() {
                       onChange={(event) => {
                         setWaitlistEmail(event.target.value);
                         setWaitlistSubmitted(false);
+                        setWaitlistError('');
                       }}
                       inputProps={{ 'aria-label': 'Email address for mobile launch notifications' }}
                     />
@@ -1330,11 +1366,17 @@ export default function HomePage() {
                       type="submit"
                       variant="contained"
                       size="large"
+                      disabled={waitlistLoading}
                       sx={{ px: 4, whiteSpace: 'nowrap' }}
                     >
-                      Notify Me
+                      {waitlistLoading ? 'Submitting...' : 'Notify Me'}
                     </Button>
                   </Stack>
+                  {waitlistError && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      {waitlistError}
+                    </Alert>
+                  )}
                   {waitlistSubmitted && (
                     <Alert severity="success" sx={{ mt: 2 }}>
                       You are on the notify list. We will share updates when mobile access opens.

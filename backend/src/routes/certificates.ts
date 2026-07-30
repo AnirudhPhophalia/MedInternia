@@ -20,15 +20,15 @@ router.post('/generate', authenticate, requirePermission('certificate:issue'), g
 // Get certificates for user
 router.get('/user/:userId', authenticate, getUserCertificates);
 
+// Get certificates issued by doctor
+router.get('/doctor/issued', authenticate, requirePermission('certificate:issue'), getDoctorIssuedCertificates);
+
 // Get certificate by certificate ID
 router.get('/verify/:certificateId', getPublicCertificateVerification);
 router.get('/:certificateId', authenticate, getCertificateById);
 
 // Verify certificate
 router.post('/verify', authenticate, verifyCertificate);
-
-// Get certificates issued by doctor
-router.get('/doctor/issued', authenticate, requirePermission('certificate:issue'), getDoctorIssuedCertificates);
 
 // Revoke certificate
 router.patch('/:certificateId/revoke', authenticate, requirePermission('certificate:issue'), revokeCertificate);

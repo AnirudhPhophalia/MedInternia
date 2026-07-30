@@ -334,6 +334,7 @@ export default function MeProfilePage() {
                         target="_blank"
                         startIcon={<MenuBookIcon />}
                         sx={{ mt: 1, textTransform: 'none' }}
+                        rel="noopener noreferrer"
                       >
                         View Paper
                       </Button>

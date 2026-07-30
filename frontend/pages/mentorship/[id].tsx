@@ -206,7 +206,7 @@ export default function MentorshipDetail() {
                           secondary={new Date(meeting.scheduledAt).toLocaleString()}
                         />
                         {meeting.link && (
-                          <Button startIcon={<VideoCallIcon />} variant="outlined" size="small" href={meeting.link} target="_blank">
+                          <Button startIcon={<VideoCallIcon />} variant="outlined" size="small" href={meeting.link} target="_blank" rel="noopener noreferrer">
                             Join
                           </Button>
                         )}

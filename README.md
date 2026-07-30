@@ -159,6 +159,7 @@ MedInternia/
 ```
 
 ## 📁 Folder Structure
+```
 MedInternia/
 │
 ├── backend/          # Node.js + Express API (port 3000)
@@ -168,6 +169,7 @@ MedInternia/
 ├── requirements.txt  # Python dependencies (for future NLP module)
 ├── README.md
 └── package.json
+```
 
 > **Note on `requirements.txt`:** This file is a placeholder for the planned
 > Python NLP microservice. See `docs/ai-nlp-integration.md` for the implementation

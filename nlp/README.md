@@ -43,7 +43,7 @@ into clean word spans automatically. **No fine-tuning required.**
 ## Project layout
 
 ```
-nlp_service/
+nlp/
 ├── app/
 │   ├── __init__.py
 │   └── main.py          ← FastAPI app, pipelines, routes
@@ -75,7 +75,23 @@ pip install -r requirements.txt
 python scripts/download_models.py
 
 # 5 — copy env template
+Linux/macOS:
+
+```bash
 cp .env.example .env
+```
+
+Windows (Command Prompt):
+
+```cmd
+copy .env.example .env
+```
+
+Windows (PowerShell):
+
+```powershell
+Copy-Item .env.example .env
+```
 
 # 6 — start the server
 uvicorn app.main:app --reload --port 8001

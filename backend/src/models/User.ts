@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import type { AppRole } from '../middleware/permissions';
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   following?: mongoose.Types.ObjectId[];
   followers?: mongoose.Types.ObjectId[];
   solvedCases?: mongoose.Types.ObjectId[];
@@ -57,6 +58,7 @@ passwordResetExpires?: Date;
   }[];
   bio?: string;
   profilePicture?: string;
+  profilePicturePublicId?: string;
   // Doctor specific fields
   specialization?: string;
   licenseNumber?: string;
@@ -84,6 +86,8 @@ passwordResetExpires?: Date;
   // Common fields
   isActive: boolean;
   isVerified: boolean;
+  // User-selected AI model used when calling the AI service
+  preferredModel?: string;
   messagePrivacy?: 'anyone' | 'verified_only' | 'none';
   createdAt: Date;
   updatedAt: Date;
@@ -280,6 +284,10 @@ passwordResetExpires: {
     type: String,
     match: [/^https?:\/\/.+/, 'Please provide a valid profile picture URL']
   },
+  profilePicturePublicId: {
+    type: String,
+    description: 'Cloudinary public ID for profile picture (used to generate signed URLs)'
+  },
   // Doctor specific fields
   specialization: {
     type: String,
@@ -360,6 +368,11 @@ passwordResetExpires: {
   isVerified: {
     type: Boolean,
     default: false
+  },
+  preferredModel: {
+    type: String,
+    enum: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4o', 'gemini-1.5-pro', 'gemini-2.0-pro', 'claude-3.5-sonnet'],
+    default: 'gpt-3.5-turbo'
   },
   messagePrivacy: {
     type: String,

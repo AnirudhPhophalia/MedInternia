@@ -4,6 +4,7 @@ import Webinar from '../models/Webinar';
 import Notification from '../models/Notification';
 import User from '../models/User';
 import { getSocketIO } from '../utils/socket';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) => {
   const durationInMinutes = webinar.duration || 0;
@@ -122,18 +123,32 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     // Ensure webinar.host is a populated document
     const host = webinar.host as any;
 
-    // Respond immediately — notify interns asynchronously in batches
+    // Respond immediately — notify interns asynchronously using a cursor
     setImmediate(async () => {
       try {
-        const internIds = await User.find({ userType: 'intern' }).select('_id');
         const batchSize = 500;
-        for (let i = 0; i < internIds.length; i += batchSize) {
-          const batch = internIds.slice(i, i + batchSize).map(intern => ({
+        const cursor = User.find({ userType: 'intern' })
+          .select('_id')
+          .lean()
+          .cursor({ batchSize });
+
+        const batch: Array<{ recipient: any; message: string; type: string; link?: string }> = [];
+
+        await cursor.eachAsync(async (intern: any) => {
+          batch.push({
             recipient: intern._id,
             message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
             type: 'webinar',
             link: webinar.meetingLink
-          }));
+          });
+
+          if (batch.length >= batchSize) {
+            await Notification.insertMany(batch);
+            batch.length = 0;
+          }
+        });
+
+        if (batch.length > 0) {
           await Notification.insertMany(batch);
         }
       } catch (notifyErr) {
@@ -248,7 +263,7 @@ export const getWebinars = async (req: Request, res: Response) => {
 };
 
 // Get webinar by ID
-export const getWebinarById = async (req: Request, res: Response) => {
+export const getWebinarById = async (req: AuthRequest, res: Response) => {
   try {
     await syncExpiredWebinars();
 
@@ -265,9 +280,68 @@ export const getWebinarById = async (req: Request, res: Response) => {
       });
     }
 
+    // Build the base public response — only safe fields
+    const userId = req.user?._id?.toString();
+    const isHostOrAdmin = !!userId && (
+      req.user!.userType === 'admin' ||
+      req.user!.userType === 'moderator' ||
+      webinar.host._id?.toString() === userId ||
+      webinar.host.toString() === userId
+    );
+
+    // Full document for organizers, admins, and moderators
+    if (isHostOrAdmin) {
+      return res.json({
+        success: true,
+        data: { webinar }
+      });
+    }
+
+    const isParticipant = !!userId && webinar.participants.some(p =>
+      (p.user._id?.toString() || p.user.toString()) === userId
+    );
+
+    const publicWebinar = {
+      _id: webinar._id,
+      title: webinar.title,
+      description: webinar.description,
+      host: webinar.host,
+      type: webinar.type,
+      specialization: webinar.specialization,
+      scheduledAt: webinar.scheduledAt,
+      duration: webinar.duration,
+      maxParticipants: webinar.maxParticipants,
+      registrationDeadline: webinar.registrationDeadline,
+      tags: webinar.tags,
+      materials: webinar.materials,
+      isActive: webinar.isActive,
+      isRecorded: webinar.isRecorded,
+      status: webinar.status,
+      createdAt: webinar.createdAt,
+      updatedAt: webinar.updatedAt,
+      participantCount: webinar.participants?.length || 0
+    };
+
+    if (isParticipant) {
+      const participantWebinar = {
+        ...publicWebinar,
+        meetingLink: webinar.meetingLink,
+        polls: webinar.polls,
+        qna: webinar.qna,
+        participants: webinar.participants.map(p => ({
+          user: (p.user as any)._id?.toString() || p.user.toString()
+        }))
+      };
+
+      return res.json({
+        success: true,
+        data: { webinar: participantWebinar }
+      });
+    }
+
     res.json({
       success: true,
-      data: { webinar }
+      data: { webinar: publicWebinar }
     });
   } catch (error: any) {
     console.error('Get webinar error:', error);
@@ -486,6 +560,14 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { rating, comments } = req.body;
     const userId = (req.user!._id as any).toString();
+    const ratingValue = Number(rating);
+
+    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
 
     const webinar = await Webinar.findById(id);
     if (!webinar) {
@@ -513,7 +595,7 @@ export const submitFeedback = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    participant.feedback = { rating, comments };
+    participant.feedback = { rating: ratingValue, comments };
     await webinar.save();
 
     res.json({
@@ -534,6 +616,7 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!._id;
     const { type = 'all' } = req.query; // 'hosted', 'attended', 'registered', 'all'
+    const { page, limit, skip } = parsePagination(req.query);
 
     let query: any = {};
     
@@ -553,16 +636,22 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
       };
     }
 
-    const webinars = await Webinar.find(query)
-      .populate('host', 'firstName lastName specialization')
-      .sort({ scheduledAt: -1 });
+    const [webinars, total] = await Promise.all([
+      Webinar.find(query)
+        .populate('host', 'firstName lastName specialization')
+        .sort({ scheduledAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Webinar.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
       data: {
         webinars,
-        total: webinars.length
-      }
+        total
+      },
+      pagination: buildPaginationMeta(page, limit, total)
     });
   } catch (error: any) {
     console.error('Get user webinars error:', error);
@@ -628,6 +717,18 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { question, options } = req.body;
+    const trimmedQuestion = typeof question === 'string' ? question.trim() : '';
+    const normalizedOptions = Array.isArray(options)
+      ? options.map((option) => typeof option === 'string' ? option.trim() : '').filter(Boolean)
+      : [];
+
+    if (!trimmedQuestion) {
+      return res.status(400).json({ success: false, message: 'Poll question is required' });
+    }
+
+    if (normalizedOptions.length < 2) {
+      return res.status(400).json({ success: false, message: 'At least two poll options are required' });
+    }
     
     if (req.user!.userType !== 'doctor' && req.user!.userType !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
@@ -640,8 +741,8 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
     }
 
     webinar.polls.push({
-      question,
-      options,
+      question: trimmedQuestion,
+      options: normalizedOptions,
       active: true,
       votes: new Map(),
       createdAt: new Date()
@@ -725,6 +826,11 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { question } = req.body;
+    const trimmedQuestion = typeof question === 'string' ? question.trim() : '';
+
+    if (!trimmedQuestion) {
+      return res.status(400).json({ success: false, message: 'Question is required' });
+    }
 
     const webinar = await Webinar.findById(id);
     if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
@@ -736,7 +842,7 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
     }
 
     webinar.qna.push({
-      question,
+      question: trimmedQuestion,
       author: req.user!._id,
       upvotes: [],
       isAnswered: false,

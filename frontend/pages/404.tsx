@@ -1,7 +1,10 @@
 import { Box, Typography, Button } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import Link from "next/link";
 
 export default function Custom404() {
+  const theme = useTheme();
+
   return (
     <Box
       sx={{
@@ -10,7 +13,10 @@ export default function Custom404() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)",
+        background:
+          theme.palette.mode === "dark"
+            ? "linear-gradient(135deg, #1a2036 0%, #232a45 100%)"
+            : "linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)",
         textAlign: "center",
         px: 3,
       }}

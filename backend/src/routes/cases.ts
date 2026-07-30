@@ -33,7 +33,8 @@ import {
   getRecommendedCases,
   getFlaggedComments,
   moderateComment,
-  uploadAttachment
+  uploadAttachment,
+  getSimilarCases
 } from '../controllers/caseController';
 import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
@@ -95,8 +96,9 @@ router.post('/:id/follow-ups', authenticate, requirePermission('case:follow_up')
 router.get('/:id/follow-ups', authenticate, getCaseFollowUps);
 
 // AI suggestion routes
-router.post('/:id/ai-suggestions', authenticate, generateAISuggestions);
+router.post('/:id/ai-suggestions', authenticate, requirePermission('case:update'), generateAISuggestions);
 router.get('/:id/ai-suggestions', authenticate, getCaseAISuggestions);
+router.get('/:id/similar', authenticate, getSimilarCases);
 
 // Comment moderation routes
 router.post('/:caseId/comments/:commentId/pin', authenticate, requirePermission('comment:moderate'), pinComment);

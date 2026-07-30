@@ -1,4 +1,4 @@
-import { sendOtp, verifyOtp, forgotPassword, resetPassword, uploadProfilePicture, logout } from '../controllers/authController';
+import { sendOtp, verifyOtp, forgotPassword, resetPassword, uploadProfilePicture, logout, refreshToken } from '../controllers/authController';
 import { Router } from 'express';
 import {
   register,
@@ -42,6 +42,9 @@ router.post('/verify-otp', otpVerifyLimiter, verifyOtp);
 // Public routes
 router.post('/register', registerLimiter, register);
 router.post('/login', loginLimiter, login);
+
+// Refresh the access token from a valid refresh token (HTTP-only cookie or body)
+router.post('/refresh', refreshToken);
 
 // Protected routes (require authentication)
 router.post('/logout', authenticate, logout);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
   Box,
@@ -8,6 +8,7 @@ import {
   CircularProgress,
   Container,
   Grid,
+  Pagination,
   Stack,
   Typography,
 } from '@mui/material';
@@ -17,28 +18,46 @@ import PatientCard from '../../components/PatientCard';
 import PageHeader from '../../components/layout/PageHeader';
 import { withAuth } from '../../components/withAuth';
 
+const PAGE_SIZE = 20;
+
 function Patients() {
   const [patients, setPatients] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPatients, setTotalPatients] = useState(0);
 
-  useEffect(() => {
-    
+  const fetchPatients = useCallback(async (pageNum: number) => {
+    setLoading(true);
     const token = localStorage.getItem('token');
-    api.get('/patients', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => {
-        setPatients(res.data.data.patients || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to fetch patients');
-        setLoading(false);
+    try {
+      const res = await api.get('/patients', {
+        params: { page: pageNum, limit: PAGE_SIZE },
+        headers: { Authorization: `Bearer ${token}` },
       });
+      const data = res.data.data;
+      setPatients(data.patients || []);
+      const pagination = data.pagination || { page: 1, total: 0, pages: 1 };
+      setTotalPages(pagination.pages);
+      setTotalPatients(pagination.total);
+      setError('');
+    } catch {
+      setError('Failed to fetch patients');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    fetchPatients(page);
+  }, [page, fetchPatients]);
+
+  const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+
+  if (loading && patients.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
         <CircularProgress size={56} />
@@ -61,7 +80,7 @@ function Patients() {
       <Container maxWidth="lg">
         <PageHeader
           title="Patients"
-          subtitle="Review patient profiles, contact details, and case history from one clean clinical workspace."
+          subtitle="Review patient profiles and case history from one clean clinical workspace."
           breadcrumbs={[
             { label: 'Home', href: '/' },
             { label: 'Patients' },
@@ -69,7 +88,7 @@ function Patients() {
           action={
             <Chip
               icon={<GroupIcon />}
-              label={`${patients.length} patient${patients.length === 1 ? '' : 's'}`}
+              label={`${totalPatients} patient${totalPatients === 1 ? '' : 's'}`}
               color="primary"
               sx={{ fontWeight: 700, px: 1 }}
             />
@@ -91,13 +110,13 @@ function Patients() {
                 Patient Directory
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Quickly scan patient contact details and open complete profiles for clinical follow-up.
+                Browse patient profiles and open complete records for clinical follow-up.
               </Typography>
             </Stack>
           </CardContent>
         </Card>
 
-        {patients.length === 0 ? (
+        {patients.length === 0 && !loading ? (
           <Card
             elevation={0}
             sx={{
@@ -117,13 +136,33 @@ function Patients() {
             </Typography>
           </Card>
         ) : (
-          <Grid container spacing={3}>
-            {patients.map(p => (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={p._id}>
-                <PatientCard patient={p} />
-              </Grid>
-            ))}
-          </Grid>
+          <>
+            <Grid container spacing={3}>
+              {patients.map(p => (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={p._id}>
+                  <PatientCard patient={p} />
+                </Grid>
+              ))}
+            </Grid>
+
+            {totalPages > 1 && (
+              <Stack direction="row" justifyContent="center" sx={{ mt: 5 }}>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
+                  size="large"
+                  sx={{
+                    '& .MuiPaginationItem-root': {
+                      fontWeight: 700,
+                      borderRadius: 2,
+                    },
+                  }}
+                />
+              </Stack>
+            )}
+          </>
         )}
       </Container>
     </Box>

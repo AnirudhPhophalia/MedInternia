@@ -25,6 +25,13 @@ npm install
 npm run dev
 ```
 
+RAG Service (Python AI Layer):
+```
+cd rag_service
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
 4. Look for issues labeled `good first issue` or `help wanted` and comment that you are working on it.
 5. Open a pull request describing your changes and link any related issue.
 

@@ -29,8 +29,16 @@ export const createBadge = async (req: AuthRequest, res: Response) => {
       message: 'Badge created successfully',
       data: { badge }
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Create badge error:', error);
+    if (error instanceof mongoose.Error.ValidationError) {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: messages
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Internal server error'
