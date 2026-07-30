@@ -28,7 +28,7 @@ export const getDiaries = async (req: AuthRequest, res: Response) => {
     return res.status(200).json({
       success: true,
       data: { diaries },
-      meta: buildPaginationMeta(total, page, limit),
+      meta: buildPaginationMeta(page, limit, total),
     });
   } catch (error) {
     console.error("Error fetching diaries:", error);
