@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import type { AppRole } from '../middleware/permissions';
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   following?: mongoose.Types.ObjectId[];
   followers?: mongoose.Types.ObjectId[];
   solvedCases?: mongoose.Types.ObjectId[];
@@ -57,6 +58,7 @@ passwordResetExpires?: Date;
   }[];
   bio?: string;
   profilePicture?: string;
+  profilePicturePublicId?: string;
   // Doctor specific fields
   specialization?: string;
   licenseNumber?: string;
@@ -281,6 +283,10 @@ passwordResetExpires: {
   profilePicture: {
     type: String,
     match: [/^https?:\/\/.+/, 'Please provide a valid profile picture URL']
+  },
+  profilePicturePublicId: {
+    type: String,
+    description: 'Cloudinary public ID for profile picture (used to generate signed URLs)'
   },
   // Doctor specific fields
   specialization: {

@@ -3,6 +3,7 @@ import Case from '../models/Case';
 import User from '../models/User';
 import Rating from '../models/Rating';
 import { AuthRequest } from '../middleware/auth';
+import { createSafeRegexFilter, validateSearchInput, escapeRegexForArray } from '../utils/searchUtils';
 
 // Rate and award points for a comment
 export const rateComment = async (req: AuthRequest, res: Response) => {
@@ -364,16 +365,25 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       const filter: any = { isActive: true };
 
       if (query) {
-        filter.$or = [
-          { title: { $regex: query, $options: 'i' } },
-          { description: { $regex: query, $options: 'i' } },
-          { diagnosis: { $regex: query, $options: 'i' } },
-          { tags: { $in: [new RegExp(query as string, 'i')] } }
-        ];
+        const safeQuery = validateSearchInput(query, 100);
+        if (safeQuery) {
+          const safeFilter = createSafeRegexFilter(safeQuery, 100);
+          if (safeFilter) {
+            filter.$or = [
+              { title: safeFilter },
+              { description: safeFilter },
+              { diagnosis: safeFilter },
+              { tags: { $in: [new RegExp(escapeRegexForArray(safeQuery), 'i')] } }
+            ];
+          }
+        }
       }
 
       if (specialization) {
-        filter.specialization = { $regex: specialization, $options: 'i' };
+        const safeSpec = validateSearchInput(specialization, 50);
+        if (safeSpec) {
+          filter.specialization = createSafeRegexFilter(safeSpec, 50);
+        }
       }
 
       if (difficulty) {
@@ -381,11 +391,17 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       }
 
       if (disease) {
-        filter.$or = filter.$or || [];
-        filter.$or.push(
-          { diagnosis: { $regex: disease, $options: 'i' } },
-          { symptoms: { $in: [new RegExp(disease as string, 'i')] } }
-        );
+        const safeDisease = validateSearchInput(disease, 100);
+        if (safeDisease) {
+          filter.$or = filter.$or || [];
+          const safeDiseaseFilter = createSafeRegexFilter(safeDisease, 100);
+          if (safeDiseaseFilter) {
+            filter.$or.push(
+              { diagnosis: safeDiseaseFilter },
+              { symptoms: { $in: [new RegExp(escapeRegexForArray(safeDisease), 'i')] } }
+            );
+          }
+        }
       }
 
       if (tags) {
@@ -406,16 +422,24 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       const filter: any = { userType: 'doctor' };
 
       if (query || doctorName) {
-        const searchTerm = query || doctorName;
-        filter.$or = [
-          { firstName: { $regex: searchTerm, $options: 'i' } },
-          { lastName: { $regex: searchTerm, $options: 'i' } },
-          { specialization: { $regex: searchTerm, $options: 'i' } }
-        ];
+        const searchTerm = validateSearchInput(query || doctorName, 50);
+        if (searchTerm) {
+          const safeFilter = createSafeRegexFilter(searchTerm, 50);
+          if (safeFilter) {
+            filter.$or = [
+              { firstName: safeFilter },
+              { lastName: safeFilter },
+              { specialization: safeFilter }
+            ];
+          }
+        }
       }
 
       if (specialization) {
-        filter.specialization = { $regex: specialization, $options: 'i' };
+        const safeSpec = validateSearchInput(specialization, 50);
+        if (safeSpec) {
+          filter.specialization = createSafeRegexFilter(safeSpec, 50);
+        }
       }
 
       results = await User.find(filter)
@@ -431,12 +455,18 @@ export const advancedSearch = async (req: AuthRequest, res: Response) => {
       const filter: any = { userType: 'intern' };
 
       if (query) {
-        filter.$or = [
-          { firstName: { $regex: query, $options: 'i' } },
-          { lastName: { $regex: query, $options: 'i' } },
-          { medicalSchool: { $regex: query, $options: 'i' } },
-          { interests: { $in: [new RegExp(query as string, 'i')] } }
-        ];
+        const safeQuery = validateSearchInput(query, 50);
+        if (safeQuery) {
+          const safeFilter = createSafeRegexFilter(safeQuery, 50);
+          if (safeFilter) {
+            filter.$or = [
+              { firstName: safeFilter },
+              { lastName: safeFilter },
+              { medicalSchool: safeFilter },
+              { interests: { $in: [new RegExp(escapeRegexForArray(safeQuery), 'i')] } }
+            ];
+          }
+        }
       }
 
       results = await User.find(filter)

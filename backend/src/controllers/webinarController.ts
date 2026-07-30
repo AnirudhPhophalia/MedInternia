@@ -4,6 +4,7 @@ import Webinar from '../models/Webinar';
 import Notification from '../models/Notification';
 import User from '../models/User';
 import { getSocketIO } from '../utils/socket';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) => {
   const durationInMinutes = webinar.duration || 0;
@@ -122,18 +123,32 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     // Ensure webinar.host is a populated document
     const host = webinar.host as any;
 
-    // Respond immediately — notify interns asynchronously in batches
+    // Respond immediately — notify interns asynchronously using a cursor
     setImmediate(async () => {
       try {
-        const internIds = await User.find({ userType: 'intern' }).select('_id');
         const batchSize = 500;
-        for (let i = 0; i < internIds.length; i += batchSize) {
-          const batch = internIds.slice(i, i + batchSize).map(intern => ({
+        const cursor = User.find({ userType: 'intern' })
+          .select('_id')
+          .lean()
+          .cursor({ batchSize });
+
+        const batch: Array<{ recipient: any; message: string; type: string; link?: string }> = [];
+
+        await cursor.eachAsync(async (intern: any) => {
+          batch.push({
             recipient: intern._id,
             message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
             type: 'webinar',
             link: webinar.meetingLink
-          }));
+          });
+
+          if (batch.length >= batchSize) {
+            await Notification.insertMany(batch);
+            batch.length = 0;
+          }
+        });
+
+        if (batch.length > 0) {
           await Notification.insertMany(batch);
         }
       } catch (notifyErr) {
@@ -601,6 +616,7 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!._id;
     const { type = 'all' } = req.query; // 'hosted', 'attended', 'registered', 'all'
+    const { page, limit, skip } = parsePagination(req.query);
 
     let query: any = {};
     
@@ -620,16 +636,22 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
       };
     }
 
-    const webinars = await Webinar.find(query)
-      .populate('host', 'firstName lastName specialization')
-      .sort({ scheduledAt: -1 });
+    const [webinars, total] = await Promise.all([
+      Webinar.find(query)
+        .populate('host', 'firstName lastName specialization')
+        .sort({ scheduledAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Webinar.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
       data: {
         webinars,
-        total: webinars.length
-      }
+        total
+      },
+      pagination: buildPaginationMeta(page, limit, total)
     });
   } catch (error: any) {
     console.error('Get user webinars error:', error);

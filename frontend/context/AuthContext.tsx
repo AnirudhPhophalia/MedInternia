@@ -13,8 +13,11 @@ interface AuthContextType {
   user: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (userId: string, user: any) => void;
-  logout: () => void;
+  login: (
+    token: string,
+    userId: string,
+    user: any
+  ) => void;
   refreshUser: () => void;
 }
 
@@ -43,6 +46,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       return;
     }
 
+    // SECURITY: Tokens are now managed via httpOnly cookies (not localStorage)
+    // Validate token with backend using cookies automatically sent via withCredentials
     api
       .get("/auth/validate-token", {
         withCredentials: true,
@@ -52,30 +57,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         if (userData) {
           const id = String(userData._id || userData.id);
+          // Set in-memory state for UI, but don't persist to localStorage
           setUserId(id);
           setUser(userData);
-
-          localStorage.setItem("userId", id);
-          localStorage.setItem("user", JSON.stringify(userData));
+          setToken("authenticated"); // Marker that session exists via cookie
+          setGlobalToken("authenticated");
+        } else {
+          setToken(null);
+          setGlobalToken(null);
+          setUserId(null);
+          setUser(null);
         }
       })
       .catch(() => {
-        setUser(null);
+        // Token was invalid/expired (or missing) — clear in-memory state
+        setToken(null);
+        setGlobalToken(null);
         setUserId(null);
+        setUser(null);
       })
       .finally(() => setIsLoading(false));
 
   }, []);
 
   const login = useCallback(
-    (newUserId: string, newUser: any) => {
+    (newToken: string, newUserId: string, newUser: any) => {
+      // SECURITY: Tokens are stored in httpOnly cookies by the backend
+      // Frontend only maintains in-memory state for UI purposes
+      setToken("authenticated"); // Marker that session exists
+      setGlobalToken("authenticated");
       setUserId(newUserId);
       setUser(newUser);
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("userId", newUserId);
-        localStorage.setItem("user", JSON.stringify(newUser));
-      }
+      // Note: No localStorage usage to prevent XSS token theft
     },
     [],
   );
@@ -86,21 +99,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     } catch (error) {
       console.error("Failed to invalidate server session during logout:", error);
     }
+
+    setToken(null);
+    setGlobalToken(null);
     setUserId(null);
     setUser(null);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userId");
-      localStorage.removeItem("user");
 
-      localStorage.removeItem("refreshToken");
+    if (typeof window !== "undefined") {
+      // Clear non-auth localStorage items only (starred cases, papers, etc)
       localStorage.removeItem("starredCases");
       localStorage.removeItem("starredPapers");
       localStorage.removeItem("pinnedPapers");
+      // Note: httpOnly cookies are cleared server-side via /auth/logout
+      // Frontend cannot clear httpOnly cookies (that's the security benefit)
     }
   }, []);
 
   const refreshUser = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    // SECURITY: Token is now in httpOnly cookie, not localStorage
+    // Validate token with backend using cookies automatically sent via withCredentials
     api
       .get("/auth/validate-token", {
         withCredentials: true,
@@ -113,12 +132,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
           setUserId(id);
           setUser(userData);
-
-          localStorage.setItem("userId", id);
-          localStorage.setItem("user", JSON.stringify(userData));
+          setToken("authenticated");
+          setGlobalToken("authenticated");
+        } else {
+          setToken(null);
+          setGlobalToken(null);
+          setUserId(null);
+          setUser(null);
         }
       })
       .catch(() => {
+        setToken(null);
+        setGlobalToken(null);
         setUserId(null);
         setUser(null);
       });

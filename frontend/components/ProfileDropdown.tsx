@@ -54,6 +54,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
   localStorage.removeItem("refreshToken");
   document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax";
   document.cookie = "auth_status=; Path=/; Max-Age=0; SameSite=Lax";
+  document.cookie = "refresh_token=; Path=/; Max-Age=0; SameSite=Lax";
   handleClose();
   onNavigate("/");
   };

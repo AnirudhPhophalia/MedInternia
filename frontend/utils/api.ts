@@ -1,7 +1,15 @@
 import axios from 'axios';
-// Maintain backward compatibility for files importing getAuthToken
+import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
+
+/**
+ * @deprecated Token is now in httpOnly cookie, not in memory or localStorage.
+ * This function is kept for backward compatibility but should not be used
+ * for Authorization headers (cookies handle that automatically).
+ */
 export const getAuthToken = (): string | null => {
-  return null;
+  // Tokens are now managed via httpOnly cookies
+  // This returns a marker if authenticated, but shouldn't be used for APIs
+  return getGlobalToken();
 };
 
 export const getSocketUrl = (): string => {
@@ -29,10 +37,12 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Ensure HttpOnly authentication cookies are sent with requests
+// SECURITY: Token is now in httpOnly cookie (not Authorization header or localStorage)
+// Axios automatically includes cookies via withCredentials: true
+// No need to manually add Authorization header
 api.interceptors.request.use(
   (config) => {
-    config.withCredentials = true;
+    // All auth is handled via httpOnly cookies set by backend
     return config;
   },
   (error) => Promise.reject(error)
@@ -81,7 +91,7 @@ export const getInternCredits = async () => {
 // Fetch all diaries for the intern
 export const getDiaries = async () => {
   const res = await api.get('/diaries');
-  return res.data;
+  return res.data.data;
 };
 
 // Create a new diary
