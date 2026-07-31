@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
 
 /**
  * @deprecated Token is now in httpOnly cookie, not in memory or localStorage.
@@ -7,9 +6,11 @@ import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
  * for Authorization headers (cookies handle that automatically).
  */
 export const getAuthToken = (): string | null => {
-  // Tokens are now managed via httpOnly cookies
-  // This returns a marker if authenticated, but shouldn't be used for APIs
-  return getGlobalToken();
+  if (typeof document === 'undefined') return null;
+  const hasSession = document.cookie
+    .split('; ')
+    .some((row) => row.startsWith('auth_status='));
+  return hasSession ? 'authenticated' : null;
 };
 
 export const getSocketUrl = (): string => {

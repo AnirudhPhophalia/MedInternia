@@ -156,7 +156,6 @@ export default function MessagesPage() {
               return currentActive;
             });
           });
-        }
       } catch (err) {
         setLoading(false);
         setError('Failed to load messages');

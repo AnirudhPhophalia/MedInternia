@@ -64,7 +64,6 @@ export default function JoinWebinar() {
         newSocket.emit('leave_webinar', id);
         newSocket.disconnect();
       };
-    }
   }, [id]);
 
   const isHost = webinar?.host?._id === currentUserId || webinar?.host === currentUserId;

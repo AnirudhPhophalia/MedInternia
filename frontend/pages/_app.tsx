@@ -123,7 +123,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           >
             <CssBaseline />
 
-            {showNavbar && <Navbar route={router.pathname} />}
+            {showNavbar && <Navbar />}
 
             <div
               style={{
