@@ -1,8 +1,38 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import User from '../models/User';
+import Appointment, { AppointmentStatus } from '../models/Appointment';
 
 const PATIENT_LIST_SELECT = '_id firstName lastName email';
+
+// A doctor may only access a patient they actually treat. The relationship is
+// established by a non-cancelled Appointment record linking the two accounts.
+const hasDoctorPatientRelationship = async (doctorId: string, patientId: string): Promise<boolean> => {
+  if (!mongoose.isValidObjectId(patientId)) return false;
+  return !!(await Appointment.exists({
+    doctorId,
+    patientId,
+    status: { $ne: AppointmentStatus.CANCELLED },
+  }));
+};
+
+// Only the patient themself, their treating doctor(s), and admins may access a
+// patient's sensitive profile (medical history, allergies, emergency contact).
+const canAccessPatient = async (currentUser: AuthRequest['user'], patientId: string): Promise<boolean> => {
+  const currentUserId = (currentUser!._id as any).toString();
+
+  if (currentUser!.userType === 'patient') {
+    return currentUserId === patientId;
+  }
+  if (currentUser!.userType === 'admin') {
+    return true;
+  }
+  if (currentUser!.userType === 'doctor') {
+    return hasDoctorPatientRelationship(currentUserId, patientId);
+  }
+  return false;
+};
 
 export const getPatients = async (req: AuthRequest, res: Response) => {
   try {
@@ -44,13 +74,20 @@ export const getPatients = async (req: AuthRequest, res: Response) => {
 
 export const getPatientById = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id ?? '');
     const currentUser = req.user!;
-    const isOwnPatientProfile =
-      currentUser.userType === 'patient' && (currentUser._id as any).toString() === id;
-    const canReadPatient = ['doctor', 'admin'].includes(currentUser.userType);
 
-    if (!isOwnPatientProfile && !canReadPatient) {
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found',
+      });
+    }
+
+    // Access is limited to the patient themself, doctors with an existing
+    // treatment relationship (via appointment records), and admins.
+    const canAccess = await canAccessPatient(currentUser, id);
+    if (!canAccess) {
       return res.status(403).json({
         success: false,
         message: 'Access denied',
@@ -87,14 +124,21 @@ export const getPatientById = async (req: AuthRequest, res: Response) => {
 
 export const updatePatientMedicalInfo = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id ?? '');
     const currentUser = req.user!;
     const { medicalHistory, allergies, emergencyContact } = req.body;
-    const isOwnPatientProfile =
-      currentUser.userType === 'patient' && (currentUser._id as any).toString() === id;
-    const canUpdatePatient = ['doctor', 'admin'].includes(currentUser.userType);
 
-    if (!isOwnPatientProfile && !canUpdatePatient) {
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found',
+      });
+    }
+
+    // Same access rules as reading: only the patient themself, their treating
+    // doctor(s), and admins may modify sensitive medical information.
+    const canAccess = await canAccessPatient(currentUser, id);
+    if (!canAccess) {
       return res.status(403).json({
         success: false,
         message: 'Access denied',
