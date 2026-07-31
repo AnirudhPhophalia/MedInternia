@@ -123,6 +123,9 @@ const NavButton: React.FC<NavButtonProps> = ({
 
 export default function Navbar() {
   const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
+  const { t } = useTranslation();
   const { mode, toggleColorMode } = useContext(ThemeContext);
   const { isAuthenticated, userId: authUserId, user: authUser } = useAuth();
   const [mounted, setMounted] = React.useState(false);
