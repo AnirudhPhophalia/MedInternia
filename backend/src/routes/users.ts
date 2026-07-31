@@ -63,7 +63,7 @@ router.get('/:userId/mentor-summary', getDoctorMentorSummary);
 // Get leaderboard
 router.get('/leaderboard', getLeaderboard);
 
-// Verify doctor (admin/verified doctor only)
+// Verify doctor (admin only)
 router.patch('/:userId/verify', authenticate, requirePermission('profile:verify'), verifyDoctor);
 
 // Grant contributor badge

@@ -50,7 +50,6 @@ export const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> =
   'comment:moderate',
   'import:run', // ✅ Added
   'job:manage',
-  'profile:verify',
   'rating:create',
   'user:award_points',
   'webinar:attend',

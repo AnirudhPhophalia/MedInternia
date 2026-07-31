@@ -5,6 +5,7 @@ import {
   getDoctorMentorSummary,
   updateUserStreak,
   deleteAccount,
+  verifyDoctor,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -449,6 +450,66 @@ describe("User Controller", () => {
         $max: { longestStreak: 1 }
       }));
       expect(mockedCheckAndAwardAutoBadges).toHaveBeenCalledWith("user-1");
+    });
+  });
+
+  describe("verifyDoctor", () => {
+    const makeReq = (user: any) => ({
+      params: { userId: "target-doctor-id" },
+      body: { isVerified: true, verificationDocuments: ["license.pdf"] },
+      user,
+    }) as any;
+
+    it("rejects a verified doctor trying to verify another doctor", async () => {
+      const req = makeReq({ userType: "doctor", isVerifiedDoctor: true });
+      const res = mockResponse();
+
+      await verifyDoctor(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Only admins can verify doctors" })
+      );
+      expect(mockedUser.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects non-admin roles (intern, patient, etc.)", async () => {
+      const req = makeReq({ userType: "intern", isVerifiedDoctor: false });
+      const res = mockResponse();
+
+      await verifyDoctor(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Only admins can verify doctors" })
+      );
+      expect(mockedUser.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("allows an admin to verify a doctor", async () => {
+      const req = makeReq({ userType: "admin" });
+      const res = mockResponse();
+
+      mockedUser.findOneAndUpdate.mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          _id: "target-doctor-id",
+          userType: "doctor",
+          isVerifiedDoctor: true,
+          verificationDocuments: ["license.pdf"],
+        }),
+      } as any);
+
+      await verifyDoctor(req, res);
+
+      expect(mockedUser.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: "target-doctor-id", userType: "doctor" },
+        expect.objectContaining({ isVerifiedDoctor: true }),
+        { new: true }
+      );
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, message: "Doctor verified successfully" })
+      );
     });
   });
 });

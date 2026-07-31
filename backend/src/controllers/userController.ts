@@ -557,11 +557,11 @@ export const verifyDoctor = async (req: AuthRequest, res: Response) => {
     const { userId } = req.params;
     const { isVerified, verificationDocuments } = req.body;
 
-    // Only admins or verified doctors can verify other doctors
-    if (req.user!.userType !== 'admin' && (req.user!.userType !== 'doctor' || !req.user!.isVerifiedDoctor)) {
+    // Only admins can verify doctors (KYC requires documented administrative approval).
+    if (req.user!.userType !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only admins or verified doctors can verify other doctors'
+        message: 'Only admins can verify doctors'
       });
     }
 
