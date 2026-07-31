@@ -12,9 +12,11 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
+import { ingestCase, suggestCases } from "../services/ragService";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
-import { uploadCaseAttachment } from "../utils/cloudinary";
+import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination";
 
 const getId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
 const canModerateComments = (userType?: string) => ["admin", "doctor", "moderator"].includes(userType ?? "");
@@ -64,7 +66,6 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
   const [cases, total] = await Promise.all([
     Case.find(filter)
       .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
-      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
     Case.countDocuments(filter),
@@ -227,6 +228,8 @@ export const getStarredCases = asyncHandler(async (req: AuthRequest, res: Respon
   if (!user) {
     throw new AppError("User not authenticated", 401);
   }
+  const { page, limit, skip } = parsePagination(req.query);
+
   const baseFilter = {
     isActive: { $ne: false },
     $or: [
@@ -234,12 +237,34 @@ export const getStarredCases = asyncHandler(async (req: AuthRequest, res: Respon
       { moderationStatus: { $exists: false } },
     ],
   };
-  const userDoc = await User.findById(user._id).populate({
-    path: "savedCases",
-    match: baseFilter,
-    populate: { path: "doctor", select: "firstName lastName specialization avatar" },
+
+  const userDoc = await User.findById(user._id).select("savedCases");
+  const savedCaseIds = (userDoc as any)?.savedCases || [];
+
+  if (savedCaseIds.length === 0) {
+    res.json({
+      success: true,
+      data: { cases: [] },
+      pagination: buildPaginationMeta(page, limit, 0)
+    });
+    return;
+  }
+
+  const filter = { _id: { $in: savedCaseIds }, ...baseFilter };
+
+  const [cases, total] = await Promise.all([
+    Case.find(filter)
+      .populate("doctor", "firstName lastName specialization avatar")
+      .skip(skip)
+      .limit(limit),
+    Case.countDocuments(filter)
+  ]);
+
+  res.json({
+    success: true,
+    data: { cases },
+    pagination: buildPaginationMeta(page, limit, total)
   });
-  res.json({ success: true, data: { cases: (userDoc as any)?.savedCases || [] } });
 });
 
 export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -247,6 +272,8 @@ export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response
   if (!user) {
     throw new AppError("User not authenticated", 401);
   }
+  const { page, limit, skip } = parsePagination(req.query);
+
   const baseFilter = {
     isActive: { $ne: false },
     $or: [
@@ -254,9 +281,22 @@ export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response
       { moderationStatus: { $exists: false } },
     ],
   };
-  const cases = await Case.find({ likes: user._id, ...baseFilter })
-    .populate("doctor", "firstName lastName specialization avatar");
-  res.json({ success: true, data: { cases } });
+
+  const filter = { likes: user._id, ...baseFilter };
+
+  const [cases, total] = await Promise.all([
+    Case.find(filter)
+      .populate("doctor", "firstName lastName specialization avatar")
+      .skip(skip)
+      .limit(limit),
+    Case.countDocuments(filter)
+  ]);
+
+  res.json({
+    success: true,
+    data: { cases },
+    pagination: buildPaginationMeta(page, limit, total)
+  });
 });
 
 // Add comment (w/ notification & corrected error signature)
@@ -348,7 +388,7 @@ export const unpinComment = asyncHandler(async (req: AuthRequest, res: Response)
 });
 
 export const getPinnedComments = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findById(getId(req.params.caseId));
   if (!caseDoc) throw new AppError("Case not found", 404);
   const pinned = caseDoc.comments.filter((c: any) => c.isPinned === true);
   res.json({ success: true, data: { comments: pinned } });
@@ -493,8 +533,15 @@ export const moderateCase = asyncHandler(async (req: AuthRequest, res: Response)
 });
 
 export const generateAISuggestions = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+  if (!user) throw new AppError("User not authenticated", 401);
+
   const caseDoc = await Case.findById(getId(req.params.id));
   if (!caseDoc) throw new AppError("Case not found", 404);
+
+  if ((caseDoc as any).doctor?.toString() !== user._id!.toString()) {
+    throw new AppError("You can only generate AI suggestions for your own cases", 403);
+  }
 
   const spec = (caseDoc as any).specialization || "General Medicine";
   const analysis = await analyzeCase(caseDoc.title, caseDoc.description, spec);
@@ -696,6 +743,19 @@ export const likeComment = asyncHandler(
     if (!user) throw new AppError("User not authenticated", 401);
 
     const userIdObj = new mongoose.Types.ObjectId(user._id!.toString());
+
+    // Verify the case and comment exist before mutating likes so we never
+    // report success for a missing case or comment.
+    const caseDoc = await Case.findOne(
+      { _id: getId(caseId), "comments._id": getId(commentId) },
+      { "comments.$": 1 }
+    );
+    if (!caseDoc) {
+      const caseExists = await Case.exists({ _id: getId(caseId) });
+      if (!caseExists) throw new AppError("Case not found", 404);
+      throw new AppError("Comment not found", 404);
+    }
+
     let liked = false;
     const pullResult = await Case.updateOne(
       { _id: getId(caseId), "comments._id": getId(commentId) },
@@ -782,7 +842,19 @@ export const uploadAttachment = asyncHandler(
     if (uploadResult.resource_type === 'video') {
       type = req.file.mimetype.startsWith('audio/') ? 'audio' : 'video';
     }
-    res.status(201).json({ success: true, data: { url: uploadResult.secure_url, type } });
+
+    // Generate a signed URL for authenticated access (15-minute expiry)
+    const signedUrl = generateSignedUrl(uploadResult.public_id, 900);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        signedUrl,
+        publicId: uploadResult.public_id,
+        type,
+        expiresIn: 900
+      }
+    });
   }
 );
 
@@ -814,6 +886,10 @@ export const createCase = asyncHandler(
       await newCase.save();
       await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
 
+      if (newCase._id) {
+        ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: true }).catch(console.error);
+      }
+
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
 
@@ -834,6 +910,22 @@ export const createCase = asyncHandler(
     await newCase.save();
     await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
 
+    if (newCase._id) {
+      ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: false }).catch(console.error);
+    }
+
     res.status(201).json({ success: true, data: { case: newCase } });
   }
 );
+
+export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const caseDoc = await Case.findById(getId(req.params.id));
+  if (!caseDoc) {
+    throw new AppError("Case not found", 404);
+  }
+
+  const text = `${caseDoc.title}\n${caseDoc.description}`;
+  const similar = await suggestCases(text, 3);
+
+  res.json({ success: true, data: { similarCases: similar } });
+});

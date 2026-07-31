@@ -99,13 +99,10 @@ export default function Footer() {
           <Typography
             variant="h5"
             fontWeight={800}
-            sx={{
-              background: theme.custom.heroGradient,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
+             sx={{
+              color: '#60A5FA',
               mb: 1.5,
-            }}
+             }}
           >
             MedInternia
           </Typography>

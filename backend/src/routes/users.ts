@@ -4,6 +4,7 @@ import { requirePermission } from '../middleware/permissions';
 import {
   getUserProfile,
   getPublicProfile,
+  getCurrentUserProfile,
   updateUserProfile,
   getInternScorecard,
   getDoctorMentorSummary,
@@ -15,7 +16,8 @@ import {
   followUser,
   unfollowUser,
   getConnections,
-  parseResume
+  parseResume,
+  deleteAccount
 } from '../controllers/userController';
 import { toggleBookmark, getSavedItems } from '../controllers/userBookmarksController';
 import multer from 'multer';
@@ -39,7 +41,7 @@ const router = Router();
 
 // Parse resume and auto-populate profile
 router.post('/profile/parse-resume', authenticate, resumeUpload.single('resume'), parseResume);
-
+router.get('/profile', authenticate, getCurrentUserProfile);
 // Get user profile by ID
 router.get('/:userId/profile', authenticate, getUserProfile);
 
@@ -48,6 +50,9 @@ router.get('/:userId/public', authenticate, getPublicProfile);
 
 // Update user profile
 router.put('/:userId/profile', authenticate, updateUserProfile);
+
+// Delete user account
+router.delete('/:userId', authenticate, deleteAccount);
 
 // Get intern scorecard
 router.get('/:userId/scorecard', authenticate, getInternScorecard);

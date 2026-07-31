@@ -453,20 +453,28 @@ export default function EditProfilePage() {
     }
   };
 
-  // Handles profile deletion, with a simulated API call
+  // Handles profile deletion — calls the real DELETE /users/:userId endpoint,
+  // clears auth state from localStorage, and redirects to login.
   const handleDeleteProfile = async () => {
     setOpenDeleteDialog(false);
     setLoading(true);
     setMessage("");
 
     try {
-      // Simulates account deletion
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setMessage("Profile has been successfully deleted.");
-      // In a real app, you would redirect the user here
-    } catch (error) {
+      const userId = localStorage.getItem('userId');
+      if (!userId) throw new Error('Missing user ID');
+
+      await api.delete(`/users/${userId}`);
+
+      // Clear all auth-related data from localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('user');
+
+      router.replace('/auth/login');
+    } catch (error: any) {
       console.error("Deletion failed:", error);
-      setMessage("An error occurred during deletion.");
+      setMessage(error?.response?.data?.message || "An error occurred during deletion. Please try again.");
     } finally {
       setLoading(false);
     }

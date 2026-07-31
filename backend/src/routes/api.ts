@@ -23,6 +23,8 @@ import messageRoutes from './messageRoutes';
 import flashcardRoutes from './flashcards';
 import collectionRoutes from './collections';
 import learningPathRoutes from './learningPaths';
+import waitlistRoutes from './waitlist';
+import appointmentRoutes from './appointments';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -44,6 +46,7 @@ router.get('/', (req: Request, res: Response) => {
         users: '/api/users',
         patients: '/api/patients',
         doctors: '/api/doctors',
+        appointments: '/api/appointments',
         cases: '/api/cases',
         aiCasePosts: '/api/cases/ai-posts',
         diseaseInsights: '/api/ai-disease-insights',
@@ -73,6 +76,7 @@ router.use('/video', videoRoutes);
 router.use('/users', userRoutes);
 router.use('/patients', patientRoutes);
 router.use('/doctors', doctorRoutes);
+router.use('/appointments', appointmentRoutes);
 router.use('/cases', caseRoutes);
 router.use('/ai-disease-insights', diseaseInsightRoutes);
 router.use('/badges', badgeRoutes);
@@ -91,5 +95,6 @@ router.use('/messages', messageRoutes);
 router.use('/flashcards', flashcardRoutes);
 router.use('/collections', collectionRoutes);
 router.use('/learning-paths', learningPathRoutes);
+router.use('/waitlist', waitlistRoutes);
 
 export default router;

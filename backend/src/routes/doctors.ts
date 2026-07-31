@@ -35,6 +35,30 @@ router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get specializations list
+router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const specializations = await User.distinct('specialization', {
+      userType: 'doctor',
+      isActive: true,
+      specialization: { $exists: true, $ne: null }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        specializations
+      }
+    });
+  } catch (error) {
+    console.error('Get specializations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // Get doctor by ID
 router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res) => {
   try {
@@ -117,34 +141,22 @@ router.put('/:id/professional-info', authenticate, authorize('doctor'), async (r
   }
 });
 
-// Get specializations list
-router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) => {
-  try {
-    const specializations = await User.distinct('specialization', {
-      userType: 'doctor',
-      isActive: true,
-      specialization: { $exists: true, $ne: null }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        specializations
-      }
-    });
-  } catch (error) {
-    console.error('Get specializations error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-});
-
 // Get mentees of a doctor
 router.get('/:id/mentees', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const currentUser = req.user!;
+    const canViewMentees =
+      currentUser.userType === 'admin' ||
+      (currentUser.userType === 'doctor' && (currentUser._id as any).toString() === id);
+
+    if (!canViewMentees) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
     const mentees = await User.find({ userType: 'intern', mentorDoctor: id, isActive: true })
       .select('firstName lastName email medicalSchool yearOfStudy points averageRating streak');
     res.json({

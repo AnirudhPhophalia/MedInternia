@@ -30,6 +30,19 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const startDate = new Date(duration?.startDate);
+    const endDate = new Date(duration?.endDate);
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime()) ||
+      endDate <= startDate
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Certificate end date must be after the start date'
+      });
+    }
+
     if (doctor.userType !== 'admin' && (doctor.mentoringCredits || 0) < casesReviewed) {
       return res.status(400).json({
         success: false,
@@ -123,20 +136,33 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
 };
 
 // Get certificates for user
-export const getUserCertificates = async (req: Request, res: Response) => {
+export const getUserCertificates = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
     const { page = 1, limit = 10 } = req.query;
+    const requester = req.user!;
+    const requesterId = (requester._id as any).toString();
+
+    const filter: Record<string, any> = { intern: userId };
+    if (requesterId !== userId && requester.userType !== 'admin') {
+      if (requester.userType !== 'doctor') {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to view these certificates'
+        });
+      }
+      filter.doctor = requesterId;
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    const certificates = await Certificate.find({ intern: userId })
+    const certificates = await Certificate.find(filter)
       .populate('doctor', 'firstName lastName specialization isVerifiedDoctor')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
 
-    const total = await Certificate.countDocuments({ intern: userId });
+    const total = await Certificate.countDocuments(filter);
 
     res.json({
       success: true,

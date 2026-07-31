@@ -7,6 +7,7 @@ import { CustomThemeProvider } from "../context/ThemeContext";
 import ErrorBoundary from "../components/ErrorBoundary";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import ScrollToTop from "../components/ScrollToTop";
 import { useRouter } from "next/router";
 import "../styles/globals.css";
 import Head from "next/head";
@@ -32,7 +33,6 @@ const PUBLIC_ROUTES = [
   "/faq",
   "/privacy",
   "/terms",
-  "/jobs",
   "/auth/login",
   "/auth/register",
   "/auth/forgot-password",
@@ -138,6 +138,7 @@ function MyApp({ Component, pageProps }: AppProps) {
             </div>
 
             {showFooter && <Footer />}
+            <ScrollToTop />
             {showChatbot && router.pathname !== "/" && router.pathname !== "/landing" && (
               <Chatbot />
             )}

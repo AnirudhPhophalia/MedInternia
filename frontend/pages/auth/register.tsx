@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import {
   Typography,
@@ -19,7 +18,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
+  ListItemText,
+  Chip,
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import { medicalColleges } from "../../utils/medicalColleges";
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
@@ -28,6 +31,27 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import AuthLayout, { AuthCard, AuthBackLink } from '../../components/auth/AuthLayout';
 import { useAuth, setGlobalToken } from '../../context/AuthContext';
 
+const MEDICAL_HISTORY_OPTIONS = [
+  'Hypertension',
+  'Diabetes',
+  'Asthma',
+  'Heart Disease',
+  'Thyroid Disorder',
+  'Kidney Disease',
+  'Cancer',
+  'Other',
+];
+
+const ALLERGY_OPTIONS = [
+  'Penicillin',
+  'Latex',
+  'Peanuts',
+  'Shellfish',
+  'Dust',
+  'Pollen',
+  'Animal Dander',
+  'Other',
+];
 
 export default function Register() {
   const { login: authLogin } = useAuth();
@@ -54,8 +78,8 @@ export default function Register() {
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactRelationship: '',
-    medicalHistory: '',
-    allergies: '',
+    medicalHistory: [] as string[],
+    allergies: [] as string[],
   });
   const [error, setError] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -65,6 +89,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   // GSSoC: Loading state for submit button
   const [loading, setLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
@@ -156,31 +181,41 @@ export default function Register() {
         setotherMedicalHistoryValue(value);
         break;
 
-      case 'medicalHistory':
-        if (value === 'Other') {
-          setothermedicalHistory(true);
-        }
-        else {
-          setothermedicalHistory(false);
-          setotherMedicalHistoryValue('');
-        }
-        break;
-
       case 'otherAllergies':
         setotherAllergiesValue(value);
-        break;
-      case 'allergies':
-        if (value === 'Other') {
-          setotherAllergies(true);
-        }
-        else {
-          setotherAllergies(false);
-          setotherAllergiesValue('');
-        }
         break;
 
       default:
         break;
+    }
+  };
+
+  // Handles the multi-select logic for Medical History and Allergies.
+  // "None" is treated as mutually exclusive with every other option.
+  const handleMultiSelectChange = (
+    event: SelectChangeEvent<string[]>,
+    field: 'medicalHistory' | 'allergies'
+  ) => {
+    const { value } = event.target;
+    let selected = typeof value === 'string' ? value.split(',') : value;
+
+    const previous = form[field];
+    const noneJustAdded = selected.includes('None') && !previous.includes('None');
+
+    if (noneJustAdded) {
+      selected = ['None'];
+    } else {
+      selected = selected.filter((v) => v !== 'None');
+    }
+
+    setForm((prev) => ({ ...prev, [field]: selected }));
+
+    if (field === 'medicalHistory') {
+      setothermedicalHistory(selected.includes('Other'));
+      if (!selected.includes('Other')) setotherMedicalHistoryValue('');
+    } else {
+      setotherAllergies(selected.includes('Other'));
+      if (!selected.includes('Other')) setotherAllergiesValue('');
     }
   };
 
@@ -254,7 +289,19 @@ export default function Register() {
     setVerifyingOtp(false);
   };
 
+  function getPasswordRequirements(password: string) {
+  return [
+    { label: 'At least 8 characters', met: password.length >= 8 },
+    { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+    { label: 'One lowercase letter', met: /[a-z]/.test(password) },
+    { label: 'One digit', met: /[0-9]/.test(password) },
+    { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+    ];
+  }
 
+  function isPasswordValid(password: string): boolean {
+    return getPasswordRequirements(password).every(r => r.met);
+  }
   const handleNext = (e: any) => {
     e.preventDefault();
     setError('');
@@ -268,6 +315,11 @@ export default function Register() {
       setError('Please verify your email address to proceed.');
       return;
     }
+    if (!isPasswordValid(form.password)) {
+      setPasswordError('Please meet all password requirements.');
+      return;
+    }
+    setPasswordError('');
     if (confirmPassword !== form.password) {
       setConfirmPasswordError('Passwords do not match');
       return;
@@ -349,15 +401,13 @@ export default function Register() {
       const payload: Record<string, any> = {
         ...form,
         verificationToken,
-        medicalHistory:
-          form.medicalHistory === 'Other'
-            ? otherMedicalHistoryValue
-            : form.medicalHistory,
+        medicalHistory: form.medicalHistory.map((item) =>
+          item === 'Other' ? otherMedicalHistoryValue : item
+        ),
 
-        allergies:
-          form.allergies === 'Other'
-            ? otherAllergiesValue
-            : form.allergies,
+        allergies: form.allergies.map((item) =>
+          item === 'Other' ? otherAllergiesValue : item
+        ),
       };
 
       if (form.userType === 'patient') {
@@ -560,7 +610,26 @@ export default function Register() {
                             </InputAdornment>
                           ),
                         }}
+                        error={Boolean(passwordError)}
                       />
+                      {form.password && (
+                        <Box sx={{ mt: -1, mb: 1, gridColumn: '1 / -1' }}>
+                          {getPasswordRequirements(form.password).map((req) => (
+                            <Box
+                              key={req.label}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                fontSize: '0.75rem',
+                                color: req.met ? 'success.main' : 'text.secondary',
+                              }}
+                            >
+                              {req.met ? '✓' : '○'} {req.label}
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
                       <TextField
                         label="Confirm Password"
                         type={showConfirmPassword ? 'text' : 'password'}
@@ -802,19 +871,35 @@ export default function Register() {
                             fullWidth
                             margin="normal"
                             value={form.medicalHistory}
-                            onChange={handleChange}
+                            onChange={(e) => handleMultiSelectChange(e as unknown as SelectChangeEvent<string[]>, 'medicalHistory')}
                             sx={authFieldSx}
+                            SelectProps={{
+                              multiple: true,
+                              renderValue: (selected: unknown) => {
+                                const values = selected as string[];
+                                if (values.length === 0) {
+                                  return <Typography color="text.secondary">Select medical history</Typography>;
+                                }
+                                return (
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {values.map((value) => (
+                                      <Chip key={value} label={value} size="small" />
+                                    ))}
+                                  </Box>
+                                );
+                              },
+                            }}
                           >
-                            <MenuItem value="">Select medical history</MenuItem>
-                            <MenuItem value="None">None</MenuItem>
-                            <MenuItem value="Hypertension">Hypertension</MenuItem>
-                            <MenuItem value="Diabetes">Diabetes</MenuItem>
-                            <MenuItem value="Asthma">Asthma</MenuItem>
-                            <MenuItem value="Heart Disease">Heart Disease</MenuItem>
-                            <MenuItem value="Thyroid Disorder">Thyroid Disorder</MenuItem>
-                            <MenuItem value="Kidney Disease">Kidney Disease</MenuItem>
-                            <MenuItem value="Cancer">Cancer</MenuItem>
-                            <MenuItem value="Other">Other</MenuItem>
+                            <MenuItem value="None">
+                              <Checkbox checked={form.medicalHistory.includes('None')} />
+                              <ListItemText primary="None" />
+                            </MenuItem>
+                            {MEDICAL_HISTORY_OPTIONS.map((option) => (
+                              <MenuItem key={option} value={option}>
+                                <Checkbox checked={form.medicalHistory.includes(option)} />
+                                <ListItemText primary={option} />
+                              </MenuItem>
+                            ))}
                           </TextField>
                           {othermedicalHistory && (
                             <TextField
@@ -834,19 +919,35 @@ export default function Register() {
                             fullWidth
                             margin="normal"
                             value={form.allergies}
-                            onChange={handleChange}
+                            onChange={(e) => handleMultiSelectChange(e as unknown as SelectChangeEvent<string[]>, 'allergies')}
                             sx={authFieldSx}
+                            SelectProps={{
+                              multiple: true,
+                              renderValue: (selected: unknown) => {
+                                const values = selected as string[];
+                                if (values.length === 0) {
+                                  return <Typography color="text.secondary">Select allergies</Typography>;
+                                }
+                                return (
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {values.map((value) => (
+                                      <Chip key={value} label={value} size="small" />
+                                    ))}
+                                  </Box>
+                                );
+                              },
+                            }}
                           >
-                            <MenuItem value="">Select allergies</MenuItem>
-                            <MenuItem value="None">None</MenuItem>
-                            <MenuItem value="Penicillin">Penicillin</MenuItem>
-                            <MenuItem value="Latex">Latex</MenuItem>
-                            <MenuItem value="Peanuts">Peanuts</MenuItem>
-                            <MenuItem value="Shellfish">Shellfish</MenuItem>
-                            <MenuItem value="Dust">Dust</MenuItem>
-                            <MenuItem value="Pollen">Pollen</MenuItem>
-                            <MenuItem value="Animal Dander">Animal Dander</MenuItem>
-                            <MenuItem value="Other">Other</MenuItem>
+                            <MenuItem value="None">
+                              <Checkbox checked={form.allergies.includes('None')} />
+                              <ListItemText primary="None" />
+                            </MenuItem>
+                            {ALLERGY_OPTIONS.map((option) => (
+                              <MenuItem key={option} value={option}>
+                                <Checkbox checked={form.allergies.includes(option)} />
+                                <ListItemText primary={option} />
+                              </MenuItem>
+                            ))}
                           </TextField>
                           {otherAllergies && (
                             <TextField

@@ -10,16 +10,16 @@ import { getSafeRedirectPath } from '../../utils/authRedirect';
 import AuthLayout, { AuthCard } from '../../components/auth/AuthLayout';
 import { useAuth, setGlobalToken } from '../../context/AuthContext';
 
+/**
+ * SECURITY: Auth session is managed via httpOnly cookies set by the backend.
+ * We DO NOT store tokens in localStorage to prevent XSS-based token theft.
+ * The server sets: token (httpOnly), refresh_token (httpOnly), auth_status (accessible)
+ * All API requests automatically include cookies via axios withCredentials: true
+ */
 const persistAuthSession = (token: string, userId: string, user: any) => {
-  if (typeof window === 'undefined') return;
-
-  localStorage.setItem('token', token);
-  localStorage.setItem('userId', userId);
-  localStorage.setItem('user', JSON.stringify(user));
-
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `token=${encodeURIComponent(token)}; Path=/; SameSite=Lax${secure}`;
-  document.cookie = `auth_status=authenticated; Path=/; SameSite=Lax${secure}`;
+  // Cookies are already set by the backend's Set-Cookie response headers
+  // Frontend only needs to update in-memory auth state for immediate UI updates
+  // No localStorage or document.cookie manipulation needed
 };
 
 export default function Login() {

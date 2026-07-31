@@ -4,6 +4,7 @@ import { Container, Typography, Box, CircularProgress, Alert, Card, CardContent,
 import api from '../../utils/api';
 import { useRecentlyViewedInternships } from '../../hooks/useRecentlyViewedInternships';
 import DeadlineCountdown from '../../components/DeadlineCountdown';
+import { hasAuthToken, redirectToLogin } from '../../utils/authRedirect';
 
 export default function JobDetail() {
   const router = useRouter();
@@ -14,6 +15,11 @@ export default function JobDetail() {
   const { addRecentlyViewed } = useRecentlyViewedInternships();
 
   useEffect(() => {
+    if (!router.isReady) return;
+    if (!hasAuthToken()) {
+      redirectToLogin(router, `/jobs/${id}`);
+      return;
+    }
     if (!id) return;
     api.get(`/jobs/${id}`)
       .then(res => {

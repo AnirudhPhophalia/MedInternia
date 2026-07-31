@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 import {
   createWebinar,
@@ -31,8 +31,8 @@ router.get('/', getWebinars);
 // Get user's webinars
 router.get('/my', authenticate, getUserWebinars);
 
-// Get webinar by ID
-router.get('/:id', getWebinarById);
+// Get webinar by ID (public, but with optional auth for role-based field filtering)
+router.get('/:id', optionalAuthenticate, getWebinarById);
 
 // Register for webinar
 router.post('/:id/register', authenticate, requirePermission('webinar:attend'), registerForWebinar);

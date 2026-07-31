@@ -163,7 +163,7 @@ export default function NotificationsPage() {
                 onClick={async () => {
                   if (n.link) window.location.href = n.link;
                   if (n.unread) {
-                    setNotifications(prev => prev.map(notif => notif.id === n.id ? { ...notif, unread: false } : notif));
+                    setNotifications(prev => prev.map(notif => (notif._id || notif.id) === (n._id || n.id) ? { ...notif, unread: false, isRead: true } : notif));
                     try {
                       await api.patch(`/notifications/${n._id}/read`);
                     } catch {}

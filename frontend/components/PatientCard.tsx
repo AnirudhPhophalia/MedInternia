@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
-import LocalPhoneOutlinedIcon from '@mui/icons-material/LocalPhoneOutlined';
 import Link from 'next/link';
 
 export default function PatientCard({ patient }: { patient: any }) {
@@ -81,12 +80,6 @@ export default function PatientCard({ patient }: { patient: any }) {
             <EmailOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
             <Typography variant="body2" color="text.secondary" noWrap>
               {patient.email || 'Email not provided'}
-            </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1.25} alignItems="center">
-            <LocalPhoneOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {patient.phone || 'Phone not provided'}
             </Typography>
           </Stack>
         </Stack>

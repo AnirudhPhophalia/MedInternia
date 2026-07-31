@@ -22,8 +22,6 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   try {
 
     const authHeader = req.headers.authorization;
-    console.log("Authorization Header:", authHeader);
-    console.log("All Headers:", req.headers);
 
     let token: string | undefined;
 

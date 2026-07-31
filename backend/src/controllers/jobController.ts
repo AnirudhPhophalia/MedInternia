@@ -3,7 +3,12 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import JobOpportunity from '../models/JobOpportunity';
 import User from '../models/User';
-import UserBadge from '../models/UserBadge';
+import { calculateJobEligibility } from '../services/jobEligibilityService';
+
+const isInvalidPastDeadline = (deadline: unknown): boolean => {
+  const parsedDeadline = new Date(deadline as any);
+  return Number.isNaN(parsedDeadline.getTime()) || parsedDeadline <= new Date();
+};
 
 // Create job opportunity (doctors and admins only)
 export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
@@ -28,6 +33,13 @@ export const createJobOpportunity = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({
         success: false,
         message: 'Only doctors or admins can post job opportunities'
+      });
+    }
+
+    if (isInvalidPastDeadline(applicationDeadline)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Application deadline must be a future date'
       });
     }
 
@@ -112,6 +124,8 @@ export const calculateMatchScore = (user: any, job: any): number => {
 export const getJobOpportunities = async (req: Request, res: Response) => {
   try {
     const {
+      search,
+      q,
       type,
       specialization,
       location,
@@ -126,21 +140,41 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
     } = req.query;
 
     const filter: any = {};
+    const filterConditions: any[] = [];
+    const searchQuery = (search || q) as string | undefined;
+
     if (type) filter.type = type;
     if (specialization) {
-      if (Array.isArray(specialization)) {
-        filter.specialization = { $in: specialization };
-      } else {
-        filter.specialization = { $in: [specialization] };
-      }
+      const rawSpecs = Array.isArray(specialization) ? specialization : [specialization];
+      const specs = rawSpecs.map((s: any) => String(s).toLowerCase().replace(/\s+/g, '-'));
+      filter.specialization = { $in: specs };
     }
+
+    if (searchQuery) {
+      const searchRegex = new RegExp(searchQuery, 'i');
+      filterConditions.push({
+        $or: [
+          { title: searchRegex },
+          { description: searchRegex }
+        ]
+      });
+    }
+
     if (location) {
-      filter.$or = [
-        { 'location.city': new RegExp(location as string, 'i') },
-        { 'location.state': new RegExp(location as string, 'i') },
-        { 'location.country': new RegExp(location as string, 'i') }
-      ];
+      const locRegex = new RegExp(location as string, 'i');
+      filterConditions.push({
+        $or: [
+          { 'location.city': locRegex },
+          { 'location.state': locRegex },
+          { 'location.country': locRegex }
+        ]
+      });
     }
+
+    if (filterConditions.length > 0) {
+      filter.$and = filterConditions;
+    }
+
     if (isRemote !== undefined) filter['location.isRemote'] = isRemote === 'true';
     if (isActive !== undefined) filter.isActive = isActive === 'true';
     if (visaSponsorship === 'true') filter.visaSponsorship = true;
@@ -251,6 +285,13 @@ export const updateJobOpportunity = async (req: AuthRequest, res: Response) => {
         message: 'Job opportunity not found or you are not authorized to update it'
       });
     }
+
+    if (req.body.applicationDeadline !== undefined && isInvalidPastDeadline(req.body.applicationDeadline)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Application deadline must be a future date'
+      });
+    }
     
     for (const field of JOB_UPDATABLE_FIELDS) {
       if (req.body[field] !== undefined) {
@@ -331,47 +372,7 @@ export const checkJobEligibility = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const eligibility = {
-      isEligible: true,
-      reasons: [] as string[],
-      pointsRequirement: {
-        required: jobOpportunity.requirements.minimumPoints || 0,
-        current: user.points,
-        meets: user.points >= (jobOpportunity.requirements.minimumPoints || 0)
-      },
-      badgeRequirements: [] as any[]
-    };
-
-    // Check points requirement
-    if (!eligibility.pointsRequirement.meets) {
-      eligibility.isEligible = false;
-      eligibility.reasons.push(`Minimum ${jobOpportunity.requirements.minimumPoints} points required`);
-    }
-
-    // Check badge requirements
-    if (jobOpportunity.requirements.requiredBadges?.length) {
-      const userBadges = await UserBadge.find({ user: userId })
-        .populate('badge')
-        .select('badge');
-
-      const userBadgeIds = userBadges.map(ub => (ub.badge as any)._id.toString());
-
-      for (const requiredBadge of jobOpportunity.requirements.requiredBadges) {
-        const badgeId = (requiredBadge as any)._id.toString();
-        const hasBadge = userBadgeIds.includes(badgeId);
-        
-        eligibility.badgeRequirements.push({
-          badge: requiredBadge,
-          required: true,
-          hasIt: hasBadge
-        });
-
-        if (!hasBadge) {
-          eligibility.isEligible = false;
-          eligibility.reasons.push(`Required badge: ${(requiredBadge as any).name}`);
-        }
-      }
-    }
+    const eligibility = await calculateJobEligibility(jobOpportunity, user);
 
     res.json({
       success: true,
@@ -393,12 +394,27 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
     const userId = (req.user!._id as any).toString();
 
     // 1. Fetch the requested job and validate it exists.
-    const existingJob = await JobOpportunity.findById(id);
+    const existingJob = await JobOpportunity.findById(id)
+      .populate('requirements.requiredBadges');
 
     if (!existingJob) {
       return res.status(404).json({
         success: false,
         message: 'Job opportunity not found'
+      });
+    }
+
+    if (!existingJob.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'This job opportunity is no longer active.'
+      });
+    }
+
+    if (existingJob.applicationDeadline && existingJob.applicationDeadline < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'The application deadline for this job has passed.'
       });
     }
 
@@ -416,13 +432,37 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const eligibility = await calculateJobEligibility(existingJob, user);
+    if (!eligibility.isEligible) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not meet the eligibility requirements for this job.',
+        data: { eligibility }
+      });
+    }
+
     // 3 & 4. Store applicant info and increment the count in a single
     //    atomic operation. The filter re-checks 'applicants.user' is not
     //    already present, so concurrent duplicate requests from the same
     //    user cannot both succeed — only one can match this condition.
+    const updateTime = new Date();
     const jobOpportunity = await JobOpportunity.findOneAndUpdate(
       {
         _id: id,
+        isActive: true,
+        $or: [
+          { applicationDeadline: { $exists: false } },
+          { applicationDeadline: null },
+          { applicationDeadline: { $gte: updateTime } }
+        ],
         'applicants.user': { $ne: userId }
       },
       {
@@ -433,6 +473,26 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
     ).populate('postedBy', 'firstName lastName specialization');
 
     if (!jobOpportunity) {
+      const currentJob = await JobOpportunity.findById(id);
+      if (!currentJob) {
+        return res.status(404).json({
+          success: false,
+          message: 'Job opportunity not found'
+        });
+      }
+      if (!currentJob.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: 'This job opportunity is no longer active.'
+        });
+      }
+      if (currentJob.applicationDeadline && currentJob.applicationDeadline < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'The application deadline for this job has passed.'
+        });
+      }
+
       // Lost the race to a concurrent request from the same user.
       return res.status(409).json({
         success: false,
