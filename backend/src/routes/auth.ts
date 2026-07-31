@@ -44,7 +44,7 @@ router.post('/register', registerLimiter, register);
 router.post('/login', loginLimiter, login);
 
 // Refresh the access token from a valid refresh token (HTTP-only cookie or body)
-router.post('/refresh', refreshToken);
+router.post('/refresh', loginLimiter, refreshToken);
 
 // Protected routes (require authentication)
 router.post('/logout', authenticate, logout);

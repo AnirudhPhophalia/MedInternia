@@ -6,14 +6,15 @@ import {
   resetPassword,
   changePassword,
   forgotPassword,
-  sendOtp
+  sendOtp,
+  refreshToken
 } from "../authController";
 import User from "../../models/User";
 import Otp from "../../models/Otp";
 import bcrypt from "bcryptjs";
 import transporter from "../../utils/mailer";
-import { generateToken, generateRefreshToken } from "../../utils/jwt";
-import { AuthRequest } from "../../middleware/auth";
+import { generateToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt";
+import { AuthRequest, blacklistToken, isTokenBlacklisted } from "../../middleware/auth";
 
 jest.mock("../../utils/asyncHandler", () => ({
   asyncHandler: (fn: any) => fn,
@@ -31,9 +32,11 @@ jest.mock("../../utils/mailer", () => ({
 jest.mock("../../utils/jwt", () => ({
   generateToken: jest.fn().mockReturnValue("mock-token"),
   generateRefreshToken: jest.fn().mockReturnValue("mock-refresh-token"),
+  verifyRefreshToken: jest.fn(),
 }));
 jest.mock("../../middleware/auth", () => ({
   blacklistToken: jest.fn(),
+  isTokenBlacklisted: jest.fn(),
 }));
 
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
@@ -316,6 +319,98 @@ describe("Auth Controller", () => {
       await changePassword(req as any, res as any, next);
       expect(userMock.save).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("refreshToken", () => {
+    it("rejects the request when no refresh token is provided", async () => {
+      const req = mockRequest();
+      const res = mockResponse();
+
+      await expect(refreshToken(req as any, res as any, jest.fn())).rejects.toThrow(
+        "Refresh token is required"
+      );
+      expect(blacklistToken).not.toHaveBeenCalled();
+    });
+
+    it("rejects an invalid or expired refresh token", async () => {
+      (verifyRefreshToken as jest.Mock).mockReturnValue(null);
+
+      const req = mockRequest({ refreshToken: "stale-token" });
+      const res = mockResponse();
+
+      await expect(refreshToken(req as any, res as any, jest.fn())).rejects.toThrow(
+        "Invalid or expired refresh token"
+      );
+      expect(blacklistToken).not.toHaveBeenCalled();
+    });
+
+    it("rejects a refresh token that has already been revoked", async () => {
+      (verifyRefreshToken as jest.Mock).mockReturnValue({
+        userId: "user-1",
+        email: "test@test.com",
+        userType: "patient",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      (isTokenBlacklisted as jest.Mock).mockResolvedValue(true);
+
+      const req = mockRequest({ refreshToken: "stolen-token" });
+      const res = mockResponse();
+
+      await expect(refreshToken(req as any, res as any, jest.fn())).rejects.toThrow(
+        "Refresh token has been revoked"
+      );
+      expect(blacklistToken).not.toHaveBeenCalled();
+    });
+
+    it("rotates the refresh token by blacklisting the consumed token", async () => {
+      (verifyRefreshToken as jest.Mock).mockReturnValue({
+        userId: "user-1",
+        email: "test@test.com",
+        userType: "patient",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      (isTokenBlacklisted as jest.Mock).mockResolvedValue(false);
+
+      const userMock = { _id: "user-1", email: "test@test.com", isActive: true, userType: "patient" };
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(userMock)
+      } as any);
+
+      const req = mockRequest({ refreshToken: "old-refresh-token" });
+      const res = mockResponse();
+
+      await refreshToken(req as any, res as any, jest.fn());
+
+      expect(isTokenBlacklisted).toHaveBeenCalledWith("old-refresh-token");
+      expect(blacklistToken).toHaveBeenCalledWith("old-refresh-token", expect.any(Date));
+      expect(res.cookie).toHaveBeenCalledWith("refresh_token", "mock-refresh-token", expect.any(Object));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("reads the refresh token from the HTTP-only cookie when the body is empty", async () => {
+      (verifyRefreshToken as jest.Mock).mockReturnValue({
+        userId: "user-1",
+        email: "test@test.com",
+        userType: "patient",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      });
+      (isTokenBlacklisted as jest.Mock).mockResolvedValue(false);
+
+      const userMock = { _id: "user-1", email: "test@test.com", isActive: true, userType: "patient" };
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(userMock)
+      } as any);
+
+      const req = {
+        body: {},
+        cookies: { refresh_token: "cookie-refresh-token" },
+      };
+      const res = mockResponse();
+
+      await refreshToken(req as any, res as any, jest.fn());
+
+      expect(blacklistToken).toHaveBeenCalledWith("cookie-refresh-token", expect.any(Date));
     });
   });
 });
