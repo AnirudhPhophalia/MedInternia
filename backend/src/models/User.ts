@@ -131,6 +131,8 @@ const UserSchema = new Schema<IUser>({
     type: String,
     required: [true, 'Email is required'],
     lowercase: true,
+    unique: true,
+    trim: true,
     match: [
       /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
       'Please add a valid email'
@@ -300,6 +302,7 @@ passwordResetExpires: {
     required: function (this: IUser) {
       return this.userType === 'doctor';
     },
+    unique: true, // A license number may only belong to one doctor account
     sparse: true // Allow null values to be non-unique
   },
   experience: {
@@ -411,7 +414,8 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   return await bcrypt.compare(candidatePassword, (this as any).password);
 };
 
-// Index for better performance (email and licenseNumber already indexed via unique: true)
+// Index for better performance. email and licenseNumber have unique indexes
+// declared directly on their fields (email: unique, licenseNumber: sparse+unique).
 UserSchema.index({ userType: 1 });
 
 export default mongoose.model<IUser>('User', UserSchema);

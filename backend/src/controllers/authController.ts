@@ -275,7 +275,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // Create new user — email ownership was already proven via the verified
   // signup token above, so mark the account as verified immediately.
   const user = new User({ ...userData, isVerified: true });
-  await user.save();
+  try {
+    await user.save();
+  } catch (error: any) {
+    // The unique indexes on email/licenseNumber reject duplicates atomically at
+    // the database level, even when concurrent registration requests pass the
+    // findOne checks above before either save() commits.
+    if (error?.code === 11000) {
+      if (error?.keyPattern?.licenseNumber) {
+        throw new AppError("Doctor with this license number already exists", 409);
+      }
+      throw new AppError("User with this email already exists", 400);
+    }
+    throw error;
+  }
 
   // Generate JWT tokens
   const tokenPayload = {
