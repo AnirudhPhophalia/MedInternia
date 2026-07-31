@@ -152,10 +152,22 @@ export const getCommentReviews = async (req: Request, res: Response) => {
 };
 
 // Get peer reviews received by user
-export const getUserReviews = async (req: Request, res: Response) => {
+export const getUserReviews = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
     const { page = 1, limit = 10 } = req.query;
+
+    // Peer review data is sensitive (feeds the rating/reputation system).
+    // Only the reviewee themselves or admins may view received reviews.
+    const requesterId = (req.user!._id as any).toString();
+    const isOwnReviews = requesterId === String(userId);
+    const isAdmin = req.user!.userType === 'admin';
+    if (!isOwnReviews && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -206,10 +218,21 @@ export const getUserReviews = async (req: Request, res: Response) => {
 };
 
 // Get peer reviews given by user
-export const getReviewsByUser = async (req: Request, res: Response) => {
+export const getReviewsByUser = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
     const { page = 1, limit = 10 } = req.query;
+
+    // Only the reviewer themself or admins may view reviews a user has given.
+    const requesterId = (req.user!._id as any).toString();
+    const isOwnReviews = requesterId === String(userId);
+    const isAdmin = req.user!.userType === 'admin';
+    if (!isOwnReviews && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
 
     const skip = (Number(page) - 1) * Number(limit);
 
