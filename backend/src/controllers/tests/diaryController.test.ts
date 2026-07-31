@@ -42,10 +42,18 @@ describe("Diary Controller", () => {
       expect(mockedDiary.find).toHaveBeenCalledWith({ user: "user-1" });
       expect(mockedDiary.countDocuments).toHaveBeenCalledWith({ user: "user-1" });
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        data: [{ _id: "diary-1" }],
-        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 }
-      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: { diaries: [{ _id: "diary-1" }] },
+          meta: expect.objectContaining({
+            page: 1,
+            limit: 10,
+            total: 1,
+            totalPages: 1,
+          }),
+        })
+      );
     });
 
     it("returns 401 if unauthenticated", async () => {

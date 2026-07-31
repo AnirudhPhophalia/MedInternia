@@ -22,12 +22,13 @@ export const getDiaries = async (req: AuthRequest, res: Response) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Diary.countDocuments(filter)
+      Diary.countDocuments(filter),
     ]);
 
     return res.status(200).json({
-      data: diaries,
-      pagination: buildPaginationMeta(page, limit, total)
+      success: true,
+      data: { diaries },
+      meta: buildPaginationMeta(page, limit, total),
     });
   } catch (error) {
     console.error("Error fetching diaries:", error);
@@ -64,7 +65,7 @@ export const createDiary = async (req: AuthRequest, res: Response) => {
       entries: [],
     });
 
-    return res.status(201).json(diary);
+    return res.status(201).json({ success: true, data: { diary } });
   } catch (error) {
     console.error("Error creating diary:", error);
 
@@ -137,7 +138,7 @@ export const addDiaryEntry = async (req: AuthRequest, res: Response) => {
 
     await diary.save();
 
-    return res.status(200).json(diary);
+    return res.status(200).json({ success: true, data: { diary } });
   } catch (error) {
     console.error("Error adding diary entry:", error);
 

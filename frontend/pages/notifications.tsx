@@ -51,7 +51,7 @@ export default function NotificationsPage() {
       .then(res => {
         type NotificationType = keyof typeof notificationIcons;
         const now = new Date();
-        const notifList = res.data.notifications.map((n: { type: NotificationType; [key: string]: any }) => {
+        const notifList = res.data.data.notifications.map((n: { type: NotificationType; [key: string]: any }) => {
           const created = new Date(n.createdAt);
           let group = "Earlier";
           const today = now.toDateString();
