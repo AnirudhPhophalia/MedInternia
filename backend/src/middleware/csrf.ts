@@ -20,9 +20,16 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method)) return next();
 
-  const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
-  if (!cookieToken) return next();
+  const hasSessionCookie = Boolean(req.cookies?.token || req.cookies?.refresh_token);
+  if (!hasSessionCookie) return next();
 
+  const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
+  if (!cookieToken) {
+    return res.status(403).json({
+      success: false,
+      message: 'Missing CSRF token cookie',
+    });
+  }
   const headerToken = req.headers['x-csrf-token'];
 
   if (!headerToken || headerToken !== cookieToken) {
