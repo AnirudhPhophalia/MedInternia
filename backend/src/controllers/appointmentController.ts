@@ -306,6 +306,10 @@ export const completeAppointment = asyncHandler(
       throw new AppError('This appointment is already marked as completed', 400);
     }
 
+    if (appointment.scheduledDate > new Date()) {
+      throw new AppError('Future appointments cannot be completed', 400);
+    }
+
     appointment.status = AppointmentStatus.COMPLETED;
     if (notes) {
       appointment.notes = notes;
