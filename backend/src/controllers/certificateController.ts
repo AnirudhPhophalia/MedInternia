@@ -208,9 +208,6 @@ export const getCertificateById = async (req: AuthRequest, res: Response) => {
       requesterId === doctorId ||
       requester.userType === 'admin';
 
-   // Increment download count atomically so concurrent downloads aren't lost
-  await Certificate.updateOne({ _id: certificate._id }, { $inc: { downloadCount: 1 } });
-
     if (isOwnerOrIssuer) {
       // Full detail view for the intern who owns it, the doctor who issued it, or an admin
       return res.json({
