@@ -57,7 +57,6 @@ passwordResetExpires?: Date;
     url: string;
   }[];
   bio?: string;
-  profilePicture?: string;
   profilePicturePublicId?: string;
   // Doctor specific fields
   specialization?: string;
@@ -279,10 +278,6 @@ passwordResetExpires: {
   bio: {
     type: String,
     maxlength: [500, 'Bio cannot exceed 500 characters']
-  },
-  profilePicture: {
-    type: String,
-    match: [/^https?:\/\/.+/, 'Please provide a valid profile picture URL']
   },
   profilePicturePublicId: {
     type: String,

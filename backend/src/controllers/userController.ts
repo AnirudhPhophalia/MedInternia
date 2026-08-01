@@ -20,6 +20,7 @@ import ResearchPaper from '../models/ResearchPaper';
 import AICasePostSchedule from '../models/AICasePostSchedule';
 import { checkAndAwardAutoBadges } from './badgeController';
 import { extractTextFromBuffer, parseResumeText } from '../services/resumeParserService';
+import { resolveProfilePictureUrl, resolveProfilePictureUrls } from '../utils/signedUrlResolver';
 import jwt from 'jsonwebtoken';
 
 // Define CaseSummary type for recentCases
@@ -184,7 +185,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
       'email',
       'medicalSchool',
       'specialization',
-      'profilePicture',
+      'profilePicturePublicId',
       'bio'
       // Add other fields as needed
     ];
@@ -223,7 +224,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: {
-        user: { ...user.toObject(), profileScore },
+        user: { ...resolveProfilePictureUrl(user), profileScore },
         badges,
         recentCases,
         mentorStats,
@@ -251,7 +252,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
 };
 const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
-  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile',
+  'bio', 'linkedInProfile', 'githubProfile',
   'specialization', 'experience', 'qualifications',
   'medicalSchool', 'yearOfStudy', 'interests', 'skills',
   'academicAchievements', 'careerGoals',
@@ -774,7 +775,7 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
 export const getPublicProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId).select('firstName lastName profilePicture userType specialization');
+    const user = await User.findById(userId).select('firstName lastName profilePicturePublicId userType specialization');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -784,7 +785,7 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: {
-        user
+        user: resolveProfilePictureUrl(user)
       }
     });
   } catch (error) {

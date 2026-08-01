@@ -100,7 +100,6 @@ export const uploadProfilePicture = asyncHandler(
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
       {
-        profilePicture: uploadResult.secure_url,
         profilePicturePublicId: uploadResult.public_id
       },
       { new: true, runValidators: true },
@@ -117,7 +116,10 @@ export const uploadProfilePicture = asyncHandler(
       success: true,
       message: "Profile picture updated successfully",
       data: {
-        user: updatedUser,
+        user: {
+          ...updatedUser.toObject(),
+          profilePicture: signedProfileUrl
+        },
         profilePicture: {
           signedUrl: signedProfileUrl,
           publicId: uploadResult.public_id,
