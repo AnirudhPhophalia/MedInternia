@@ -2,35 +2,64 @@ import { Router } from 'express';
 import { authenticate, authorize, optionalAuthenticate } from '../middleware/auth';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
+import { createSafeRegexFilter } from '../utils/searchUtils';
 
 const router = Router();
+
+// Fields safe to expose publicly on the doctor listing / detail endpoints.
+// Intentionally excludes: phone, address, dateOfBirth, emergencyContact,
+// medicalHistory, allergies, loginAttempts, lockoutUntil, passwordChangedAt,
+// isActive, and any other PII that has no business being public.
+const DOCTOR_PUBLIC_SELECT =
+  'firstName lastName specialization experience qualifications isVerifiedDoctor profilePicture bio createdAt';
 
 // Get all doctors
 router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {
   try {
     const { specialization } = req.query;
-    
+
     const filter: any = { userType: 'doctor', isActive: true };
+
+    // Bug fix: user-supplied specialization is escaped and length-validated
+    // via createSafeRegexFilter to prevent ReDoS attacks. Raw $regex on
+    // unescaped user input allows catastrophically backtracking patterns.
     if (specialization) {
-      filter.specialization = { $regex: specialization, $options: 'i' };
+      const safeFilter = createSafeRegexFilter(specialization, 100);
+      if (safeFilter) {
+        filter.specialization = safeFilter;
+      }
     }
 
-    const doctors = await User.find(filter)
-      .select('-password')
-      .sort({ createdAt: -1 });
+    // Bug fix: paginate results so we never load the entire doctors collection
+    // into memory on a single request.
+    const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
+
+    const [doctors, total] = await Promise.all([
+      User.find(filter)
+        // Bug fix: use an explicit allowlist instead of .select('-password').
+        // The exclusion approach leaves PII fields (phone, address, dateOfBirth,
+        // loginAttempts, lockoutUntil, etc.) visible to unauthenticated callers.
+        .select(DOCTOR_PUBLIC_SELECT)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(filter),
+    ]);
 
     res.json({
       success: true,
       data: {
         doctors,
-        total: doctors.length
-      }
+        total,
+        ...buildPaginationMeta(page, limit, total),
+      },
     });
   } catch (error) {
     console.error('Get doctors error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
     });
   }
 });
@@ -68,7 +97,7 @@ router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res) => {
       _id: id,
       userType: 'doctor',
       isActive: true
-    }).select('-password');
+    }).select(DOCTOR_PUBLIC_SELECT);
 
     if (!doctor) {
       return res.status(404).json({
