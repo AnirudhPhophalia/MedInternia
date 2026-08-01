@@ -18,13 +18,19 @@ export const getResearchPaperById = async (req: Request, res: Response) => {
 
 export const createResearchPaper = async (req: Request, res: Response) => {
   try {
-    const { title, description, field, difficulty, fileUrl } = req.body;
+    const { title, description, field, difficulty } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'A PDF file is required.' });
+    }
+
     const paper = new ResearchPaper({
       title,
       description,
       field,
       difficulty,
-      fileUrl,
+      fileUrl: file.filename,
     });
     await paper.save();
     res.status(201).json({ success: true, data: { paper } });

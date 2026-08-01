@@ -11,11 +11,12 @@ import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 import path from 'path';
 import fs from 'fs';
+import { researchPaperUpload } from '../utils/researchPaperUpload';
 
 const router = express.Router();
 
 
-router.post('/', authenticate, requirePermission('import:run'), createResearchPaper);
+router.post('/', authenticate, requirePermission('import:run'), researchPaperUpload.single('file'), createResearchPaper);
 router.get('/', getAllResearchPapers);
 
 // Place specific routes BEFORE dynamic routes

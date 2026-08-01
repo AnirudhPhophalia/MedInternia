@@ -5,7 +5,7 @@ import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import PushPinIcon from '@mui/icons-material/PushPin';
-import { getAuthToken } from '../utils/api';
+import api from '../utils/api';
 
 export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion }: { paper: any, onReadMore?: () => void, onOpenDiscussion?: (id: string) => void }) {
   const [starred, setStarred] = useState(false);
@@ -218,14 +218,11 @@ export default function ResearchPaperCard({ paper, onReadMore, onOpenDiscussion 
                   window.open(paper.fileUrl, '_blank');
                   return;
                 }
-                // Otherwise, fetch from backend (simulate for now)
                 try {
-                  const token = getAuthToken();
-                  const response = await fetch(`/api/research-papers/download/        ${encodeURIComponent(paper.fileUrl)}`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                 });
-                  if (!response.ok) throw new Error('File not found');
-                  const blob = await response.blob();
+                  const response = await api.get(`/research-papers/download/${encodeURIComponent(paper.fileUrl)}`, {
+                    responseType: 'blob',
+                  });
+                  const blob = response.data;
                   const url = window.URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;

@@ -81,15 +81,17 @@ export default function ResearchPaperUpload() {
     setSuccess('');
     try {
       const token = localStorage.getItem('token');
-      // For now, just simulate file upload by sending file name as fileUrl
-      // In production, you should upload the file and get a URL
-      const payload = {
-        title: form.title,
-        description: form.description,
-        field: form.field,
-        difficulty: form.difficulty,
-        fileUrl: file ? file.name : '',
-      };
+      if (!file) {
+        setError('Please select a PDF before submitting.');
+        return;
+      }
+
+      const payload = new FormData();
+      payload.append('title', form.title);
+      payload.append('description', form.description);
+      payload.append('field', form.field);
+      payload.append('difficulty', form.difficulty);
+      payload.append('file', file);
       await api.post('/research-papers', payload, { headers: { Authorization: `Bearer ${token}` } });
       setSuccess('Research paper uploaded successfully!');
       setForm({ title: '', description: '', field: '', difficulty: 'beginner' });
@@ -97,6 +99,29 @@ export default function ResearchPaperUpload() {
       fetchPapers();
     } catch (err: any) {
       setError('Failed to upload research paper.');
+    }
+  };
+
+  const downloadPaper = async (fileUrl: string) => {
+    try {
+      if (/^https?:\/\//.test(fileUrl)) {
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      const response = await api.get(`/research-papers/download/${encodeURIComponent(fileUrl)}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(response.data);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileUrl;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError('Failed to download research paper.');
     }
   };
 const fields = [
@@ -256,10 +281,7 @@ const filteredPapers = papers.filter((paper) => {
               variant="outlined"
               sx={{ mt: 2, borderRadius: 3, fontWeight: 700, color: '#0072ff', borderColor: '#0072ff', background: '#f8fbff', '&:hover': { background: '#e3f2fd' } }}
               startIcon={<span style={{ display: 'flex', alignItems: 'center' }}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><path fill="#0072ff" d="M12 16.5a1 1 0 0 1-1-1V5a1 1 0 1 1 2 0v10.5a1 1 0 0 1-1 1Z"/><path fill="#0072ff" d="M7.21 13.79a1 1 0 0 1 1.42-1.42l2.29 2.3 2.29-2.3a1 1 0 1 1 1.42 1.42l-3 3a1 1 0 0 1-1.42 0l-3-3Z"/><path fill="#0072ff" d="M5 20a1 1 0 0 1 0-2h14a1 1 0 1 1 0 2H5Z"/></svg></span>}
-              href={openPaper.fileUrl}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => downloadPaper(openPaper.fileUrl)}
             >
               Download PDF
             </Button>
