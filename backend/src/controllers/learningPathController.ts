@@ -40,7 +40,7 @@ export const getLearningPaths = asyncHandler(async (req: AuthRequest, res: Respo
 export const getLearningPathById = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
-  const path = await LearningPath.findById(id)
+  const path = await LearningPath.findOne({ _id: id, isActive: true })
     .populate('badge', 'name icon category color description')
     .populate({
       path: 'steps.caseRef',
@@ -73,7 +73,7 @@ export const enrollInPath = asyncHandler(async (req: AuthRequest, res: Response)
 
   const { id } = req.params;
 
-  const path = await LearningPath.findById(id);
+  const path = await LearningPath.findOne({ _id: id, isActive: true });
   if (!path) {
     throw new AppError('Learning path not found', 404);
   }
