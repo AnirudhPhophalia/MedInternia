@@ -17,6 +17,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
 import { parsePagination, buildPaginationMeta } from "../utils/pagination";
+import { USER_PUBLIC_FIELDS, DOCTOR_FIELDS } from "../utils/userFields";
 
 const getId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
 const canModerateComments = (userType?: string) => ["admin", "doctor", "moderator"].includes(userType ?? "");
@@ -65,7 +66,7 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
 
   const [cases, total] = await Promise.all([
     Case.find(filter)
-      .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
+      .populate("doctor", DOCTOR_FIELDS)
       .skip(skip)
       .limit(limit),
     Case.countDocuments(filter),
@@ -100,7 +101,7 @@ export const getCaseById = asyncHandler(async (req: AuthRequest, res: Response) 
     ...baseFilter,
   })
     .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
-    .populate("comments.author", "firstName lastName userType avatar medicalLicenseVerified")
+    .populate("comments.author", USER_PUBLIC_FIELDS)
     .populate("followUps.author", "firstName lastName userType avatar");
 
   if (!caseDoc) {
