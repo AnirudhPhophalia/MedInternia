@@ -83,4 +83,19 @@ const AppointmentSchema = new Schema<IAppointment>(
 AppointmentSchema.index({ patientId: 1, scheduledDate: 1 });
 AppointmentSchema.index({ doctorId: 1, scheduledDate: 1 });
 
+// Unique compound index to prevent double-booking (Issue #999)
+// Prevents the same doctor from having multiple appointments at the same time slot
+// Only applies to scheduled appointments (cancelled appointments don't block slots)
+AppointmentSchema.index(
+  { doctorId: 1, scheduledDate: 1, scheduledTime: 1, status: 1 },
+  {
+    unique: true,
+    sparse: true,
+    // Partial index: only enforce uniqueness for scheduled appointments
+    partialFilterExpression: {
+      status: { $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.RESCHEDULED] }
+    }
+  }
+);
+
 export default mongoose.model<IAppointment>('Appointment', AppointmentSchema);
