@@ -10,6 +10,7 @@ import { AuthRequest, blacklistToken } from '../middleware/auth';
 import { uploadProfileImage, generateSignedUrl } from '../utils/cloudinary';
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
+import { setCsrfCookie } from "../utils/csrf";
 
 // --- OTP configuration -----------------------------------------------------
 const OTP_TTL_MS = 10 * 60 * 1000; // OTP valid for 10 minutes
@@ -300,14 +301,17 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   res.cookie('token', token, cookieOptions);
   res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
   res.cookie('refresh_token', refreshToken, cookieOptions);
+  setCsrfCookie(res);
 
+  // SECURITY: token/refreshToken are intentionally NOT included in the
+  // response body. They're already set as httpOnly cookies above — echoing
+  // them here would let any XSS-injected script read them straight off the
+  // fetch/XHR response, defeating the entire point of httpOnly.
   res.status(201).json({
     success: true,
     message: "User registered successfully",
     data: {
       user: userResponse,
-      token,
-      refreshToken,
     },
   });
 });
@@ -441,14 +445,15 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   res.cookie('token', token, cookieOptions);
   res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
   res.cookie('refresh_token', refreshToken, cookieOptions);
+  setCsrfCookie(res);
 
+  // SECURITY: token/refreshToken are intentionally NOT included in the
+  // response body — see the identical note in register() above.
   res.json({
     success: true,
     message: "Login successful",
     data: {
       user: userResponse,
-      token,
-      refreshToken,
     },
   });
 });
@@ -749,20 +754,23 @@ export const refreshToken = asyncHandler(
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      // SECURITY: must match the 'strict' used at login/register — these
+      // calls overwrite the same cookie names, so setting 'lax' here was
+      // silently downgrading SameSite protection on every session after
+      // its first token refresh.
+      sameSite: 'strict' as const,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
     res.cookie('token', newAccessToken, cookieOptions);
     res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
     res.cookie('refresh_token', newRefreshToken, cookieOptions);
+    setCsrfCookie(res);
 
+    // SECURITY: token/refreshToken are intentionally NOT included in the
+    // response body — see the identical note in register()/login() above.
     res.json({
       success: true,
       message: 'Token refreshed successfully',
-      data: {
-        token: newAccessToken,
-        refreshToken: newRefreshToken,
-      },
     });
   },
 );

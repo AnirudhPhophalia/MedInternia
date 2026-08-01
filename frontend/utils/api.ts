@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
+import { getCsrfToken } from './csrf';
 
 /**
  * @deprecated Token is now in httpOnly cookie, not in memory or localStorage.
@@ -35,12 +36,25 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// SECURITY: Token is now in httpOnly cookie (not Authorization header or localStorage)
-// Axios automatically includes cookies via withCredentials: true
-// No need to manually add Authorization header
+// SECURITY: Session auth is handled via httpOnly cookies (not Authorization
+// header or localStorage). Axios automatically includes cookies via
+// withCredentials: true — no need to manually add an Authorization header.
+//
+// The CSRF token below is a *separate*, readable cookie (see utils/csrf.ts)
+// echoed back as a header on state-changing requests, per the double-submit
+// pattern the backend's csrfProtection middleware expects.
+const SAFE_METHODS = new Set(['get', 'head', 'options']);
+
 api.interceptors.request.use(
   (config) => {
-    // All auth is handled via httpOnly cookies set by backend
+    const method = (config.method || 'get').toLowerCase();
+    if (!SAFE_METHODS.has(method)) {
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        config.headers = config.headers || {};
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
     return config;
   },
   (error) => Promise.reject(error)

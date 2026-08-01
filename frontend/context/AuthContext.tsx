@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const login = useCallback(
-    (newToken: string, newUserId: string, newUser: any) => {
+    (newUserId: string, newUser: any) => {
       // SECURITY: Tokens are stored in httpOnly cookies by the backend
       // Frontend only maintains in-memory state for UI purposes
       setToken("authenticated"); // Marker that session exists

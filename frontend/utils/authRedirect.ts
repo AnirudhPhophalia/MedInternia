@@ -15,14 +15,16 @@ export const protectedLandingPaths = [
 ];
 
 export const hasAuthToken = () => {
-<<<<<<< HEAD
+  // In-memory marker set once AuthContext validates the httpOnly session cookie.
   if (getGlobalToken()) return true;
-  if (typeof window !== 'undefined' && localStorage.getItem('token')) return true;
+
+  // SECURITY: No localStorage fallback — the auth token itself is only ever
+  // in an httpOnly cookie, unreadable from JS. `auth_status` is a separate,
+  // non-sensitive, non-httpOnly cookie the backend sets purely as a readable
+  // marker so this check can work before AuthContext's async validation
+  // call resolves (e.g. on first paint after a hard refresh).
   if (typeof document === 'undefined') return false;
   return document.cookie.split('; ').some(row => row.startsWith('auth_status='));
-=======
-  return !!getGlobalToken();
->>>>>>> 4c0b4e7 (fix(auth): remove sensitive auth data from localStorage)
 };
 
 export const getLoginHref = (redirectPath: string) =>
