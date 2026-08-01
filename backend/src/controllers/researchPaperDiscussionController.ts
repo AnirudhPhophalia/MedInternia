@@ -77,39 +77,58 @@ export const likeComment = asyncHandler(async (req: AuthRequest, res: Response) 
   const user = req.user as { _id: string } | undefined;
   if (!user) throw new AppError('User not authenticated', 401);
 
-  const { paperId, commentId } = req.params;
+  const paperId = String(req.params.paperId);
+  const commentId = String(req.params.commentId);
   const userIdObj = new mongoose.Types.ObjectId(user._id);
 
-  let liked = false;
-  const pullResult = await ResearchPaper.updateOne(
+  const updated = await ResearchPaper.findOneAndUpdate(
     { _id: paperId, 'comments._id': commentId },
-    { $pull: { 'comments.$.likes': userIdObj } },
+    [{
+      $set: {
+        comments: {
+          $map: {
+            input: '$comments',
+            as: 'comment',
+            in: {
+              $cond: [
+                { $eq: ['$$comment._id', new mongoose.Types.ObjectId(commentId)] },
+                {
+                  $mergeObjects: [
+                    '$$comment',
+                    {
+                      likes: {
+                        $let: {
+                          vars: { likes: { $ifNull: ['$$comment.likes', []] } },
+                          in: {
+                            $cond: [
+                              { $in: [userIdObj, '$$likes'] },
+                              { $filter: { input: '$$likes', as: 'like', cond: { $ne: ['$$like', userIdObj] } } },
+                              { $concatArrays: ['$$likes', [userIdObj]] },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+                '$$comment',
+              ],
+            },
+          },
+        },
+      },
+    }],
+    { new: true },
   );
 
-  if (pullResult.matchedCount === 0) {
+  if (!updated) {
     const paperExists = await ResearchPaper.exists({ _id: paperId });
     throw new AppError(paperExists ? 'Comment not found' : 'Research paper not found', 404);
   }
 
-  if (pullResult.modifiedCount === 0) {
-    const addResult = await ResearchPaper.updateOne(
-      { _id: paperId, 'comments._id': commentId },
-      { $addToSet: { 'comments.$.likes': userIdObj } },
-    );
-    if (addResult.matchedCount === 0) {
-      throw new AppError('Comment not found', 404);
-    }
-    liked = true;
-  }
-
-  const updated = await ResearchPaper.findById(paperId, {
-    comments: { $elemMatch: { _id: commentId } },
-  });
-  if (!updated || !updated.comments.length) {
-    throw new AppError('Comment not found', 404);
-  }
-
-  const likes = ((updated?.comments as any)?.[0]?.likes as any[])?.length ?? 0;
+  const comment = (updated.comments as any[]).find((item) => item._id.toString() === commentId);
+  const likes = comment?.likes?.length ?? 0;
+  const liked = comment?.likes?.some((like: any) => like.toString() === userIdObj.toString()) ?? false;
 
   res.json({ success: true, message: liked ? 'Comment liked' : 'Comment unliked', data: { likes, liked } });
 });
