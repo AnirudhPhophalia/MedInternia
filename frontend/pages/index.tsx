@@ -510,11 +510,12 @@ export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [waitlistEmail, setWaitlistEmail] = React.useState('');
   const [waitlistSubmitted, setWaitlistSubmitted] = React.useState(false);
+  const [waitlistLoading, setWaitlistLoading] = React.useState(false);
+  const [waitlistError, setWaitlistError] = React.useState('');
   const [contributors, setContributors] = React.useState<TopContributor[]>([]);
   const [contributorsLoading, setContributorsLoading] = React.useState(true);
   const [contributorsError, setContributorsError] = React.useState(false);
-  const [waitlistLoading, setWaitlistLoading] = React.useState(false);
-  const [waitlistError, setWaitlistError] = React.useState('');
+  // Needed by the feature cards below, and also by the hero mouse-parallax setup.
 
   // Needed by the feature cards below, and also by the hero mouse-parallax setup.
   const shouldReduceMotion = useReducedMotion();
