@@ -155,14 +155,14 @@ export default function TermsPage() {
                   <Typography
                     variant="h5"
                     fontWeight={800}
-                    color="text.primary"
+                    color="#1a202c"
                   >
                     {section.title}
                   </Typography>
                 </Stack>
 
                 <Typography
-                  color="text.secondary"
+                  color="#334155"
                   sx={{
                     lineHeight: 1.9,
                     fontSize: "1rem",
