@@ -50,7 +50,7 @@ export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExp
     if (starring) return;
     setStarring(true);
     try {
-      const res = await api.post(`/cases/${caseData._id}/star`);
+      const res = await api.post(`/cases/${caseData._id}/star`, {});
       setStarred(res.data.data.isStarred);
     } catch (err) {
       console.error('Failed to star case', err);

@@ -65,7 +65,7 @@ export default function UpdateProfile() {
     try {
       // Save profile first so backend has latest ORCID
       await api.put('/auth/profile', form);
-      await api.post('/auth/profile/orcid/sync');
+      await api.post('/auth/profile/orcid/sync', {});
       setSuccess('ORCID publications synced successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to sync ORCID publications');

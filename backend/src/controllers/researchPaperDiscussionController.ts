@@ -133,7 +133,29 @@ export const deleteComment = asyncHandler(async (req: AuthRequest, res: Response
     throw new AppError('You can only delete your own comments', 403);
   }
 
-  paper.comments.splice(commentIndex, 1);
+  const commentIdsToDelete = new Set([comment._id.toString()]);
+  let foundDescendant = true;
+
+  while (foundDescendant) {
+    foundDescendant = false;
+    for (const candidate of paper.comments as any[]) {
+      const parentId = candidate.replyTo?.toString();
+      const candidateId = candidate._id?.toString();
+      if (parentId && candidateId && commentIdsToDelete.has(parentId) && !commentIdsToDelete.has(candidateId)) {
+        commentIdsToDelete.add(candidateId);
+        foundDescendant = true;
+      }
+    }
+  }
+
+  paper.comments = (paper.comments as any[])
+    .filter((candidate) => !commentIdsToDelete.has(candidate._id.toString()))
+    .map((candidate) => {
+      candidate.replies = (candidate.replies || []).filter(
+        (replyId: any) => !commentIdsToDelete.has(replyId.toString())
+      );
+      return candidate;
+    }) as any;
   await paper.save();
 
   res.json({ success: true, message: 'Comment deleted successfully' });

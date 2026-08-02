@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getGlobalToken, setGlobalToken } from '../context/AuthContext';
 import { getCsrfToken } from './csrf';
 
 /**
@@ -8,7 +7,11 @@ import { getCsrfToken } from './csrf';
  * for Authorization headers (cookies handle that automatically).
  */
 export const getAuthToken = (): string | null => {
-  return getGlobalToken();
+  if (typeof document === 'undefined') return null;
+  const hasSession = document.cookie
+    .split('; ')
+    .some((row) => row.startsWith('auth_status='));
+  return hasSession ? 'authenticated' : null;
 };
 
 export const getSocketUrl = (): string => {
@@ -75,7 +78,6 @@ api.interceptors.response.use(
       !isSessionBootstrapCheck &&
       typeof window !== 'undefined'
     ) {
-      setGlobalToken(null);
 
       const alreadyOnLoginPage = window.location.pathname.startsWith('/auth/login');
       if (!isRedirectingToLogin && !alreadyOnLoginPage) {
@@ -110,13 +112,13 @@ export const getDiaries = async () => {
 // Create a new diary
 export const createDiary = async (title: string) => {
   const res = await api.post('/diaries', { title });
-  return res.data;
+  return res.data.data.diary;
 };
 
 // Add a new entry to a diary
 export const addDiaryEntry = async (diaryId: string, entry: Record<string, any>) => {
   const res = await api.post(`/diaries/${diaryId}/entries`, entry);
-  return res.data;
+  return res.data.data.diary;
 };
 
 export default api;

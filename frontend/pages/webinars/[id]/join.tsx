@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Container, Typography, Box, CircularProgress, Alert, Grid, Card, CardContent, Button, TextField, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel, IconButton, Divider, Chip } from '@mui/material';
-import api, { getAuthToken } from '../../../utils/api';
+import api, { getSocketUrl } from '../../../utils/api';
 import { io, Socket } from 'socket.io-client';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
 
 export default function JoinWebinar() {
   const router = useRouter();
@@ -47,12 +45,10 @@ export default function JoinWebinar() {
     fetchData();
 
     // Socket Connection
-    const token = getAuthToken();
-    if (token) {
-      const newSocket = io(BACKEND_URL, {
-        auth: { token },
-        transports: ['websocket', 'polling'],
-      });
+    const newSocket = io(getSocketUrl(), {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+    });
 
       newSocket.on('connect', () => {
         newSocket.emit('join_webinar', id);
@@ -68,7 +64,6 @@ export default function JoinWebinar() {
         newSocket.emit('leave_webinar', id);
         newSocket.disconnect();
       };
-    }
   }, [id]);
 
   const isHost = webinar?.host?._id === currentUserId || webinar?.host === currentUserId;

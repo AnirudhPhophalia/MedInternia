@@ -1,5 +1,4 @@
 import type { NextRouter } from "next/router";
-import { getGlobalToken } from "../context/AuthContext";
 
 export const protectedLandingPaths = [
   "/cases",
@@ -15,16 +14,13 @@ export const protectedLandingPaths = [
 ];
 
 export const hasAuthToken = () => {
-  // In-memory marker set once AuthContext validates the httpOnly session cookie.
-  if (getGlobalToken()) return true;
-
   // SECURITY: No localStorage fallback — the auth token itself is only ever
   // in an httpOnly cookie, unreadable from JS. `auth_status` is a separate,
   // non-sensitive, non-httpOnly cookie the backend sets purely as a readable
   // marker so this check can work before AuthContext's async validation
   // call resolves (e.g. on first paint after a hard refresh).
   if (typeof document === 'undefined') return false;
-  return document.cookie.split('; ').some(row => row.startsWith('auth_status='));
+  return document.cookie.split('; ').some((row) => row.startsWith('auth_status='));
 };
 
 export const getLoginHref = (redirectPath: string) =>

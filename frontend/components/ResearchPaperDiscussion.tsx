@@ -32,34 +32,32 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
     setOpenReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
   }
 
-  function handleAddComment() {
-    if (!comment.trim()) return;
-    api.post(`/research-papers/${id}/comments`, { content: comment })
-      .then(res => {
-        setDiscussions(res.data.comments || []);
-        setComment('');
-      })
-      .catch(() => setError('Failed to add comment'));
-  }
+  const handleLike = async (commentId: string) => {
+    try {
+      await api.post(`/research-papers/${id}/comments/${commentId}/like`, {});
+      const res = await api.get(`/research-papers/${id}`);
+      setDiscussions(res.data.data.paper.comments || []);
+    } catch {
+      setError('Failed to like discussion');
+    }
+  };
 
-  function handleAddReply(commentId: string) {
-    if (!replyContent.trim()) return;
-    api.post(`/research-papers/${id}/comments/${commentId}/replies`, { content: replyContent })
-      .then(res => {
-        setDiscussions(res.data.comments || []);
-        setReplyContent('');
-        setReplyTo(null);
-      })
-      .catch(() => setError('Failed to add reply'));
-  }
-
-  function handleUpvote(commentId: string) {
-    api.post(`/research-papers/${id}/comments/${commentId}/upvote`)
-      .then(res => {
-        setDiscussions(res.data.comments || []);
-      })
-      .catch(() => setError('Failed to upvote comment'));
-  }
+  const handleDiscussion = async () => {
+    try {
+      if (replyTo) {
+        await api.post(`/research-papers/${id}/comments/${replyTo._id}/reply`, { content: replyContent });
+      } else {
+        await api.post(`/research-papers/${id}/comments`, { content: comment });
+      }
+      setComment('');
+      setReplyTo(null);
+      setReplyContent('');
+      const res = await api.get(`/research-papers/${id}`);
+      setDiscussions(res.data.data.paper.comments || []);
+    } catch {
+      setError('Failed to add discussion');
+    }
+  };
 
   function handleReply(comment: any) {
     setReplyTo(comment);
@@ -98,8 +96,8 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Like">
-                    <IconButton size="small" sx={{ ml: 1, p: 0.5 }} onClick={() => handleUpvote(c._id)}>
-                      <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likedBy?.includes(userId) ? '#1976d2' : '#0072ff' }} />
+                    <IconButton size="small" sx={{ ml: 1, p: 0.5 }} onClick={() => handleLike(c._id)}>
+                      <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likes?.includes(userId) ? '#1976d2' : '#0072ff' }} />
                     </IconButton>
                   </Tooltip>
                   {c.replies && c.replies.length > 0 && (
@@ -147,7 +145,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
               fullWidth
               sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
-            <Button variant="contained" onClick={() => handleAddReply(replyTo._id)} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
+            <Button variant="contained" onClick={() => handleDiscussion()} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
             <Button variant="text" onClick={() => setReplyTo(null)} sx={{ color: '#888' }}>Cancel</Button>
           </Stack>
         ) : (
@@ -160,7 +158,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
               fullWidth
               sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
-            <Button variant="contained" onClick={handleAddComment} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
+            <Button variant="contained" onClick={handleDiscussion} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
           </Stack>
         )}
       </Box>

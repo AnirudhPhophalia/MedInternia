@@ -12,11 +12,13 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
-import { ingestCase, suggestCases } from "../services/ragService";
+import { suggestCases } from "../services/ragService";
+import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
 import { parsePagination, buildPaginationMeta } from "../utils/pagination";
+import { USER_PUBLIC_FIELDS, DOCTOR_FIELDS } from "../utils/userFields";
 
 const getId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
 const canModerateComments = (userType?: string) => ["admin", "doctor", "moderator"].includes(userType ?? "");
@@ -65,7 +67,7 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
 
   const [cases, total] = await Promise.all([
     Case.find(filter)
-      .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
+      .populate("doctor", DOCTOR_FIELDS)
       .skip(skip)
       .limit(limit),
     Case.countDocuments(filter),
@@ -100,7 +102,7 @@ export const getCaseById = asyncHandler(async (req: AuthRequest, res: Response) 
     ...baseFilter,
   })
     .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
-    .populate("comments.author", "firstName lastName userType avatar medicalLicenseVerified")
+    .populate("comments.author", USER_PUBLIC_FIELDS)
     .populate("followUps.author", "firstName lastName userType avatar");
 
   if (!caseDoc) {
@@ -880,15 +882,13 @@ export const createCase = asyncHandler(
         treatment: aiAnalysis.treatment,
         doctor: user._id,
         isPatientCase: true,
+        specialization: spec,
         moderationStatus: "pending",
         pointsAwarded: 5,
       });
       await newCase.save();
+      await enqueueCaseModeration(String(newCase._id));
       await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
-
-      if (newCase._id) {
-        ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: true }).catch(console.error);
-      }
 
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
@@ -903,16 +903,13 @@ export const createCase = asyncHandler(
       doctor: user._id,
       isPatientCase: false,
       specialization: spec,
-      moderationStatus: "approved",
+      moderationStatus: "pending",
       pointsAwarded: 10,
     });
 
     await newCase.save();
+    await enqueueCaseModeration(String(newCase._id));
     await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
-
-    if (newCase._id) {
-      ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: false }).catch(console.error);
-    }
 
     res.status(201).json({ success: true, data: { case: newCase } });
   }

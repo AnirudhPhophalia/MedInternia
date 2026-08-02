@@ -39,7 +39,18 @@ export default function SavedItemsPage() {
 
     const fetchSavedItems = async () => {
       try {
+<<<<<<< HEAD
         const res = await api.get(`/users/${userId || 'me'}/saved`);
+=======
+        const userId = localStorage.getItem('userId');
+
+        if (!userId) {
+          router.replace('/auth/login');
+          return;
+        }
+
+        const res = await api.get(`/users/${userId}/saved`);
+>>>>>>> upstream/main
         
         if (res.data?.success) {
           setSavedData(res.data.data);

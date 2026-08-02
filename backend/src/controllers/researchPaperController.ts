@@ -8,10 +8,10 @@ export const getResearchPaperById = async (req: Request, res: Response) => {
   try {
     const paper = await ResearchPaper.findById(req.params.id)
       .populate('comments.author', 'firstName lastName profilePicture userType');
-    if (!paper) return res.status(404).json({ error: 'Research paper not found.' });
-    res.json({ data: { paper } });
+    if (!paper) return res.status(404).json({ success: false, message: 'Research paper not found.' });
+    res.json({ success: true, data: { paper } });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch research paper.' });
+    res.status(500).json({ success: false, message: 'Failed to fetch research paper.' });
   }
 };
  
@@ -27,30 +27,35 @@ export const createResearchPaper = async (req: Request, res: Response) => {
       fileUrl,
     });
     await paper.save();
-    res.status(201).json(paper);
+    res.status(201).json({ success: true, data: { paper } });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create research paper.' });
+    res.status(500).json({ success: false, message: 'Failed to create research paper.' });
   }
 };
 
 export const getAllResearchPapers = async (req: Request, res: Response) => {
   try {
-    const { page, limit, skip } = parsePagination(req.query);
+    const page = Math.max(1, Number.parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit ?? '20'), 10) || 20));
+    const skip = (page - 1) * limit;
 
     const [papers, total] = await Promise.all([
-      ResearchPaper.find()
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      ResearchPaper.countDocuments()
+      ResearchPaper.find({}, { comments: 0 }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      ResearchPaper.countDocuments(),
     ]);
 
     res.json({
+      success: true,
       data: papers,
-      pagination: buildPaginationMeta(page, limit, total)
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch research papers.' });
+    res.status(500).json({ success: false, message: 'Failed to fetch research papers.' });
   }
 };
 // ✅ NEW FUNCTION - Adding this for PDF downloads
@@ -63,14 +68,14 @@ export const downloadResearchPaper = async (req: Request, res: Response) => {
     
     if (!paper) {
       return res.status(404).json({ 
-        error: 'Research paper not found.' 
+        success: false, message: 'Research paper not found.' 
       });
     }
  
     // 2. Check if fileUrl exists
     if (!paper.fileUrl) {
       return res.status(404).json({ 
-        error: 'PDF file is not available for this paper.' 
+        success: false, message: 'PDF file is not available for this paper.' 
       });
     }
  
@@ -93,14 +98,14 @@ export const downloadResearchPaper = async (req: Request, res: Response) => {
     
     if (!resolvedPath.startsWith(uploadsDir)) {
       return res.status(403).json({ 
-        error: 'Access denied.' 
+        success: false, message: 'Access denied.' 
       });
     }
  
     // 5. Check if file exists
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ 
-        error: 'PDF file not found on server. Please contact support.' 
+        success: false, message: 'PDF file not found on server. Please contact support.' 
       });
     }
  
@@ -112,7 +117,7 @@ export const downloadResearchPaper = async (req: Request, res: Response) => {
         // Only send response if not already sent
         if (!res.headersSent) {
           res.status(500).json({ 
-            error: 'Failed to download PDF. Please try again.' 
+            success: false, message: 'Failed to download PDF. Please try again.' 
           });
         }
       }
@@ -121,7 +126,7 @@ export const downloadResearchPaper = async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Download error:', err);
     res.status(500).json({ 
-      error: 'Failed to download PDF. Please try again.' 
+      success: false, message: 'Failed to download PDF. Please try again.' 
     });
   }
 };

@@ -20,7 +20,11 @@ export default function MentorshipDashboard() {
     const init = async () => {
       try {
         const [profileRes, mentorshipsRes] = await Promise.all([
+<<<<<<< HEAD
           api.get('/auth/profile'),
+=======
+          api.get('/users/profile'),
+>>>>>>> upstream/main
           api.get('/mentorship/me')
         ]);
 

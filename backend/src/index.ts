@@ -3,6 +3,7 @@ dotenv.config();
 
 import express, { Application, Request, Response, NextFunction } from 'express';
 import http from 'http';
+import mongoose from 'mongoose';
 import { Server as SocketIOServer } from 'socket.io';
 import { setSocketIO } from './utils/socket';
 import { verifyToken } from './utils/jwt';
@@ -16,6 +17,7 @@ import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
 import { csrfProtection } from './middleware/csrf';
 import { corsOptions, isAllowedOrigin } from './config/cors';
+import { startBackgroundJobs, stopBackgroundJobs } from './jobs/caseModerationJob';
 
 function sanitizeObject(obj: any, path = ''): void {
   if (!obj || typeof obj !== 'object') return;
@@ -56,6 +58,9 @@ const initializeApp = async () => {
   // Connect to database
   await connectDB();
 
+  // Start durable background processing after MongoDB is ready.
+  await startBackgroundJobs();
+
   // Create default badges if they don't exist
   await createDefaultBadges();
 
@@ -72,11 +77,7 @@ app.use(morgan('combined'));
 
 // Serve uploads folder for profile images
 import path from 'path';
-// Serve uploads with CORS headers
-app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+app.use('/uploads', cors(corsOptions), (_req, res, next) => {
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(path.join(__dirname, '../uploads')));
@@ -207,6 +208,33 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+let isShuttingDown = false;
+
+const shutdown = async (signal: string) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`${signal} received, shutting down gracefully`);
+
+  try {
+    await stopBackgroundJobs();
+    await new Promise<void>((resolve, reject) => {
+      if (!httpServer.listening) {
+        resolve();
+        return;
+      }
+      httpServer.close((error) => (error ? reject(error) : resolve()));
+    });
+    await mongoose.disconnect();
+    process.exit(0);
+  } catch (error) {
+    console.error('Graceful shutdown failed:', error);
+    process.exit(1);
+  }
+};
+
+process.once('SIGINT', () => void shutdown('SIGINT'));
+process.once('SIGTERM', () => void shutdown('SIGTERM'));
 
 void startServer();
 

@@ -44,7 +44,11 @@ export const getLearningPathById = asyncHandler(async (req: AuthRequest, res: Re
     .populate('badge', 'name icon category color description')
     .populate({
       path: 'steps.caseRef',
-      select: 'title description difficulty specialization tags images'
+      select: 'title description difficulty specialization tags images',
+      match: {
+        isActive: { $ne: false },
+        $or: [{ moderationStatus: 'approved' }, { moderationStatus: { $exists: false } }],
+      },
     });
 
   if (!path) {

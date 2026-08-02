@@ -36,7 +36,12 @@ describe("Notification Controller", () => {
       await getNotifications(req as any, res as any);
 
       expect(mockedNotification.find).toHaveBeenCalledWith({ recipient: "user-1" });
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, notifications: expect.any(Array) }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: { notifications: expect.any(Array) },
+        })
+      );
     });
     
     it("returns 401 if user is not authenticated", async () => {

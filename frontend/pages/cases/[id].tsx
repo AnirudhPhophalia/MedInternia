@@ -113,7 +113,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
     if (liking) return;
     setLiking(true);
     try {
-      const res = await api.post(`/cases/${id}/like`);
+      const res = await api.post(`/cases/${id}/like`, {});
       setIsLiked(res.data.data.isLiked);
       setTotalLikes(res.data.data.totalLikes);
     } catch {
@@ -125,7 +125,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleLike = async (commentId: string) => {
     try {
-      await api.post(`/cases/${id}/comments/${commentId}/like`);
+      await api.post(`/cases/${id}/comments/${commentId}/like`, {});
       
       const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
@@ -181,7 +181,11 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handlePin = async (commentId: string) => {
     try {
+<<<<<<< HEAD
       await api.post(`/cases/${id}/comments/${commentId}/pin`);
+=======
+      await api.post(`/cases/${id}/comments/${commentId}/pin`, {});
+>>>>>>> upstream/main
       
       const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
@@ -194,7 +198,11 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleUnpin = async (commentId: string) => {
     try {
+<<<<<<< HEAD
       await api.post(`/cases/${id}/comments/${commentId}/unpin`);
+=======
+      await api.post(`/cases/${id}/comments/${commentId}/unpin`, {});
+>>>>>>> upstream/main
       
       const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
@@ -208,7 +216,11 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const handleSolveCase = async () => {
     setSolving(true);
     try {
+<<<<<<< HEAD
       await api.post(`/cases/${id}/solve`);
+=======
+      await api.post(`/cases/${id}/solve`, {});
+>>>>>>> upstream/main
       setIsSolved(true);
       setSolving(false);
       setSuccess('Case marked as solved successfully! You earned +5 points.');

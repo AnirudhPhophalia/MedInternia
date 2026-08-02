@@ -199,7 +199,13 @@ function Doctors() {
 
   const fetchInitData = async () => {
     try {
+<<<<<<< HEAD
       if (!isAuthenticated) {
+=======
+      const storedUserId = localStorage.getItem('userId');
+
+      if (!storedUserId) {
+>>>>>>> upstream/main
         router.replace('/auth/login');
         return;
       }

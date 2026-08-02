@@ -11,6 +11,11 @@ const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) =>
   return new Date(new Date(webinar.scheduledAt).getTime() + durationInMinutes * 60 * 1000);
 };
 
+const generateJitsiMeetingLink = (webinarId?: unknown): string => {
+  const suffix = webinarId ? String(webinarId) : `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  return `https://meet.jit.si/webinar-${suffix}`;
+};
+
 const isWebinarExpired = (webinar: { scheduledAt: Date; duration?: number; status: string }) => {
   const now = new Date();
 
@@ -23,6 +28,39 @@ const isWebinarExpired = (webinar: { scheduledAt: Date; duration?: number; statu
   }
 
   return new Date(webinar.scheduledAt) <= now;
+};
+
+const parseDateInput = (value: unknown): Date | null => {
+  if (value === undefined || value === null || value === '') return null;
+
+  const parsed = new Date(value as any);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const validateWebinarSchedule = (
+  scheduledAt: unknown,
+  registrationDeadline?: unknown
+): string | null => {
+  const startDate = parseDateInput(scheduledAt);
+
+  if (!startDate) {
+    return 'Scheduled date must be a valid date';
+  }
+
+  if (startDate <= new Date()) {
+    return 'Scheduled date must be in the future';
+  }
+
+  const deadlineDate = parseDateInput(registrationDeadline);
+  if (registrationDeadline !== undefined && registrationDeadline !== null && registrationDeadline !== '' && !deadlineDate) {
+    return 'Registration deadline must be a valid date';
+  }
+
+  if (deadlineDate && deadlineDate > startDate) {
+    return 'Registration deadline cannot be after the webinar start time';
+  }
+
+  return null;
 };
 
 const canInteractWithWebinar = (
@@ -39,6 +77,20 @@ const canInteractWithWebinar = (
     webinar.host.toString() === userId ||
     webinar.participants.some(participant => participant.user.toString() === userId)
   );
+};
+
+const ensureWebinarAcceptsLiveInteraction = (
+  webinar: { scheduledAt: Date; duration?: number; status: string },
+  res: Response
+) => {
+  if (isWebinarExpired(webinar) || webinar.status === 'completed' || webinar.status === 'cancelled') {
+    return res.status(400).json({
+      success: false,
+      message: 'This webinar no longer accepts live interactions'
+    });
+  }
+
+  return null;
 };
 
 const syncExpiredWebinars = async () => {
@@ -102,6 +154,14 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const scheduleError = validateWebinarSchedule(scheduledAt, registrationDeadline);
+    if (scheduleError) {
+      return res.status(400).json({
+        success: false,
+        message: scheduleError
+      });
+    }
+
     const webinar = new Webinar({
       title,
       description,
@@ -114,7 +174,7 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       registrationDeadline,
       materials,
       tags,
-      meetingLink: `https://meet.jit.si/webinar-${new Date().getTime()}-${Math.floor(Math.random()*10000)}`
+      meetingLink: generateJitsiMeetingLink()
     });
 
     await webinar.save();
@@ -490,6 +550,20 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (req.body.scheduledAt !== undefined || req.body.registrationDeadline !== undefined) {
+      const scheduleError = validateWebinarSchedule(
+        req.body.scheduledAt ?? webinar.scheduledAt,
+        req.body.registrationDeadline ?? webinar.registrationDeadline
+      );
+
+      if (scheduleError) {
+        return res.status(400).json({
+          success: false,
+          message: scheduleError
+        });
+      }
+    }
+
     for (const field of WEBINAR_UPDATABLE_FIELDS) {
       if (req.body[field] !== undefined) {
         (webinar as any)[field] = req.body[field];
@@ -685,8 +759,7 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Generate a simple meeting link (in production, integrate with Zoom, Google Meet, etc.)
-    const meetingLink = `https://meet.example.com/webinar-${webinar._id}`;
+    const meetingLink = generateJitsiMeetingLink(webinar._id);
     
     webinar.meetingLink = meetingLink;
     webinar.status = 'live';
@@ -736,6 +809,9 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
 
     const webinar = await Webinar.findById(id);
     if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    const lifecycleResponse = ensureWebinarAcceptsLiveInteraction(webinar, res);
+    if (lifecycleResponse) return lifecycleResponse;
+
     if (webinar.host.toString() !== String(req.user!._id) && req.user!.userType !== 'admin') {
       return res.status(403).json({ success: false, message: 'Only the host can create polls' });
     }
@@ -767,6 +843,9 @@ export const votePoll = async (req: AuthRequest, res: Response) => {
 
     const webinar = await Webinar.findById(id);
     if (!webinar) return res.status(404).json({ success: false, message: 'Webinar not found' });
+    const lifecycleResponse = ensureWebinarAcceptsLiveInteraction(webinar, res);
+    if (lifecycleResponse) return lifecycleResponse;
+
     if (!canInteractWithWebinar(webinar, req)) {
       return res.status(403).json({
         success: false,

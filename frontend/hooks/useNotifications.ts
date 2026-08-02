@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { getAuthToken } from '../utils/api';
+import api, { getSocketUrl } from '../utils/api';
 
 export interface Notification {
   _id: string;
@@ -11,9 +11,6 @@ export interface Notification {
   isRead: boolean;
   createdAt: string;
 }
-
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -30,22 +27,16 @@ export function useNotifications() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const token = getAuthToken();
-    if (!token) return; // Not logged in — do nothing
-
-    // 1. Fetch existing notifications from REST API
-    fetch(`${BACKEND_URL}/api/notifications`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setNotifications(data.notifications);
+    // 1. Fetch existing notifications from REST API using api helper
+    api.get('/notifications')
+      .then((res) => {
+        if (res.data?.success) setNotifications(res.data.notifications);
       })
       .catch(() => {}); // Silently fail — non-critical
 
-    // 2. Connect Socket.io with JWT auth
-    const socket = io(BACKEND_URL, {
-      auth: { token },
+    // 2. Connect Socket.io with credentials (cookies)
+    const socket = io(getSocketUrl(), {
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
     });
@@ -78,30 +69,18 @@ export function useNotifications() {
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
-    const token = getAuthToken();
-    if (!token) return;
-
     setNotifications((prev) =>
       prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
     );
 
-    await fetch(`${BACKEND_URL}/api/notifications/${id}/read`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {});
+    await api.patch(`/notifications/${id}/read`).catch(() => {});
   }, []);
 
   // ── Mark all notifications as read ──────────────────────────
   const markAllAsRead = useCallback(async () => {
-    const token = getAuthToken();
-    if (!token) return;
-
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
 
-    await fetch(`${BACKEND_URL}/api/notifications/read-all`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {});
+    await api.patch('/notifications/read-all').catch(() => {});
   }, []);
 
   // ── Clear toast after it's been shown ───────────────────────

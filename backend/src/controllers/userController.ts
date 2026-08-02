@@ -20,6 +20,7 @@ import ResearchPaper from '../models/ResearchPaper';
 import AICasePostSchedule from '../models/AICasePostSchedule';
 import { checkAndAwardAutoBadges } from './badgeController';
 import { extractTextFromBuffer, parseResumeText } from '../services/resumeParserService';
+import { resolveProfilePictureUrl, resolveProfilePictureUrls } from '../utils/signedUrlResolver';
 import jwt from 'jsonwebtoken';
 
 // Define CaseSummary type for recentCases
@@ -184,7 +185,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
       'email',
       'medicalSchool',
       'specialization',
-      'profilePicture',
+      'profilePicturePublicId',
       'bio'
       // Add other fields as needed
     ];
@@ -223,7 +224,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: {
-        user: { ...user.toObject(), profileScore },
+        user: { ...resolveProfilePictureUrl(user), profileScore },
         badges,
         recentCases,
         mentorStats,
@@ -251,7 +252,7 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
 };
 const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
-  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile',
+  'bio', 'linkedInProfile', 'githubProfile',
   'specialization', 'experience', 'qualifications',
   'medicalSchool', 'yearOfStudy', 'interests', 'skills',
   'academicAchievements', 'careerGoals',
@@ -557,11 +558,11 @@ export const verifyDoctor = async (req: AuthRequest, res: Response) => {
     const { userId } = req.params;
     const { isVerified, verificationDocuments } = req.body;
 
-    // Only admins or verified doctors can verify other doctors
-    if (req.user!.userType !== 'admin' && (req.user!.userType !== 'doctor' || !req.user!.isVerifiedDoctor)) {
+    // Only admins can verify doctors (KYC requires documented administrative approval).
+    if (req.user!.userType !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Only admins or verified doctors can verify other doctors'
+        message: 'Only admins can verify doctors'
       });
     }
 
@@ -759,7 +760,19 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized: user not found in request" });
     }
-    const targetUserId = req.params.userId || req.user._id;
+    const requesterId = (req.user._id as any).toString();
+    const targetUserId = req.params.userId ? String(req.params.userId) : requesterId;
+
+    // Privacy: users may only view their own social connections. Admins may
+    // view any user's connections for administrative purposes. This prevents
+    // scraping the platform's social graph (e.g. mapping which patients follow
+    // which doctors).
+    const isOwnConnections = targetUserId === requesterId;
+    const isAdmin = req.user.userType === 'admin';
+    if (!isOwnConnections && !isAdmin) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
     const me = await User.findById(targetUserId)
       .populate('following', 'firstName lastName profilePicture specialization userType')
       .populate('followers', 'firstName lastName profilePicture specialization userType');
@@ -774,7 +787,7 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
 export const getPublicProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId).select('firstName lastName profilePicture userType specialization');
+    const user = await User.findById(userId).select('firstName lastName profilePicturePublicId userType specialization');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -784,7 +797,7 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
     res.json({
       success: true,
       data: {
-        user
+        user: resolveProfilePictureUrl(user)
       }
     });
   } catch (error) {

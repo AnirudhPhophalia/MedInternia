@@ -61,7 +61,7 @@ export const getNotifications = async (
       .sort({ createdAt: -1 })
       .limit(30);
 
-    res.json({ success: true, notifications });
+    res.json({ success: true, data: { notifications } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching notifications' });
   }

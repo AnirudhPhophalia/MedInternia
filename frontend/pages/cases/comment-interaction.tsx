@@ -38,7 +38,11 @@ export default function CommentInteraction() {
     setError('');
     setSuccess('');
     try {
+<<<<<<< HEAD
       await api.post(`/cases/${caseId}/comments/${commentId}/like`);
+=======
+      await api.post(`/cases/${caseId}/comments/${commentId}/like`, {});
+>>>>>>> upstream/main
       setSuccess('Comment liked successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to like comment');

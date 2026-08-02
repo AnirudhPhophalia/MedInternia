@@ -44,10 +44,24 @@ export default function MeProfilePage() {
 
     const fetchProfile = async () => {
       try {
+<<<<<<< HEAD
         const res = await api.get('/auth/me');
         const profileData = res.data?.user || res.data?.data?.user || res.data;
         setUser(profileData);
         if (res.data?.badges) setBadges(res.data.badges);
+=======
+        const userId = localStorage.getItem('userId');
+
+        if (!userId) {
+          router.replace('/auth/login');
+          return;
+        }
+
+        const res = await api.get(`/users/${userId}/profile`);
+        const profileData = res.data?.data || res.data;
+        setUser(profileData?.user || profileData);
+        setBadges(profileData?.badges || []);
+>>>>>>> upstream/main
       } catch (err: any) {
         console.error('Profile fetch error:', err);
         setError('Failed to load profile.');

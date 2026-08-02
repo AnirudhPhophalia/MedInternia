@@ -48,7 +48,11 @@ export default function JobDetail() {
 
   const handleApply = async () => {
     try {
+<<<<<<< HEAD
       await api.post(`/jobs/${id}/apply`);
+=======
+      await api.post(`/jobs/${id}/apply`, {});
+>>>>>>> upstream/main
       alert('Applied successfully!');
     } catch {
       setError('Failed to apply');

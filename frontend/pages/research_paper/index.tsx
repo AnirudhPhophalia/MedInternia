@@ -52,7 +52,7 @@ export default function ResearchPaperUpload() {
     setLoading(true);
     try {
       const res = await api.get('/research-papers');
-      const fetchedPapers = Array.isArray(res.data?.data) ? res.data.data : [];
+      const fetchedPapers = res.data?.data || [];
       setPapers(fetchedPapers);
     } catch (err) {
       setPapers([]);
@@ -76,7 +76,10 @@ export default function ResearchPaperUpload() {
     setError('');
     setSuccess('');
     try {
+<<<<<<< HEAD
       // For now, just simulate file upload by sending file name as fileUrl
+=======
+>>>>>>> upstream/main
       // For now, just simulate file upload by sending file name as fileUrl
       // In production, you should upload the file and get a URL
       const payload = {

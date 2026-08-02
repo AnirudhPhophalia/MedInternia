@@ -384,6 +384,11 @@ export default function EditProfilePage() {
 
     setLoading(true);
     try {
+<<<<<<< HEAD
+=======
+      const userId = localStorage.getItem('userId');
+      if (!userId) throw new Error('Missing auth');
+>>>>>>> upstream/main
       let profilePictureUrl = (typeof form.image === 'string' && /^https?:\/\//.test(form.image)) ? form.image : '';
       // If a new image file is selected, upload it first
       if (selectedImageFile) {

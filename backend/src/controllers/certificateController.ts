@@ -208,9 +208,6 @@ export const getCertificateById = async (req: AuthRequest, res: Response) => {
       requesterId === doctorId ||
       requester.userType === 'admin';
 
-   // Increment download count atomically so concurrent downloads aren't lost
-  await Certificate.updateOne({ _id: certificate._id }, { $inc: { downloadCount: 1 } });
-
     if (isOwnerOrIssuer) {
       // Full detail view for the intern who owns it, the doctor who issued it, or an admin
       return res.json({
@@ -408,7 +405,7 @@ export const revokeCertificate = async (req: AuthRequest, res: Response) => {
 };
 
 // Export certificate data for LinkedIn/GitHub
-export const exportCertificateData = async (req: Request, res: Response) => {
+export const exportCertificateData = async (req: AuthRequest, res: Response) => {
   try {
     const { certificateId } = req.params;
 
@@ -420,6 +417,21 @@ export const exportCertificateData = async (req: Request, res: Response) => {
       return res.status(404).json({
         success: false,
         message: 'Certificate not found or not verified'
+      });
+    }
+
+    const requesterId = req.user!._id.toString();
+    const internId = (certificate.intern as any)._id.toString();
+    const doctorId = (certificate.doctor as any)._id.toString();
+    const isAuthorized =
+      requesterId === internId ||
+      requesterId === doctorId ||
+      req.user!.userType === 'admin';
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to export this certificate'
       });
     }
 
