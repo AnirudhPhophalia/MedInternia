@@ -181,11 +181,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handlePin = async (commentId: string) => {
     try {
-<<<<<<< HEAD
-      await api.post(`/cases/${id}/comments/${commentId}/pin`);
-=======
       await api.post(`/cases/${id}/comments/${commentId}/pin`, {});
->>>>>>> upstream/main
       
       const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
@@ -198,11 +194,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
 
   const handleUnpin = async (commentId: string) => {
     try {
-<<<<<<< HEAD
-      await api.post(`/cases/${id}/comments/${commentId}/unpin`);
-=======
       await api.post(`/cases/${id}/comments/${commentId}/unpin`, {});
->>>>>>> upstream/main
       
       const res = await api.get(`/cases/${id}`);
       const all = res.data.data.case.comments || [];
