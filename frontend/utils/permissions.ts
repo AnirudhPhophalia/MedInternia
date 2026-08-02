@@ -55,7 +55,6 @@ export const rolePermissions: Record<AppRole, AppPermission[]> = {
     'comment:create',
     'comment:moderate',
     'job:manage',
-    'profile:verify',
     'rating:create',
     'user:award_points',
     'webinar:attend',
