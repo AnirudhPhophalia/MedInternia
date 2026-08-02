@@ -6,7 +6,7 @@ import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
 import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
-import { AuthRequest, blacklistToken } from '../middleware/auth';
+import { AuthRequest, blacklistToken, isTokenBlacklisted } from '../middleware/auth';
 import { uploadProfileImage, generateSignedUrl } from '../utils/cloudinary';
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
@@ -724,6 +724,10 @@ export const refreshToken = asyncHandler(
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
+    if (await isTokenBlacklisted(incomingRefreshToken)) {
+      throw new AppError('Refresh token has been revoked', 401);
+    }
+
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) {
       throw new AppError('User not found', 401);
@@ -739,6 +743,15 @@ export const refreshToken = asyncHandler(
     };
     const newAccessToken = generateToken(tokenPayload);
     const newRefreshToken = generateRefreshToken(tokenPayload);
+
+    // Rotate the refresh token: consume the incoming token so a stolen copy
+    // can never be replayed after the legitimate user refreshes their session.
+    const remainingMs = decoded.exp
+      ? decoded.exp * 1000 - Date.now()
+      : 7 * 24 * 60 * 60 * 1000;
+    if (remainingMs > 0) {
+      await blacklistToken(incomingRefreshToken, new Date(Date.now() + remainingMs));
+    }
 
     const cookieOptions = {
       httpOnly: true,
