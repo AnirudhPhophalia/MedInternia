@@ -49,6 +49,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ onNavigate, profileIm
     await authLogout();
     handleClose();
     onNavigate("/");
+  };
 
   return (
     <>
