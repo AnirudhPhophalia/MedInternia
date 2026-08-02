@@ -12,7 +12,8 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
-import { ingestCase, suggestCases } from "../services/ragService";
+import { suggestCases } from "../services/ragService";
+import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
@@ -881,15 +882,13 @@ export const createCase = asyncHandler(
         treatment: aiAnalysis.treatment,
         doctor: user._id,
         isPatientCase: true,
+        specialization: spec,
         moderationStatus: "pending",
         pointsAwarded: 5,
       });
       await newCase.save();
+      await enqueueCaseModeration(String(newCase._id));
       await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
-
-      if (newCase._id) {
-        ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: true }).catch(console.error);
-      }
 
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
@@ -904,16 +903,13 @@ export const createCase = asyncHandler(
       doctor: user._id,
       isPatientCase: false,
       specialization: spec,
-      moderationStatus: "approved",
+      moderationStatus: "pending",
       pointsAwarded: 10,
     });
 
     await newCase.save();
+    await enqueueCaseModeration(String(newCase._id));
     await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
-
-    if (newCase._id) {
-      ingestCase(newCase._id.toString(), `${title}\n${description}`, { specialization: spec, isPatientCase: false }).catch(console.error);
-    }
 
     res.status(201).json({ success: true, data: { case: newCase } });
   }
