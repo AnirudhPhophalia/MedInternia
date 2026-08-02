@@ -37,13 +37,10 @@ export default function MentorshipRequestModal({ open, onClose, doctorId, doctor
     setError('');
     
     try {
-      const token = localStorage.getItem('token');
       await api.post('/mentorship', {
         mentorId: doctorId,
         specialtyRequested,
         initialMessage
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess(true);
       setTimeout(() => {

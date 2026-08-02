@@ -4,6 +4,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.1.1",
     "@mui/material": "^9.2.0",
+    "jose": "^6.2.6",
     "react-router-dom": "^7.18.1"
   }
 }

@@ -9,25 +9,16 @@ import React, {
 import api from "../utils/api";
 
 interface AuthContextType {
-  token: string | null;
   userId: string | null;
   user: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, userId: string, user: any) => void;
+  login: (userId: string, user: any) => void;
   logout: () => void;
   refreshUser: () => void;
 }
 
-let _globalToken: string | null = null;
-
-export const setGlobalToken = (t: string | null) => {
-  _globalToken = t;
-};
-export const getGlobalToken = () => _globalToken;
-
 const AuthContext = createContext<AuthContextType>({
-  token: null,
   userId: null,
   user: null,
   isAuthenticated: false,
@@ -42,7 +33,6 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [token, setToken] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,47 +44,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
 
     // SECURITY: Tokens are now managed via httpOnly cookies (not localStorage)
-    // Validate token with backend using cookies automatically sent via withCredentials
+    // Validate session with backend using cookies automatically sent via withCredentials
     api
-      .get("/auth/validate-token")
+      .get("/auth/validate-token", {
+        withCredentials: true,
+      })
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
+
         if (userData) {
           const id = String(userData._id || userData.id);
-          // Set in-memory state for UI, but don't persist to localStorage
           setUserId(id);
           setUser(userData);
-          setToken("authenticated"); // Marker that session exists via cookie
-          setGlobalToken("authenticated");
         } else {
-          setToken(null);
-          setGlobalToken(null);
           setUserId(null);
           setUser(null);
         }
       })
       .catch(() => {
-        // Token was invalid/expired (or missing) — clear in-memory state
-        setToken(null);
-        setGlobalToken(null);
+        // Session was invalid/expired (or missing) — clear in-memory state
         setUserId(null);
         setUser(null);
       })
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(
-    (newToken: string, newUserId: string, newUser: any) => {
-      // SECURITY: Tokens are stored in httpOnly cookies by the backend
-      // Frontend only maintains in-memory state for UI purposes
-      setToken("authenticated"); // Marker that session exists
-      setGlobalToken("authenticated");
-      setUserId(newUserId);
-      setUser(newUser);
-      // Note: No localStorage usage to prevent XSS token theft
-    },
-    [],
-  );
+  const login = useCallback((newUserId: string, newUser: any) => {
+    // SECURITY: The httpOnly cookie is set by the backend on the login response.
+    // Frontend only maintains in-memory state for UI purposes — no token handling here.
+    setUserId(newUserId);
+    setUser(newUser);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -103,8 +83,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       console.error("Failed to invalidate server session during logout:", error);
     }
 
-    setToken(null);
-    setGlobalToken(null);
     setUserId(null);
     setUser(null);
 
@@ -121,28 +99,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const refreshUser = useCallback(() => {
     if (typeof window === "undefined") return;
 
-    // SECURITY: Token is now in httpOnly cookie, not localStorage
-    // Validate token with backend using cookies automatically sent via withCredentials
     api
-      .get("/auth/validate-token")
+      .get("/auth/validate-token", {
+        withCredentials: true,
+      })
       .then((res) => {
         const userData = res.data?.user || res.data?.data?.user;
+
         if (userData) {
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
-          setToken("authenticated");
-          setGlobalToken("authenticated");
         } else {
-          setToken(null);
-          setGlobalToken(null);
           setUserId(null);
           setUser(null);
         }
       })
       .catch(() => {
-        setToken(null);
-        setGlobalToken(null);
         setUserId(null);
         setUser(null);
       });
@@ -151,10 +124,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   return (
     <AuthContext.Provider
       value={{
-        token,
         userId,
         user,
-        isAuthenticated: !!token || !!userId,
+        isAuthenticated: !!userId,
         isLoading,
         login,
         logout,

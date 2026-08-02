@@ -26,15 +26,8 @@ export default function CollectionsDashboard() {
   useEffect(() => {
     const fetchCollections = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
-        const res = await api.get('/collections/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/collections/me');
+        setCollections(res.data.data);
         setCollections(res.data.data);
       } catch (err: any) {
         console.error(err);

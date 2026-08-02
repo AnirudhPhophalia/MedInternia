@@ -1,6 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { submitPeerReview } from "../peerReviewController";
+import { submitPeerReview, getUserReviews, getReviewsByUser } from "../peerReviewController";
 import PeerReview from "../../models/PeerReview";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -141,6 +141,143 @@ describe("Peer Review Controller", () => {
       }));
 
       expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("getUserReviews", () => {
+    const targetUserId = "507f1f77bcf86cd799439011";
+
+    const mockReviewsQuery = (reviews: any[]) => ({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue(reviews),
+    }) as any;
+
+    it("rejects viewing another user's received reviews", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        query: {},
+        user: { _id: "507f1f77bcf86cd799439012", userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      await getUserReviews(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Access denied" })
+      );
+      expect(mockedPeerReview.find).not.toHaveBeenCalled();
+    });
+
+    it("allows a user to view their own received reviews", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        query: { page: "1", limit: "10" },
+        user: { _id: targetUserId, userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      const reviews = [{ _id: "r1", rating: 4 }];
+      mockedPeerReview.find.mockReturnValue(mockReviewsQuery(reviews));
+      mockedPeerReview.countDocuments.mockResolvedValue(1);
+
+      await getUserReviews(req as any, res as any);
+
+      expect(mockedPeerReview.find).toHaveBeenCalledWith({ reviewee: targetUserId });
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: expect.objectContaining({ total: 1 }) })
+      );
+    });
+
+    it("allows an admin to view any user's received reviews", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        query: {},
+        user: { _id: "507f1f77bcf86cd799439013", userType: "admin" },
+      } as any;
+      const res = mockResponse();
+
+      mockedPeerReview.find.mockReturnValue(mockReviewsQuery([]));
+      mockedPeerReview.countDocuments.mockResolvedValue(0);
+
+      await getUserReviews(req as any, res as any);
+
+      expect(mockedPeerReview.find).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("getReviewsByUser", () => {
+    const targetUserId = "507f1f77bcf86cd799439011";
+
+    it("rejects viewing another user's given reviews", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        query: {},
+        user: { _id: "507f1f77bcf86cd799439012", userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      await getReviewsByUser(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Access denied" })
+      );
+      expect(mockedPeerReview.find).not.toHaveBeenCalled();
+    });
+
+    it("allows a user to view their own given reviews", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        query: { page: "1", limit: "10" },
+        user: { _id: targetUserId, userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      const reviews = [{ _id: "r1", rating: 5 }];
+      mockedPeerReview.find.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(reviews),
+      } as any);
+      mockedPeerReview.countDocuments.mockResolvedValue(1);
+
+      await getReviewsByUser(req as any, res as any);
+
+      expect(mockedPeerReview.find).toHaveBeenCalledWith({ reviewer: targetUserId });
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: expect.objectContaining({ total: 1 }) })
+      );
+    });
+
+    it("allows an admin to view any user's given reviews", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        query: {},
+        user: { _id: "507f1f77bcf86cd799439013", userType: "admin" },
+      } as any;
+      const res = mockResponse();
+
+      mockedPeerReview.find.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([]),
+      } as any);
+      mockedPeerReview.countDocuments.mockResolvedValue(0);
+
+      await getReviewsByUser(req as any, res as any);
+
+      expect(mockedPeerReview.find).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
   });

@@ -32,6 +32,7 @@ export interface JwtPayload {
   email: string;
   userType: AppRole;
   iat?: number;
+  exp?: number;
 }
 
 export const generateToken = (payload: JwtPayload, rememberMe: boolean = false): string => {

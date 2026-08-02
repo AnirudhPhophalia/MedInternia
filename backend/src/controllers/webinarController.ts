@@ -25,6 +25,39 @@ const isWebinarExpired = (webinar: { scheduledAt: Date; duration?: number; statu
   return new Date(webinar.scheduledAt) <= now;
 };
 
+const parseDateInput = (value: unknown): Date | null => {
+  if (value === undefined || value === null || value === '') return null;
+
+  const parsed = new Date(value as any);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const validateWebinarSchedule = (
+  scheduledAt: unknown,
+  registrationDeadline?: unknown
+): string | null => {
+  const startDate = parseDateInput(scheduledAt);
+
+  if (!startDate) {
+    return 'Scheduled date must be a valid date';
+  }
+
+  if (startDate <= new Date()) {
+    return 'Scheduled date must be in the future';
+  }
+
+  const deadlineDate = parseDateInput(registrationDeadline);
+  if (registrationDeadline !== undefined && registrationDeadline !== null && registrationDeadline !== '' && !deadlineDate) {
+    return 'Registration deadline must be a valid date';
+  }
+
+  if (deadlineDate && deadlineDate > startDate) {
+    return 'Registration deadline cannot be after the webinar start time';
+  }
+
+  return null;
+};
+
 const canInteractWithWebinar = (
   webinar: {
     host: { toString: () => string };
@@ -99,6 +132,14 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({
         success: false,
         message: 'Only doctors or admins can create webinars'
+      });
+    }
+
+    const scheduleError = validateWebinarSchedule(scheduledAt, registrationDeadline);
+    if (scheduleError) {
+      return res.status(400).json({
+        success: false,
+        message: scheduleError
       });
     }
 
@@ -488,6 +529,20 @@ export const updateWebinar = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'Webinar not found or you are not authorized to update it'
       });
+    }
+
+    if (req.body.scheduledAt !== undefined || req.body.registrationDeadline !== undefined) {
+      const scheduleError = validateWebinarSchedule(
+        req.body.scheduledAt ?? webinar.scheduledAt,
+        req.body.registrationDeadline ?? webinar.registrationDeadline
+      );
+
+      if (scheduleError) {
+        return res.status(400).json({
+          success: false,
+          message: scheduleError
+        });
+      }
     }
 
     for (const field of WEBINAR_UPDATABLE_FIELDS) {

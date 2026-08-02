@@ -114,14 +114,7 @@ export default function CreateCase() {
           const file = new File([blob], "annotated_image.png", { type: "image/png" });
           const formData = new FormData();
           formData.append("attachment", file);
-          const token = localStorage.getItem("token");
-          
-          const res = await api.post("/cases/attachments", formData, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          });
+          const res = await api.post("/cases/attachments", formData);
           
           const newAttachment = res.data.data;
           setAttachments((prev) => {
@@ -168,8 +161,6 @@ export default function CreateCase() {
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const token = localStorage.getItem("token");
-      
       setLoading(true);
       setError("");
 
@@ -179,12 +170,7 @@ export default function CreateCase() {
             const formData = new FormData();
             formData.append("attachment", file);
             
-            const res = await api.post("/cases/attachments", formData, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "multipart/form-data",
-              },
-            });
+            const res = await api.post("/cases/attachments", formData);
             return res.data.data;
           })
         );
@@ -230,20 +216,13 @@ export default function CreateCase() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-
       const payload = {
         ...form,
         images,
         attachments,
       };
 
-      const res = await api.post("/cases", payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const res = await api.post("/cases", payload);
 
       setSuccess("Case analyzed and created successfully!");
       
