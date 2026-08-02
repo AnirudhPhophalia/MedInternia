@@ -759,7 +759,19 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized: user not found in request" });
     }
-    const targetUserId = req.params.userId || req.user._id;
+    const requesterId = (req.user._id as any).toString();
+    const targetUserId = req.params.userId ? String(req.params.userId) : requesterId;
+
+    // Privacy: users may only view their own social connections. Admins may
+    // view any user's connections for administrative purposes. This prevents
+    // scraping the platform's social graph (e.g. mapping which patients follow
+    // which doctors).
+    const isOwnConnections = targetUserId === requesterId;
+    const isAdmin = req.user.userType === 'admin';
+    if (!isOwnConnections && !isAdmin) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
     const me = await User.findById(targetUserId)
       .populate('following', 'firstName lastName profilePicture specialization userType')
       .populate('followers', 'firstName lastName profilePicture specialization userType');

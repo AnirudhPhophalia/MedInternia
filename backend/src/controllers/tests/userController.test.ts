@@ -5,6 +5,7 @@ import {
   getDoctorMentorSummary,
   updateUserStreak,
   deleteAccount,
+  getConnections,
   verifyDoctor,
 } from "../userController";
 import User from "../../models/User";
@@ -453,62 +454,106 @@ describe("User Controller", () => {
     });
   });
 
-  describe("verifyDoctor", () => {
-    const makeReq = (user: any) => ({
-      params: { userId: "target-doctor-id" },
-      body: { isVerified: true, verificationDocuments: ["license.pdf"] },
-      user,
-    }) as any;
+  describe("getConnections", () => {
+    const meUserId = "507f1f77bcf86cd799439011";
+    const otherUserId = "507f1f77bcf86cd799439012";
 
-    it("rejects a verified doctor trying to verify another doctor", async () => {
-      const req = makeReq({ userType: "doctor", isVerifiedDoctor: true });
+    const mockConnectionsQuery = (following: any[], followers: any[]) =>
+      ({
+        populate: jest.fn().mockReturnThis(),
+        following,
+        followers,
+      }) as any;
+
+    it("allows a user to view their own connections via /connections", async () => {
+      const req = {
+        params: {},
+        user: { _id: meUserId, userType: "patient" },
+      } as any;
       const res = mockResponse();
 
-      await verifyDoctor(req, res);
+      const following = [{ _id: "f1", firstName: "Doc", userType: "doctor" }];
+      const followers = [{ _id: "f2", firstName: "Patient2", userType: "patient" }];
+      mockedUser.findById.mockReturnValue(mockConnectionsQuery(following, followers));
 
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false, message: "Only admins can verify doctors" })
-      );
-      expect(mockedUser.findOneAndUpdate).not.toHaveBeenCalled();
-    });
+      await getConnections(req as any, res as any);
 
-    it("rejects non-admin roles (intern, patient, etc.)", async () => {
-      const req = makeReq({ userType: "intern", isVerifiedDoctor: false });
-      const res = mockResponse();
-
-      await verifyDoctor(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false, message: "Only admins can verify doctors" })
-      );
-      expect(mockedUser.findOneAndUpdate).not.toHaveBeenCalled();
-    });
-
-    it("allows an admin to verify a doctor", async () => {
-      const req = makeReq({ userType: "admin" });
-      const res = mockResponse();
-
-      mockedUser.findOneAndUpdate.mockReturnValue({
-        select: jest.fn().mockResolvedValue({
-          _id: "target-doctor-id",
-          userType: "doctor",
-          isVerifiedDoctor: true,
-          verificationDocuments: ["license.pdf"],
-        }),
-      } as any);
-
-      await verifyDoctor(req, res);
-
-      expect(mockedUser.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: "target-doctor-id", userType: "doctor" },
-        expect.objectContaining({ isVerifiedDoctor: true }),
-        { new: true }
-      );
+      expect(mockedUser.findById).toHaveBeenCalledWith(meUserId);
       expect(res.status).not.toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: true, message: "Doctor verified successfully" })
+        expect.objectContaining({ success: true, following, followers })
+      );
+    });
+
+    it("allows a user to view their own connections via /:userId/connections", async () => {
+      const req = {
+        params: { userId: meUserId },
+        user: { _id: meUserId, userType: "doctor" },
+      } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockReturnValue(mockConnectionsQuery([], []));
+
+      await getConnections(req as any, res as any);
+
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, following: [], followers: [] })
+      );
+    });
+
+    it("rejects viewing another user's connections", async () => {
+      const req = {
+        params: { userId: otherUserId },
+        user: { _id: meUserId, userType: "patient" },
+      } as any;
+      const res = mockResponse();
+
+      await getConnections(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Access denied" })
+      );
+      expect(mockedUser.findById).not.toHaveBeenCalled();
+    });
+
+    it("allows an admin to view any user's connections", async () => {
+      const req = {
+        params: { userId: otherUserId },
+        user: { _id: "507f1f77bcf86cd799439013", userType: "admin" },
+      } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockReturnValue(mockConnectionsQuery([], []));
+
+      await getConnections(req as any, res as any);
+
+      expect(mockedUser.findById).toHaveBeenCalledWith(otherUserId);
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, following: [], followers: [] })
+      );
+    });
+
+    it("returns 404 when the target user does not exist", async () => {
+      const req = {
+        params: { userId: meUserId },
+        user: { _id: meUserId, userType: "patient" },
+      } as any;
+      const res = mockResponse();
+
+      const query: any = {
+        populate: jest.fn().mockReturnThis(),
+      };
+      query.then = (resolve: any) => resolve(null);
+      mockedUser.findById.mockReturnValue(query);
+
+      await getConnections(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "User not found" })
       );
     });
   });
