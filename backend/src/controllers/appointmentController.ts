@@ -44,6 +44,21 @@ export const createAppointment = asyncHandler(
       throw new AppError('Appointment date must be in the future', 400);
     }
 
+    // Check for existing appointments (Issue #999: prevent double-booking)
+    const existingAppointment = await Appointment.findOne({
+      doctorId,
+      scheduledDate: appointmentDate,
+      scheduledTime,
+      status: { $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.RESCHEDULED] }
+    });
+
+    if (existingAppointment) {
+      throw new AppError(
+        `Time slot already booked for this doctor. Please choose a different time.`,
+        409
+      );
+    }
+
     // SECURITY: Use req.user._id for patientId, NEVER accept from request body
     const appointment = new Appointment({
       patientId: user._id, // ← Always from authenticated user
@@ -54,7 +69,18 @@ export const createAppointment = asyncHandler(
       status: AppointmentStatus.SCHEDULED
     });
 
-    await appointment.save();
+    try {
+      await appointment.save();
+    } catch (error: any) {
+      // Handle MongoDB duplicate key error (Issue #999)
+      if (error.code === 11000) {
+        throw new AppError(
+          'Time slot already booked for this doctor. Please choose a different time.',
+          409
+        );
+      }
+      throw error;
+    }
     await appointment.populate('patientId', 'firstName lastName email');
     await appointment.populate('doctorId', 'firstName lastName specialization');
 
