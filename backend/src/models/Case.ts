@@ -45,12 +45,12 @@ export interface ICase extends Document {
   isActive: boolean;
   isRareDisease?: boolean;
   isPatientCase: boolean; // True if posted by patient
-  moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+  moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'failed';
   moderationReason?: string;
   reviewedBy?: mongoose.Types.ObjectId;
   reviewedAt?: Date;
   moderationAuditTrail: {
-    status: 'pending' | 'approved' | 'rejected' | 'changes_requested';
+    status: 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'failed';
     reason?: string;
     reviewedBy?: mongoose.Types.ObjectId;
     reviewedAt: Date;
@@ -234,7 +234,7 @@ const CaseSchema = new Schema<ICase>({
   },
   moderationStatus: {
     type: String,
-    enum: ['pending', 'approved', 'rejected', 'changes_requested'],
+    enum: ['pending', 'approved', 'rejected', 'changes_requested', 'failed'],
     default: 'approved'
   },
   moderationReason: {
@@ -252,7 +252,7 @@ const CaseSchema = new Schema<ICase>({
   moderationAuditTrail: [{
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'changes_requested'],
+      enum: ['pending', 'approved', 'rejected', 'changes_requested', 'failed'],
       required: true
     },
     reason: {
@@ -344,25 +344,10 @@ const CaseSchema = new Schema<ICase>({
   timestamps: true
 });
 
-// Pre-save hook to audit title, description, and comments
+// Comment moderation remains synchronous; case moderation runs in the job queue.
 CaseSchema.pre('save', async function(next) {
   const caseDoc = this;
 
-  // 1. Audit case title or description if modified
-  try {
-    if (caseDoc.isModified('title') && caseDoc.title) {
-      const res = await checkCompliance(caseDoc.title, caseDoc.patientInfo?.age);
-      caseDoc.title = res.redacted_text;
-    }
-    if (caseDoc.isModified('description') && caseDoc.description) {
-      const res = await checkCompliance(caseDoc.description, caseDoc.patientInfo?.age);
-      caseDoc.description = res.redacted_text;
-    }
-  } catch (err) {
-    console.error('Compliance check failed for Case title/description:', err);
-  }
-
-  // 2. Audit new or modified comments
   for (const comment of caseDoc.comments) {
     if (comment.isNew || comment.isModified('content')) {
       try {

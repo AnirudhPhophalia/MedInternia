@@ -13,6 +13,7 @@ import User from "../../models/User";
 import Notification from "../../models/Notification";
 import { analyzeCase } from "../../services/aiTaggerService";
 import { createAndEmitNotification } from "../notificationController";
+import { enqueueCaseModeration } from "../../jobs/caseModerationJob";
 
 jest.mock("../../utils/asyncHandler", () => ({
   asyncHandler: (fn: any) => fn,
@@ -27,11 +28,15 @@ jest.mock("../../services/ragService", () => ({
   suggestCases: jest.fn().mockResolvedValue([]),
 }));
 jest.mock("../notificationController");
+jest.mock("../../jobs/caseModerationJob", () => ({
+  enqueueCaseModeration: jest.fn(),
+}));
 
 const mockedCase = Case as jest.Mocked<typeof Case>;
 const mockedUser = User as jest.Mocked<typeof User>;
 const mockedAnalyzeCase = analyzeCase as jest.Mock;
 const mockedCreateAndEmitNotification = createAndEmitNotification as jest.Mock;
+const mockedEnqueueCaseModeration = enqueueCaseModeration as jest.Mock;
 
 const mockResponse = () => {
   const res: Partial<Response> = {};
@@ -57,6 +62,7 @@ const mockRequest = (
 describe("Case Controller", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedEnqueueCaseModeration.mockResolvedValue(undefined);
   });
 
   describe("createCase", () => {
@@ -93,10 +99,11 @@ describe("Case Controller", () => {
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("patient-1", {
         $inc: { points: 5 },
       });
+      expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("patient-1");
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
-    it("creates a doctor case with default moderation status as approved", async () => {
+    it("creates a doctor case with moderation pending and queues it", async () => {
       mockedAnalyzeCase.mockResolvedValue({
         symptoms: [],
         diagnosis: "",
@@ -126,11 +133,12 @@ describe("Case Controller", () => {
       expect(mockedCase).toHaveBeenCalledWith(expect.objectContaining({
         title: "Doctor Case",
         isPatientCase: false,
-        moderationStatus: "approved",
+        moderationStatus: "pending",
       }));
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("doctor-1", {
         $inc: { points: 10 },
       });
+      expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("new-case-id");
       expect(res.status).toHaveBeenCalledWith(201);
     });
   });
