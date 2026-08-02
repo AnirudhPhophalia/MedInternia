@@ -93,7 +93,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
                   </Tooltip>
                   <Tooltip title="Like">
                     <IconButton size="small" sx={{ ml: 1, p: 0.5 }} onClick={() => handleLike(c._id)}>
-                      <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likedBy?.includes(userId) ? '#1976d2' : '#0072ff' }} />
+                      <ThumbUpAltOutlinedIcon sx={{ fontSize: 18, color: c.likes?.includes(userId) ? '#1976d2' : '#0072ff' }} />
                     </IconButton>
                   </Tooltip>
                   {c.replies && c.replies.length > 0 && (
