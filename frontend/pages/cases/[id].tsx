@@ -208,11 +208,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const handleSolveCase = async () => {
     setSolving(true);
     try {
-<<<<<<< HEAD
-      await api.post(`/cases/${id}/solve`);
-=======
       await api.post(`/cases/${id}/solve`, {});
->>>>>>> upstream/main
       setIsSolved(true);
       setSolving(false);
       setSuccess('Case marked as solved successfully! You earned +5 points.');

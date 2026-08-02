@@ -2,16 +2,11 @@ import { useEffect, useState } from "react";
 import { Avatar, Box, Chip, CircularProgress, Container, Grid, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter } from "next/router";
-<<<<<<< HEAD
-import { redirectToLogin } from "../utils/authRedirect";
-import { useAuth } from "../context/AuthContext";
-
-const upcomingRanks = [1, 2, 3];
-=======
 import Link from "next/link";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
 import { fetchTopContributors, TopContributor } from "../utils/topContributors";
->>>>>>> upstream/main
+import { useAuth } from "../context/AuthContext";
+
 
 export default function LeaderboardPage() {
   const router = useRouter();
