@@ -100,6 +100,50 @@ describe("Auth Controller", () => {
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
+
+    it("rejects registration when a concurrent duplicate email hits the unique index", async () => {
+      // Simulate a race: both concurrent requests pass the findOne check...
+      mockedUser.findOne.mockResolvedValue(null);
+
+      const save = jest.fn().mockRejectedValue({ code: 11000, keyPattern: { email: 1 } });
+      const toObject = jest.fn().mockReturnValue({ email: "new@test.com" });
+      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "new-user-id" }) as any);
+
+      const req = mockRequest({
+        email: "new@test.com",
+        userType: "patient",
+        firstName: "Test",
+        verificationToken: "new@test.com",
+      });
+      const res = mockResponse();
+      const next = jest.fn();
+
+      await expect(register(req as any, res as any, next)).rejects.toThrow("User with this email already exists");
+    });
+
+    it("rejects registration when a concurrent duplicate license number hits the unique index", async () => {
+      mockedUser.findOne.mockResolvedValue(null);
+
+      const save = jest.fn().mockRejectedValue({ code: 11000, keyPattern: { licenseNumber: 1 } });
+      const toObject = jest.fn().mockReturnValue({ email: "doc@test.com" });
+      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "new-user-id" }) as any);
+
+      const req = mockRequest({
+        email: "doc@test.com",
+        userType: "doctor",
+        firstName: "Test",
+        lastName: "Doc",
+        specialization: "Cardiology",
+        licenseNumber: "LIC-123",
+        verificationToken: "doc@test.com",
+      });
+      const res = mockResponse();
+      const next = jest.fn();
+
+      await expect(register(req as any, res as any, next)).rejects.toThrow(
+        "Doctor with this license number already exists"
+      );
+    });
   });
 
   describe("login", () => {
