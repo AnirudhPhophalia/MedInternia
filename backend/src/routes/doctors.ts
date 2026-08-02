@@ -2,29 +2,57 @@ import { Router } from 'express';
 import { authenticate, authorize, optionalAuthenticate } from '../middleware/auth';
 import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination';
+import { createSafeRegexFilter } from '../utils/searchUtils';
 
 const router = Router();
+
+// Explicit allowlist of fields safe to expose publicly on doctor listing/detail
+// endpoints. Intentionally excludes PII such as phone, address, dateOfBirth,
+// emergencyContact, medicalHistory, allergies, loginAttempts, lockoutUntil,
+// and passwordChangedAt which have no business being visible to anonymous callers.
+const DOCTOR_PUBLIC_SELECT =
+  'firstName lastName specialization experience qualifications isVerifiedDoctor profilePicture bio createdAt';
 
 // Get all doctors
 router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {
   try {
     const { specialization } = req.query;
-    
+
     const filter: any = { userType: 'doctor', isActive: true };
+
+    // Bug fix: escape and length-validate specialization input via
+    // createSafeRegexFilter to prevent ReDoS via catastrophically
+    // backtracking patterns (e.g. ((a+)+)$).
     if (specialization) {
-      filter.specialization = { $regex: specialization, $options: 'i' };
+      const safeFilter = createSafeRegexFilter(specialization, 100);
+      if (safeFilter) {
+        filter.specialization = safeFilter;
+      }
     }
 
-    const doctors = await User.find(filter)
-      .select('-password')
-      .sort({ createdAt: -1 });
+    // Bug fix: paginate results — loading the entire doctors collection into
+    // memory on every request does not scale.
+    const { page, limit, skip } = parsePagination(req.query as Record<string, any>);
+
+    const [doctors, total] = await Promise.all([
+      User.find(filter)
+        // Bug fix: use an explicit allowlist instead of .select('-password').
+        // The exclusion approach still exposes phone, address, dateOfBirth,
+        // loginAttempts, lockoutUntil etc. to unauthenticated callers.
+        .select(DOCTOR_PUBLIC_SELECT)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(filter),
+    ]);
 
     res.json({
       success: true,
       data: {
         doctors,
-        total: doctors.length
-      }
+        ...buildPaginationMeta(page, limit, total),
+      },
     });
   } catch (error) {
     console.error('Get doctors error:', error);
@@ -68,7 +96,7 @@ router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res) => {
       _id: id,
       userType: 'doctor',
       isActive: true
-    }).select('-password');
+    }).select(DOCTOR_PUBLIC_SELECT);
 
     if (!doctor) {
       return res.status(404).json({
