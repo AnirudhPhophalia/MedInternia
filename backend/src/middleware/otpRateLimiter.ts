@@ -26,6 +26,18 @@ export const loginLimiter = rateLimit({
   message: { success: false, message: 'Too many login attempts. Please try again after 15 minutes.' }
 });
 
+// Limits token refresh requests per IP so a stolen refresh token cannot be
+// replayed in a tight loop to mint an unbounded number of access tokens.
+// Keyed by IP (like loginLimiter) so rotation of the refresh token itself
+// cannot bypass the window.
+export const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many refresh requests. Please try again after 15 minutes.' }
+});
+
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,

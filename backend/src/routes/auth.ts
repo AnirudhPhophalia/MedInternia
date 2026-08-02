@@ -9,7 +9,7 @@ import {
   syncOrcidPublications
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
-import { otpRequestLimiter, otpVerifyLimiter, loginLimiter, registerLimiter } from '../middleware/otpRateLimiter';
+import { otpRequestLimiter, otpVerifyLimiter, loginLimiter, registerLimiter, refreshLimiter } from '../middleware/otpRateLimiter';
 import multer from 'multer';
 import { isAllowedUpload } from '../utils/uploadValidation';
 
@@ -44,7 +44,8 @@ router.post('/register', registerLimiter, register);
 router.post('/login', loginLimiter, login);
 
 // Refresh the access token from a valid refresh token (HTTP-only cookie or body)
-router.post('/refresh', loginLimiter, refreshToken);
+// Rate-limited to limit the blast radius of a stolen refresh token.
+router.post('/refresh', refreshLimiter, refreshToken);
 
 // Protected routes (require authentication)
 router.post('/logout', authenticate, logout);
