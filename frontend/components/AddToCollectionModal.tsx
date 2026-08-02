@@ -55,10 +55,7 @@ export default function AddToCollectionModal({ open, onClose, caseId }: AddToCol
   const fetchCollections = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.get('/collections/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/collections/me');
       setCollections(res.data.data);
     } catch (err) {
       console.error(err);
@@ -72,10 +69,7 @@ export default function AddToCollectionModal({ open, onClose, caseId }: AddToCol
     try {
       setError('');
       setSuccess('');
-      const token = localStorage.getItem('token');
-      await api.post(`/collections/${collectionId}/cases`, { caseId }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/collections/${collectionId}/cases`, { caseId });
       setSuccess('Case added to collection!');
       
       // Update local state to reflect it's added
@@ -97,18 +91,12 @@ export default function AddToCollectionModal({ open, onClose, caseId }: AddToCol
     
     try {
       setError('');
-      const token = localStorage.getItem('token');
-      
       // 1. Create collection
-      const createRes = await api.post('/collections', { name: newCollectionName }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const createRes = await api.post('/collections', { name: newCollectionName });
       const newCollection = createRes.data.data;
       
       // 2. Add case to new collection
-      await api.post(`/collections/${newCollection._id}/cases`, { caseId }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/collections/${newCollection._id}/cases`, { caseId });
 
       setSuccess(`Case added to new collection "${newCollectionName}"!`);
       

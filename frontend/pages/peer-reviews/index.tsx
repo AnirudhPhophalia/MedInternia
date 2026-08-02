@@ -40,16 +40,13 @@ export default function PeerReviews() {
   const [analyticsError, setAnalyticsError] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     if (!userId) {
       setError('User ID not found. Please login again.');
       setLoading(false);
       return;
     }
-    api.get(`/peer-reviews/user/${userId}/received`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/peer-reviews/user/${userId}/received`)
       .then(res => {
         setReviews(res.data.data.reviews || []);
         setLoading(false);
@@ -62,16 +59,13 @@ export default function PeerReviews() {
 
   const fetchAnalytics = () => {
     setAnalyticsLoading(true);
-    const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     if (!userId) {
       setAnalyticsError('User ID not found.');
       setAnalyticsLoading(false);
       return;
     }
-    api.get(`/peer-reviews/user/${userId}/analytics`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/peer-reviews/user/${userId}/analytics`)
       .then(res => {
         setAnalytics(res.data.data.analytics);
         setAnalyticsLoading(false);

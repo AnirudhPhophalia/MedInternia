@@ -14,10 +14,7 @@ export default function CommentInteraction() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${caseId}/comments/${commentId}/reply`, { content: reply }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${caseId}/comments/${commentId}/reply`, { content: reply });
       setSuccess('Reply added successfully!');
       setReply('');
     } catch (err: any) {
@@ -29,10 +26,7 @@ export default function CommentInteraction() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${caseId}/comments/${commentId}/rate`, { rating }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${caseId}/comments/${commentId}/rate`, { rating });
       setSuccess('Comment rated successfully!');
       setRating('');
     } catch (err: any) {
@@ -44,10 +38,7 @@ export default function CommentInteraction() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${caseId}/comments/${commentId}/like`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${caseId}/comments/${commentId}/like`, {});
       setSuccess('Comment liked successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to like comment');

@@ -197,10 +197,9 @@ function Doctors() {
 
   const fetchInitData = async () => {
     try {
-      const token = localStorage.getItem('token');
       const storedUserId = localStorage.getItem('userId');
 
-      if (!token || !storedUserId) {
+      if (!storedUserId) {
         router.replace('/auth/login');
         return;
       }
@@ -241,11 +240,8 @@ function Doctors() {
 
   const handleApplyMentorship = async (doctorId: string) => {
     try {
-      const token = localStorage.getItem('token');
       await api.put(`/users/${currentUserId}/profile`, {
         mentorDoctor: doctorId
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       setCurrentMentorId(doctorId);
       alert('Selected doctor as your mentor successfully!');

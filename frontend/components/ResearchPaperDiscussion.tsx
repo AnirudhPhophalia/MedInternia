@@ -15,7 +15,6 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
 
   useEffect(() => {
     if (!id) return;
-    const token = localStorage.getItem('token');
     api.get(`/research-papers/${id}`)
       .then(res => {
         setDiscussions(res.data.data.paper.comments || []);
@@ -29,10 +28,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
 
   const handleLike = async (commentId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/research-papers/${id}/comments/${commentId}/like`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/research-papers/${id}/comments/${commentId}/like`, {});
       const res = await api.get(`/research-papers/${id}`);
       setDiscussions(res.data.data.paper.comments || []);
     } catch {
@@ -42,15 +38,10 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
 
   const handleDiscussion = async () => {
     try {
-      const token = localStorage.getItem('token');
       if (replyTo) {
-        await api.post(`/research-papers/${id}/comments/${replyTo._id}/reply`, { content: replyContent }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/research-papers/${id}/comments/${replyTo._id}/reply`, { content: replyContent });
       } else {
-        await api.post(`/research-papers/${id}/comments`, { content: comment }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/research-papers/${id}/comments`, { content: comment });
       }
       setComment('');
       setReplyTo(null);

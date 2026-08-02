@@ -53,10 +53,9 @@ export default function AISuggestions() {
   useEffect(() => {
     const fetchInitData = async () => {
       try {
-        const token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
 
-        if (!token || !userId) {
+        if (!userId) {
           router.replace('/auth/login');
           return;
         }
@@ -93,10 +92,7 @@ export default function AISuggestions() {
     setSuggestionsLoading(true);
     setSuggestionsError('');
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.get(`/cases/${caseId}/ai-suggestions`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/cases/${caseId}/ai-suggestions`);
       setCaseSuggestions(res.data?.data?.suggestions || res.data?.suggestions || []);
     } catch (e) {
       console.error(e);

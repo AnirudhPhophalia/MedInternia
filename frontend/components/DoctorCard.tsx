@@ -4,14 +4,11 @@ import Link from 'next/link';
 
 export default function DoctorCard({ doctor }: { doctor: any }) {
   const [connected, setConnected] = React.useState(false);
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const handleConnect = async () => {
     try {
       await import('../utils/api').then(apiModule =>
-        apiModule.default.post('/users/follow', { userId: doctor._id }, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        apiModule.default.post('/users/follow', { userId: doctor._id })
       );
       setConnected(true);
     } catch (err) {

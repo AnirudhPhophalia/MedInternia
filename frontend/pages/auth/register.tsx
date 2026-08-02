@@ -29,7 +29,7 @@ import { useRouter } from 'next/router';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import AuthLayout, { AuthCard, AuthBackLink } from '../../components/auth/AuthLayout';
-import { useAuth, setGlobalToken } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const MEDICAL_HISTORY_OPTIONS = [
   'Hypertension',
@@ -431,10 +431,8 @@ export default function Register() {
       if (!payload.dateOfBirth) delete payload.dateOfBirth;
       if (!payload.gender) delete payload.gender;
       const res = await api.post('/auth/register', payload);
-      const token = res.data.data.token;
       const user = res.data.data.user;
-      setGlobalToken(token);
-      authLogin(token, user._id || user.id, user);
+      authLogin(user._id || user.id, user);
 
       router.push('/dashboard');
     } catch (err: any) {
