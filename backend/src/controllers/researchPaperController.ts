@@ -35,8 +35,25 @@ export const createResearchPaper = async (req: Request, res: Response) => {
 
 export const getAllResearchPapers = async (req: Request, res: Response) => {
   try {
-    const papers = await ResearchPaper.find().sort({ createdAt: -1 });
-    res.json({ success: true, data: papers });
+    const page = Math.max(1, Number.parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit ?? '20'), 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const [papers, total] = await Promise.all([
+      ResearchPaper.find({}, { comments: 0 }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      ResearchPaper.countDocuments(),
+    ]);
+
+    res.json({
+      success: true,
+      data: papers,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to fetch research papers.' });
   }
