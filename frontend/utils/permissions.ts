@@ -1,6 +1,3 @@
-import { jwtDecode } from 'jwt-decode';
-import { getAuthToken } from './api';
-
 export type AppRole = 'admin' | 'doctor' | 'intern' | 'patient' | 'hospital_staff' | 'moderator';
 
 export type AppPermission =
@@ -58,7 +55,6 @@ export const rolePermissions: Record<AppRole, AppPermission[]> = {
     'comment:create',
     'comment:moderate',
     'job:manage',
-    'profile:verify',
     'rating:create',
     'user:award_points',
     'webinar:attend',
@@ -102,13 +98,17 @@ export const normalizeRole = (role?: string): AppRole | undefined => {
   return Object.prototype.hasOwnProperty.call(rolePermissions, normalized) ? normalized : undefined;
 };
 
-export const getCurrentUserRole = (): AppRole | undefined => {
+// SECURITY: Role can no longer be read by decoding a JWT client-side, since the
+// token now lives in an httpOnly cookie. Callers should pass the user object
+// (from AuthContext, already fetched via /auth/validate-token) when available.
+export const getCurrentUserRole = (userObj?: any): AppRole | undefined => {
+  if (userObj?.userType || userObj?.role) {
+    return normalizeRole(userObj.userType || userObj.role);
+  }
   if (typeof window === 'undefined') return undefined;
-  const token = getAuthToken();
-  if (!token) return undefined;
   try {
-    const decoded: any = jwtDecode(token);
-    return normalizeRole(decoded?.userType || decoded?.role);
+    const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+    return normalizeRole(storedUser?.userType || storedUser?.role);
   } catch {
     return undefined;
   }

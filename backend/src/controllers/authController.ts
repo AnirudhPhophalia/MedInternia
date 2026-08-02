@@ -6,7 +6,7 @@ import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
 import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
-import { AuthRequest, blacklistToken } from '../middleware/auth';
+import { AuthRequest, blacklistToken, isTokenBlacklisted } from '../middleware/auth';
 import { uploadProfileImage, generateSignedUrl } from '../utils/cloudinary';
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
@@ -275,7 +275,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // Create new user — email ownership was already proven via the verified
   // signup token above, so mark the account as verified immediately.
   const user = new User({ ...userData, isVerified: true });
-  await user.save();
+  try {
+    await user.save();
+  } catch (error: any) {
+    // The unique indexes on email/licenseNumber reject duplicates atomically at
+    // the database level, even when concurrent registration requests pass the
+    // findOne checks above before either save() commits.
+    if (error?.code === 11000) {
+      if (error?.keyPattern?.licenseNumber) {
+        throw new AppError("Doctor with this license number already exists", 409);
+      }
+      throw new AppError("User with this email already exists", 400);
+    }
+    throw error;
+  }
 
   // Generate JWT tokens
   const tokenPayload = {
@@ -306,8 +319,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     message: "User registered successfully",
     data: {
       user: userResponse,
-      token,
-      refreshToken,
     },
   });
 });
@@ -447,8 +458,6 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     message: "Login successful",
     data: {
       user: userResponse,
-      token,
-      refreshToken,
     },
   });
 });
@@ -629,13 +638,11 @@ export const resetPassword = asyncHandler(
 
 // Logout
 export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
+  let token: string | undefined = req.cookies?.token;
   const authHeader = req.headers.authorization;
-  let token: string | undefined;
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (!token && authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.substring(7);
-  } else if (req.cookies?.token) {
-    token = req.cookies.token;
   }
 
   if (!token) {
@@ -730,6 +737,10 @@ export const refreshToken = asyncHandler(
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
+    if (await isTokenBlacklisted(incomingRefreshToken)) {
+      throw new AppError('Refresh token has been revoked', 401);
+    }
+
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) {
       throw new AppError('User not found', 401);
@@ -746,10 +757,19 @@ export const refreshToken = asyncHandler(
     const newAccessToken = generateToken(tokenPayload);
     const newRefreshToken = generateRefreshToken(tokenPayload);
 
+    // Rotate the refresh token: consume the incoming token so a stolen copy
+    // can never be replayed after the legitimate user refreshes their session.
+    const remainingMs = decoded.exp
+      ? decoded.exp * 1000 - Date.now()
+      : 7 * 24 * 60 * 60 * 1000;
+    if (remainingMs > 0) {
+      await blacklistToken(incomingRefreshToken, new Date(Date.now() + remainingMs));
+    }
+
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      sameSite: 'strict' as const,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
     res.cookie('token', newAccessToken, cookieOptions);
@@ -760,8 +780,7 @@ export const refreshToken = asyncHandler(
       success: true,
       message: 'Token refreshed successfully',
       data: {
-        token: newAccessToken,
-        refreshToken: newRefreshToken,
+        user,
       },
     });
   },

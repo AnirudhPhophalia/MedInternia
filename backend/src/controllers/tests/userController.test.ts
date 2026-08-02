@@ -6,6 +6,7 @@ import {
   updateUserStreak,
   deleteAccount,
   getConnections,
+  verifyDoctor,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";

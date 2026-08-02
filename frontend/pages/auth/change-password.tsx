@@ -15,10 +15,7 @@ export default function ChangePassword() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.put('/auth/change-password', { currentPassword, newPassword }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put('/auth/change-password', { currentPassword, newPassword });
       setSuccess('Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');

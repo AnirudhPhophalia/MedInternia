@@ -12,10 +12,7 @@ export default function CertificateDetail() {
   
   useEffect(() => {
     if (!id) return;
-    const token = localStorage.getItem('token');
-    api.get(`/certificates/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/certificates/${id}`)
       .then(res => {
         setCertificate(res.data.data.certificate);
         setLoading(false);

@@ -1,5 +1,4 @@
 import type { NextRouter } from "next/router";
-import { getGlobalToken } from "../context/AuthContext";
 
 export const protectedLandingPaths = [
   "/cases",
@@ -15,10 +14,8 @@ export const protectedLandingPaths = [
 ];
 
 export const hasAuthToken = () => {
-  if (getGlobalToken()) return true;
-  if (typeof window !== 'undefined' && localStorage.getItem('token')) return true;
   if (typeof document === 'undefined') return false;
-  return document.cookie.split('; ').some(row => row.startsWith('auth_status='));
+  return document.cookie.split('; ').some((row) => row.startsWith('auth_status='));
 };
 
 export const getLoginHref = (redirectPath: string) =>

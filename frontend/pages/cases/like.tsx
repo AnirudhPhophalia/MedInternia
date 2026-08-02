@@ -9,10 +9,7 @@ export default function LikeCase() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(`/cases/${caseId}/like`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/cases/${caseId}/like`, {});
       setSuccess('Case liked successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to like case');

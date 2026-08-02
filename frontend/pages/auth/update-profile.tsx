@@ -17,15 +17,8 @@ export default function UpdateProfile() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/auth/login');
-      return;
-    }
     const userId = localStorage.getItem('userId');
-    api.get(`/users/${userId}/profile`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/users/${userId}/profile`)
       .then(res => {
         const user = res.data.data?.user || res.data;
         setForm({
@@ -56,10 +49,7 @@ export default function UpdateProfile() {
     setError('');
     setSuccess('');
     try {
-      const token = localStorage.getItem('token');
-      await api.put('/auth/profile', form, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put('/auth/profile', form);
       setSuccess('Profile updated successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update profile');
@@ -71,16 +61,10 @@ export default function UpdateProfile() {
     setSuccess('');
     setIsSyncing(true);
     try {
-      const token = localStorage.getItem('token');
-      
       // Save profile first so backend has latest ORCID
-      await api.put('/auth/profile', form, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put('/auth/profile', form);
 
-      await api.post('/auth/profile/orcid/sync', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post('/auth/profile/orcid/sync', {});
 
       setSuccess('ORCID publications synced successfully!');
     } catch (err: any) {

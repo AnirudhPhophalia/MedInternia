@@ -28,15 +28,9 @@ export default function MentorshipDetail() {
     if (!id) return;
     const fetchMentorship = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
         const [profileRes, mentorshipRes] = await Promise.all([
-          api.get('/users/profile', { headers: { Authorization: `Bearer ${token}` } }),
-          api.get(`/mentorship/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+          api.get('/users/profile'),
+          api.get(`/mentorship/${id}`)
         ]);
 
         setUser(profileRes.data.data);
@@ -61,8 +55,7 @@ export default function MentorshipDetail() {
 
   const handleUpdateStatus = async (status: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.patch(`/mentorship/${id}/status`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+      await api.patch(`/mentorship/${id}/status`, { status });
       setMentorship({ ...mentorship, status });
     } catch (err) {
       alert('Failed to update status');
@@ -71,8 +64,7 @@ export default function MentorshipDetail() {
 
   const handleToggleGoal = async (goalId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.patch(`/mentorship/${id}/goals/${goalId}/toggle`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await api.patch(`/mentorship/${id}/goals/${goalId}/toggle`, {});
       setMentorship((prev: any) => ({
         ...prev,
         goals: prev.goals.map((g: any) => g._id === goalId ? { ...g, isCompleted: !g.isCompleted } : g)
@@ -84,8 +76,7 @@ export default function MentorshipDetail() {
 
   const handleAddGoal = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await api.post(`/mentorship/${id}/goals`, newGoal, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await api.post(`/mentorship/${id}/goals`, newGoal);
       setMentorship(res.data.data);
       setGoalModal(false);
       setNewGoal({ title: '', description: '' });

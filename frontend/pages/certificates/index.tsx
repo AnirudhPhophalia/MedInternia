@@ -11,16 +11,13 @@ export default function Certificates() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     if (!userId) {
       setError('User ID not found. Please login again.');
       setLoading(false);
       return;
     }
-    api.get(`/certificates/user/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    api.get(`/certificates/user/${userId}`)
       .then(res => {
         setCertificates(res.data.data.certificates || []);
         setLoading(false);

@@ -1,34 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose'; // Naya import
 
-const PROTECTED_ROUTES = ['/dashboard', '/profile', '/cases/create', '/certificates/create', '/jobs'];
-const AUTH_ROUTES = ['/auth/login', '/auth/register'];
+export async function middleware(request: NextRequest) {
+  const token = request.cookies.get('token')?.value;
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value || '';
-  const { pathname, searchParams } = request.nextUrl;
+  // Agar token exist hi nahi karta
+  if (!token) {
+    return NextResponse.redirect(new URL('/auth/login', request.url));
+  }
 
-  if (searchParams.get('clear') === '1') {
-    const response = NextResponse.next();
+  try {
+    // JWT_SECRET ko environment variables se uthao aur encode karo
+    const secretKey = process.env.JWT_SECRET || 'default_secret';
+    const secret = new TextEncoder().encode(secretKey);
+
+    // Jose library se token ka signature aur expiry verify karo
+    await jwtVerify(token, secret);
+
+    // Agar token ekdum sahi hai, toh aage jane do
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Invalid ya expired token:', error);
+    
+    // Agar token fake ya expired hai, toh us cookie ko delete karke login pe bhej do
+    const response = NextResponse.redirect(new URL('//auth/login', request.url));
     response.cookies.delete('token');
     return response;
   }
-
-  if (AUTH_ROUTES.some(route => pathname.startsWith(route))) {
-    if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  if (PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
-    if (!token) {
-      return NextResponse.redirect(new URL('/auth/login', request.url));
-    }
-  }
-
-  return NextResponse.next();
 }
 
+// Ye define karta hai ki kin routes par security lagani hai
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*', '/auth/:path*', '/cases/create', '/certificates/create', '/jobs/:path*'],
+  matcher: ['/dashboard/:path*', '/profile/:path*', '/cases/create'],
 };
