@@ -4,6 +4,7 @@ import {
   USER_MINIMAL_FIELDS,
   DOCTOR_FIELDS,
   PATIENT_FIELDS,
+  USER_FIELDS_WITH_EMAIL,
   RESTRICTED_USER_FIELDS,
   validateUserFields,
   sanitizeUserFields
@@ -48,8 +49,19 @@ describe('User Fields Sanitization (Issue #996)', () => {
     it('should define patient-specific fields', () => {
       expect(PATIENT_FIELDS).toBeDefined();
       const fields = PATIENT_FIELDS.split(' ');
+      expect(fields).toContain('firstName');
+      expect(fields).toContain('lastName');
+      // Issue #1052: email and medical PII must NOT be in the shared patient constant
+      expect(fields).not.toContain('email');
+      expect(fields).not.toContain('medicalHistory');
+      expect(fields).not.toContain('allergies');
+    });
+
+    it('should define USER_FIELDS_WITH_EMAIL for own-user contexts only', () => {
+      expect(USER_FIELDS_WITH_EMAIL).toBeDefined();
+      const fields = USER_FIELDS_WITH_EMAIL.split(' ');
       expect(fields).toContain('email');
-      expect(fields).toContain('medicalHistory');
+      expect(fields).toContain('firstName');
     });
   });
 
@@ -65,6 +77,15 @@ describe('User Fields Sanitization (Issue #996)', () => {
     it('should restrict security-sensitive fields', () => {
       expect(RESTRICTED_USER_FIELDS).toContain('lockoutUntil');
       expect(RESTRICTED_USER_FIELDS).toContain('loginAttempts');
+    });
+
+    it('should restrict medical PII fields (Issue #1052)', () => {
+      expect(RESTRICTED_USER_FIELDS).toContain('medicalHistory');
+      expect(RESTRICTED_USER_FIELDS).toContain('allergies');
+    });
+
+    it('should restrict Cloudinary internal asset ID (Issue #1052)', () => {
+      expect(RESTRICTED_USER_FIELDS).toContain('profilePicturePublicId');
     });
 
     it('should not have duplicate restricted fields', () => {
@@ -243,15 +264,16 @@ describe('User Fields Sanitization (Issue #996)', () => {
       expect(fields).toContain('userType');
     });
 
-    it('should include profile picture reference without exposing URL', () => {
+    it('should include profile picture URL (not internal publicId) (Issue #1052)', () => {
       const fields = USER_PUBLIC_FIELDS.split(' ');
-      expect(fields).toContain('profilePicturePublicId');
+      expect(fields).toContain('profilePicture');
+      expect(fields).not.toContain('profilePicturePublicId');
     });
 
-    it('should exclude direct password reference while including public ID', () => {
+    it('should exclude direct password reference and internal Cloudinary ID', () => {
       const fields = USER_PUBLIC_FIELDS.split(' ');
       expect(fields).not.toContain('password');
-      expect(fields).toContain('profilePicturePublicId');
+      expect(fields).not.toContain('profilePicturePublicId');
     });
   });
 });
