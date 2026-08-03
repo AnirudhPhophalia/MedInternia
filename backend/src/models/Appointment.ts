@@ -39,7 +39,13 @@ const AppointmentSchema = new Schema<IAppointment>(
       type: Date,
       required: [true, 'Appointment date is required'],
       validate: {
-        validator: function (date: Date) {
+        // Bug fix (#1051): Use this.isNew so the future-date check only runs
+        // on document creation. Without this guard, every save() call on an
+        // existing appointment (e.g. completing or cancelling a past appointment)
+        // throws "Appointment date must be in the future", making it impossible
+        // to complete any appointment whose scheduledDate has already passed.
+        validator: function (this: any, date: Date) {
+          if (!this.isNew) return true;
           return date > new Date();
         },
         message: 'Appointment date must be in the future'
