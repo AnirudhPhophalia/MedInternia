@@ -114,16 +114,8 @@ export default function CreateCase() {
           const file = new File([blob], "annotated_image.png", { type: "image/png" });
           const formData = new FormData();
           formData.append("attachment", file);
-<<<<<<< HEAD
-          
-          const res = await api.post("/cases/attachments", formData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          });
-=======
           const res = await api.post("/cases/attachments", formData);
->>>>>>> upstream/main
+
           
           const newAttachment = res.data.data;
           setAttachments((prev) => {
@@ -170,10 +162,7 @@ export default function CreateCase() {
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-<<<<<<< HEAD
-      
-=======
->>>>>>> upstream/main
+
       setLoading(true);
       setError("");
 
@@ -183,15 +172,8 @@ export default function CreateCase() {
             const formData = new FormData();
             formData.append("attachment", file);
             
-<<<<<<< HEAD
-            const res = await api.post("/cases/attachments", formData, {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            });
-=======
             const res = await api.post("/cases/attachments", formData);
->>>>>>> upstream/main
+
             return res.data.data;
           })
         );
@@ -243,15 +225,8 @@ export default function CreateCase() {
         attachments,
       };
 
-<<<<<<< HEAD
-      const res = await api.post("/cases", payload, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-=======
       const res = await api.post("/cases", payload);
->>>>>>> upstream/main
+
 
       setSuccess("Case analyzed and created successfully!");
       

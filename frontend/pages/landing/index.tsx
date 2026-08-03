@@ -43,18 +43,13 @@ const VisibilityToggle = () => {
 const ProfileSidebar = () => {
   const [user, setUser] = React.useState<Doctor | null>(null);
   React.useEffect(() => {
-<<<<<<< HEAD
-    import("../../utils/api").then((apiModule) => {
-      apiModule.default
-        .get('/auth/me')
-=======
     const userId =
       typeof window !== "undefined" ? localStorage.getItem("userId") : null;
     if (!userId) return;
     import("../../utils/api").then((apiModule) => {
       apiModule.default
         .get(`/users/${userId}/profile`)
->>>>>>> upstream/main
+
         .then((res) => {
           // Ensure correct extraction of counts from backend response
           const userData = res.data?.user || res.data?.data?.user || res.data;
@@ -711,13 +706,10 @@ const CaseStudyList = () => {
   React.useEffect(() => {
     import("../../utils/api").then((apiModule) => {
       apiModule.default
-<<<<<<< HEAD
-        .get("/cases?limit=5")
-=======
         .get(
           "/cases?limit=5"
         )
->>>>>>> upstream/main
+
         .then((res) => {
           // Adjust according to your backend response structure
           // If your backend returns { data: { cases: [...] } }
@@ -1451,10 +1443,7 @@ const RecommendedConnections = () => {
           leaderboard = leaderboard.reverse();
           setDoctors(leaderboard);
         });
-<<<<<<< HEAD
 
-=======
->>>>>>> upstream/main
       apiModule.default
         .get("/users/connections")
         .then((res) => {

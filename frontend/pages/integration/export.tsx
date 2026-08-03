@@ -10,11 +10,8 @@ export default function ExportBadges() {
     setMessage('');
     setError('');
     try {
-<<<<<<< HEAD
-      const res = await api.post(`/integration/${platform}/export`);
-=======
       const res = await api.post(`/integration/${platform}/export`, {});
->>>>>>> upstream/main
+
       setMessage(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Export failed');

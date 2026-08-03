@@ -22,11 +22,8 @@ export default function ConnectionsPage() {
     api.get("/users/connections").then(res => {
       setFollowing(res.data.following || []);
       setFollowers(res.data.followers || []);
-<<<<<<< HEAD
-    }).catch(console.error);
-=======
     });
->>>>>>> upstream/main
+
   }, []);
 
   return (

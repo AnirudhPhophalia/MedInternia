@@ -36,10 +36,8 @@ export default function CollectionsDashboard() {
     const fetchCollections = async () => {
       try {
         const res = await api.get('/collections/me');
-<<<<<<< HEAD
-=======
         setCollections(res.data.data);
->>>>>>> upstream/main
+
         setCollections(res.data.data);
       } catch (err: any) {
         console.error(err);

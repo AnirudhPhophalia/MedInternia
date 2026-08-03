@@ -9,11 +9,7 @@ export default function LikeCase() {
     setError('');
     setSuccess('');
     try {
-<<<<<<< HEAD
-      await api.post(`/cases/${caseId}/like`);
-=======
-      await api.post(`/cases/${caseId}/like`, {});
->>>>>>> upstream/main
+await api.post(`/cases/${caseId}/like`, {});
       setSuccess('Case liked successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to like case');
