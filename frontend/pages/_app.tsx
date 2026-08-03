@@ -63,7 +63,22 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [publicRoute, isLoading, isAuthenticated, router.pathname]);
 
   if (publicRoute) return <>{children}</>;
-  if (isLoading || !isAuthenticated) return null; // blank while validating / before redirect fires
+  if (isLoading || !isAuthenticated) {
+    const message = isLoading
+      ? "Checking your session…"
+      : "Redirecting to sign in…";
+
+    return (
+      <div
+        aria-busy={isLoading}
+        aria-live="polite"
+        role="status"
+        style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
+      >
+        <Typography>{message}</Typography>
+      </div>
+    );
+  }
   return <>{children}</>;
 }
 
