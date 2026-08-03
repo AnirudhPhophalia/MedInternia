@@ -29,11 +29,7 @@ export default function MentorshipDetail() {
     const fetchMentorship = async () => {
       try {
         const [profileRes, mentorshipRes] = await Promise.all([
-<<<<<<< HEAD
-          api.get('/auth/profile'),
-=======
           api.get('/users/profile'),
->>>>>>> upstream/main
           api.get(`/mentorship/${id}`)
         ]);
 
@@ -68,11 +64,7 @@ export default function MentorshipDetail() {
 
   const handleToggleGoal = async (goalId: string) => {
     try {
-<<<<<<< HEAD
-      await api.patch(`/mentorship/${id}/goals/${goalId}/toggle`);
-=======
       await api.patch(`/mentorship/${id}/goals/${goalId}/toggle`, {});
->>>>>>> upstream/main
       setMentorship((prev: any) => ({
         ...prev,
         goals: prev.goals.map((g: any) => g._id === goalId ? { ...g, isCompleted: !g.isCompleted } : g)
