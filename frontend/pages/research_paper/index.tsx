@@ -15,9 +15,11 @@ import DialogContent from '@mui/material/DialogContent';
 import { useRouter } from 'next/router';
 import api from '../../utils/api';
 import { getCurrentUserRole } from '../../utils/permissions';
+import { useAuth } from '../../context/AuthContext';
 import { FileText, Upload } from 'lucide-react';
 
 export default function ResearchPaperUpload() {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -41,16 +43,10 @@ export default function ResearchPaperUpload() {
 
   // Fetch research papers on mount
   useEffect(() => {
-    let storedUser = null;
-    try {
-      storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || 'null') : null;
-    } catch {
-      storedUser = null;
-    }
-    const currentUserType = storedUser?.userType || getCurrentUserRole() || '';
+    const currentUserType = user?.userType || getCurrentUserRole() || '';
     setUserType(String(currentUserType).toLowerCase());
     fetchPapers();
-  }, []);
+  }, [user]);
 
   const fetchPapers = async () => {
     setLoading(true);
@@ -80,6 +76,7 @@ export default function ResearchPaperUpload() {
     setError('');
     setSuccess('');
     try {
+
       // For now, just simulate file upload by sending file name as fileUrl
       // In production, you should upload the file and get a URL
       const payload = {

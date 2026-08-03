@@ -16,8 +16,11 @@ import CaseCard from '../../components/CaseCard';
 import JobCard from '../../components/JobCard';
 import WebinarCard from '../../components/WebinarCard';
 
+import { useAuth } from '../../context/AuthContext';
+
 export default function SavedItemsPage() {
   const router = useRouter();
+  const { userId, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savedData, setSavedData] = useState<{ savedCases: any[], savedJobs: any[], savedWebinars: any[] }>({
@@ -28,6 +31,12 @@ export default function SavedItemsPage() {
   const [currentTab, setCurrentTab] = useState(0);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/auth/login');
+      return;
+    }
+
     const fetchSavedItems = async () => {
       try {
         const userId = localStorage.getItem('userId');
@@ -38,6 +47,7 @@ export default function SavedItemsPage() {
         }
 
         const res = await api.get(`/users/${userId}/saved`);
+
         
         if (res.data?.success) {
           setSavedData(res.data.data);
@@ -53,7 +63,7 @@ export default function SavedItemsPage() {
     };
 
     fetchSavedItems();
-  }, [router]);
+  }, [authLoading, isAuthenticated, userId, router]);
 
   if (loading) {
     return (

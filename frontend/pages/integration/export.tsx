@@ -11,6 +11,7 @@ export default function ExportBadges() {
     setError('');
     try {
       const res = await api.post(`/integration/${platform}/export`, {});
+
       setMessage(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Export failed');

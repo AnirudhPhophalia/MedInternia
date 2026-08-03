@@ -18,6 +18,7 @@ import RateReviewIcon from '@mui/icons-material/RateReview';
 import ReplyIcon from '@mui/icons-material/Reply';
 import StarIcon from '@mui/icons-material/Star';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import PeerReviewCard from '../../components/PeerReviewCard';
 
 interface AnalyticsData {
@@ -29,6 +30,7 @@ interface AnalyticsData {
 }
 
 export default function PeerReviews() {
+  const { userId } = useAuth();
   const [reviews, setReviews] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,8 +43,8 @@ export default function PeerReviews() {
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
+
     if (!userId) {
-      setError('User ID not found. Please login again.');
       setLoading(false);
       return;
     }
@@ -55,11 +57,12 @@ export default function PeerReviews() {
         setError('Failed to fetch peer reviews');
         setLoading(false);
       });
-  }, []);
+  }, [userId]);
 
   const fetchAnalytics = () => {
     setAnalyticsLoading(true);
     const userId = localStorage.getItem('userId');
+
     if (!userId) {
       setAnalyticsError('User ID not found.');
       setAnalyticsLoading(false);

@@ -28,6 +28,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PushPinIcon from '@mui/icons-material/PushPin';
 import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
 import BookmarkButton from '../../components/BookmarkButton';
+import { useAuth } from '../../context/AuthContext';
 import GlossaryText from '../../components/GlossaryText';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
@@ -65,7 +66,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
   const [totalLikes, setTotalLikes] = useState(0);
   const [liking, setLiking] = useState(false);
 
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+  const { userId } = useAuth();
   const canModerate = currentUser && ['admin', 'doctor', 'moderator'].includes(currentUser.userType);
 
   // Fetch Case Data & Profile details
@@ -75,10 +76,12 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
     // Fetch profile to check solved list
     api.get('/auth/profile')
       .then(res => {
-        const user = res.data.data.user;
-        setCurrentUser(user);
-        if (user.solvedCases) {
-          setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
+        const user = res.data?.data?.user || res.data?.user || res.data;
+        if (user) {
+          setCurrentUser(user);
+          if (user.solvedCases) {
+            setIsSolved(user.solvedCases.some((scId: string) => scId.toString() === id.toString()));
+          }
         }
       })
       .catch(err => console.warn('Failed to fetch profile', err));
@@ -103,7 +106,7 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
         }
         setLoading(false);
       });
-  }, [id]);
+  }, [id, userId]);
 
   // NEW: toggle case-level like
   const handleToggleCaseLike = async () => {

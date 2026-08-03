@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Linkedin, X, Instagram, Mail, Send } from 'lucide-react';
 import { Box, Typography, Stack, Divider, IconButton, InputBase, Paper, useTheme } from '@mui/material';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
+import { useAuth } from '../context/AuthContext';
 
 const quickLinks = [
   { label: 'Cases', href: '/cases' },
@@ -65,15 +66,8 @@ function FooterLinkColumn({
 
 export default function Footer() {
   const theme = useTheme();
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-
-  React.useEffect(() => {
-    // Check auth_status cookie (non-HttpOnly, set by backend on login)
-    const isAuth = typeof document !== 'undefined'
-      ? document.cookie.split(';').some(c => c.trim().startsWith('auth_status='))
-      : false;
-    setIsLoggedIn(isAuth);
-  }, []);
+  const { isAuthenticated } = useAuth();
+  const isLoggedIn = isAuthenticated;
 
   const getAuthAwareHref = (path: string) =>
     !isLoggedIn && protectedLandingPaths.includes(path) ? getLoginHref(path) : path;

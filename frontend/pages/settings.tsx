@@ -20,7 +20,7 @@ import {
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import PageHeader from "../components/layout/PageHeader";
 import api from "../utils/api";
-import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
+import { redirectToLogin } from "../utils/authRedirect";
 
 const AI_MODELS = [
   { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
@@ -31,31 +31,28 @@ const AI_MODELS = [
   { value: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" }
 ];
 
+import { useAuth } from "../context/AuthContext";
+
 export default function Settings() {
   const router = useRouter();
+  const { user, refreshUser, isAuthenticated, isLoading } = useAuth();
   const [authChecked, setAuthChecked] = useState(false);
   const [preferredModel, setPreferredModel] = useState("gpt-3.5-turbo");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    if (!router.isReady) return;
-    if (!hasAuthToken()) {
+    if (!router.isReady || isLoading) return;
+    if (!isAuthenticated) {
       redirectToLogin(router, "/settings");
       return;
     }
     setAuthChecked(true);
 
-    // Load the current preference from localStorage (kept in sync after saves).
-    try {
-      const storedUser = JSON.parse(localStorage.getItem("user") || "null");
-      if (storedUser?.preferredModel) {
-        setPreferredModel(storedUser.preferredModel);
-      }
-    } catch {
-      // ignore malformed storage
+    if (user?.preferredModel) {
+      setPreferredModel(user.preferredModel);
     }
-  }, [router]);
+  }, [router, user, isAuthenticated, isLoading]);
 
   const handleModelChange = (e: SelectChangeEvent) => {
     setPreferredModel(e.target.value);
@@ -67,10 +64,7 @@ export default function Settings() {
     try {
       const res = await api.put("/auth/profile", { preferredModel });
       if (res.data?.success) {
-        const updatedUser = res.data.data?.user;
-        if (updatedUser) {
-          localStorage.setItem("user", JSON.stringify({ ...updatedUser }));
-        }
+        refreshUser();
         setMessage({ type: "success", text: "AI model preference saved." });
       } else {
         setMessage({ type: "error", text: "Could not save preference. Please try again." });

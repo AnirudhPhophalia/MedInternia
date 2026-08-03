@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { canUser } from "../../utils/permissions";
 import {getCurrentUserRole} from "../../utils/permissions";
+import { useAuth } from "../../context/AuthContext";
 
 import PageHeader from "../../components/layout/PageHeader";
 import EmptyState from "../../components/layout/EmptyState";
@@ -72,11 +73,11 @@ export default function Cases() {
   const theme = useTheme();
   const router = useRouter();
   const canCreateCases = canUser(userRole, "case:create");
+  const { isAuthenticated } = useAuth();
 
   // Check login state and permissions
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
+    if (isAuthenticated) {
       setIsLoggedIn(true);
 
       // Fetch recommended cases
@@ -91,7 +92,7 @@ export default function Cases() {
         });
     }
     // Remove the standalone fetch here so we don't double fetch, fetchCases handles it
-  }, []);
+  }, [isAuthenticated]);
 
   // Fetch Cases with Filters
   const fetchCases = (pageNum = 1, append = false) => {

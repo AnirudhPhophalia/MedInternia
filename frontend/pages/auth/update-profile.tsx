@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { Container, Typography, TextField, Button, Box, Alert } from '@mui/material';
 import api from '../../utils/api';
 import { useRouter } from 'next/router';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UpdateProfile() {
+  const { userId } = useAuth();
   const [form, setForm] = useState({
     firstName: '',
     phone: '',
@@ -17,7 +19,7 @@ export default function UpdateProfile() {
   const router = useRouter();
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
+    if (!userId) return;
     api.get(`/users/${userId}/profile`)
       .then(res => {
         const user = res.data.data?.user || res.data;
@@ -33,7 +35,7 @@ export default function UpdateProfile() {
         });
       })
       .catch(() => {});
-  }, [router]);
+  }, [userId]);
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -63,9 +65,7 @@ export default function UpdateProfile() {
     try {
       // Save profile first so backend has latest ORCID
       await api.put('/auth/profile', form);
-
       await api.post('/auth/profile/orcid/sync', {});
-
       setSuccess('ORCID publications synced successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to sync ORCID publications');

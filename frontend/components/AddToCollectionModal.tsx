@@ -91,10 +91,11 @@ export default function AddToCollectionModal({ open, onClose, caseId }: AddToCol
     
     try {
       setError('');
+
       // 1. Create collection
       const createRes = await api.post('/collections', { name: newCollectionName });
       const newCollection = createRes.data.data;
-      
+
       // 2. Add case to new collection
       await api.post(`/collections/${newCollection._id}/cases`, { caseId });
 

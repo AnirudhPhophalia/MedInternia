@@ -6,6 +6,7 @@ import { Mail, Phone, Hospital, Home, Search } from "lucide-react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { getLoginHref, protectedLandingPaths } from "../utils/authRedirect";
+import { useAuth } from "../context/AuthContext";
 import {
   Box,
   Button,
@@ -48,12 +49,7 @@ const handleSubmit = () => {
   console.log(formData);
 };
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    setIsLoggedIn(!!token);
-  }, []);
+  const { isAuthenticated: isLoggedIn } = useAuth();
 
   const getAuthAwareHref = (path: string) =>
     !isLoggedIn && protectedLandingPaths.includes(path) ? getLoginHref(path) : path;

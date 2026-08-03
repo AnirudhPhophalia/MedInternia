@@ -22,6 +22,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import StarIcon from '@mui/icons-material/Star';
 import api from '../../utils/api';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 
 const predefinedSpecialties = [
   "Cardiology",
@@ -37,6 +38,7 @@ const predefinedSpecialties = [
 
 export default function AISuggestions() {
   const router = useRouter();
+  const { userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -53,8 +55,6 @@ export default function AISuggestions() {
   useEffect(() => {
     const fetchInitData = async () => {
       try {
-        const userId = localStorage.getItem('userId');
-
         if (!userId) {
           router.replace('/auth/login');
           return;
@@ -85,7 +85,7 @@ export default function AISuggestions() {
     };
 
     fetchInitData();
-  }, [router]);
+  }, [router, userId]);
 
   const handleGetCaseSuggestions = async (caseId: string) => {
     if (!caseId) return;

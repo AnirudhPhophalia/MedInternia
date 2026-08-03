@@ -80,83 +80,69 @@ export default function MessagesPage() {
           withCredentials: true
         });
 
-          socketRef.current.on('new_message', (data: { message: Message, conversationId: string }) => {
-            // Update conversation lastMessage
-            setConversations(prev => {
-              const updated = [...prev];
-              const idx = updated.findIndex(c => c._id === data.conversationId);
-              if (idx !== -1) {
-                updated[idx].lastMessage = data.message.content;
-                updated[idx].updatedAt = new Date().toISOString();
-              } else {
-                // Fetch conversations list again if it's a new one not in list
-                api.get('/messages/conversations').then(res => {
-                  setConversations(res.data.data.conversations);
-                }).catch(console.error);
-              }
-              return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            });
-
-            // Update messages if conversation is active
-            setActiveConversationId(currentActive => {
-              if (currentActive === data.conversationId) {
-                setMessages(prev => {
-                  const updated = [...prev, data.message];
-                  setMessagesCache(cache => ({
+        socketRef.current.on('new_message', (data: { conversationId: string, message: Message }) => {
+          // Update messages if conversation is active
+          setActiveConversationId(currentActive => {
+            if (currentActive === data.conversationId) {
+              setMessages(prev => {
+                const updated = [...prev, data.message];
+                setMessagesCache(cache => ({
+                  ...cache,
+                  [data.conversationId]: updated
+                }));
+                // Call API to mark as read immediately since we are viewing it
+                api.patch(`/messages/${data.conversationId}/read`).catch(console.error);
+                return updated;
+              });
+            } else {
+              // Update messages in cache for background conversation
+              setMessagesCache(cache => {
+                if (cache[data.conversationId]) {
+                  return {
                     ...cache,
-                    [data.conversationId]: updated
-                  }));
-                  // Call API to mark as read immediately since we are viewing it
-                  api.patch(`/messages/${data.conversationId}/read`).catch(console.error);
-                  return updated;
-                });
-              } else {
-                // Update messages in cache for background conversation
-                setMessagesCache(cache => {
-                  if (cache[data.conversationId]) {
-                    return {
-                      ...cache,
-                      [data.conversationId]: [...cache[data.conversationId], data.message]
-                    };
+                    [data.conversationId]: [...cache[data.conversationId], data.message]
+                  };
+                }
+                return cache;
+              });
+            }
+            return currentActive;
+          });
+        });
+
+        socketRef.current.on('typing_status', (data: { conversationId: string, senderId: string, isTyping: boolean }) => {
+          setActiveConversationId(currentActive => {
+            if (currentActive === data.conversationId) {
+              setIsOtherUserTyping(data.isTyping);
+            }
+            return currentActive;
+          });
+        });
+
+        socketRef.current.on('messages_read', (data: { conversationId: string, readBy: string }) => {
+          setActiveConversationId(currentActive => {
+            if (currentActive === data.conversationId) {
+              setMessages(prev => {
+                const updated = prev.map(m => {
+                  const senderId = typeof m.sender === 'string' ? m.sender : m.sender?._id;
+                  if (senderId === currentUserRef.current?._id && !m.readAt) {
+                    return { ...m, readAt: new Date().toISOString() };
                   }
-                  return cache;
+                  return m;
                 });
-              }
-              return currentActive;
-            });
+                setMessagesCache(cache => ({
+                  ...cache,
+                  [data.conversationId]: updated
+                }));
+                return updated;
+              });
+            }
+            return currentActive;
           });
+        });
 
-          socketRef.current.on('typing_status', (data: { conversationId: string, senderId: string, isTyping: boolean }) => {
-            setActiveConversationId(currentActive => {
-              if (currentActive === data.conversationId) {
-                setIsOtherUserTyping(data.isTyping);
-              }
-              return currentActive;
-            });
-          });
-
-          socketRef.current.on('messages_read', (data: { conversationId: string, readBy: string }) => {
-            setActiveConversationId(currentActive => {
-              if (currentActive === data.conversationId) {
-                setMessages(prev => {
-                  const updated = prev.map(m => {
-                    const senderId = typeof m.sender === 'string' ? m.sender : m.sender?._id;
-                    if (senderId === currentUserRef.current?._id && !m.readAt) {
-                      return { ...m, readAt: new Date().toISOString() };
-                    }
-                    return m;
-                  });
-                  setMessagesCache(cache => ({
-                    ...cache,
-                    [data.conversationId]: updated
-                  }));
-                  return updated;
-                });
-              }
-              return currentActive;
-            });
-          });
       } catch (err) {
+
         setLoading(false);
         setError('Failed to load messages');
       }

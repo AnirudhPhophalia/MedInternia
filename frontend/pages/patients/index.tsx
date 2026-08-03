@@ -28,13 +28,14 @@ function Patients() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
 
+  // SECURITY: Auth is handled via httpOnly cookies sent automatically by
+  // axios (withCredentials: true in utils/api.ts). No manual token
+  // retrieval or Authorization header is needed here.
   const fetchPatients = useCallback(async (pageNum: number) => {
     setLoading(true);
-    const token = localStorage.getItem('token');
     try {
       const res = await api.get('/patients', {
         params: { page: pageNum, limit: PAGE_SIZE },
-        headers: { Authorization: `Bearer ${token}` },
       });
       const data = res.data.data;
       setPatients(data.patients || []);

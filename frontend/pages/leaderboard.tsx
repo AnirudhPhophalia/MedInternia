@@ -5,24 +5,27 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
 import { fetchTopContributors, TopContributor } from "../utils/topContributors";
+import { useAuth } from "../context/AuthContext";
+
 
 export default function LeaderboardPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
   const [authChecked, setAuthChecked] = useState(false);
   const [contributors, setContributors] = useState<TopContributor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || isLoading) return;
 
-    if (!hasAuthToken()) {
+    if (!isAuthenticated) {
       redirectToLogin(router, "/leaderboard");
       return;
     }
 
     setAuthChecked(true);
-  }, [router]);
+  }, [router, isAuthenticated, isLoading]);
 
   useEffect(() => {
     if (!authChecked) return;

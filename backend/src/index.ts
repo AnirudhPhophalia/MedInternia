@@ -15,6 +15,7 @@ import connectDB from './utils/database';
 import { createDefaultBadges } from './utils/createDefaultBadges';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middleware/errorHandler';
+import { csrfProtection } from './middleware/csrf';
 import { corsOptions, isAllowedOrigin } from './config/cors';
 import { startBackgroundJobs, stopBackgroundJobs } from './jobs/caseModerationJob';
 
@@ -88,6 +89,11 @@ app.use(cookieParser());
 // Sanitize request data to prevent NoSQL injection attacks
 // Removes prohibited characters from keys and values (e.g., $ and .)
 app.use(mongoSanitizeMiddleware);
+
+// CSRF protection (double-submit cookie). Defense-in-depth on top of the
+// SameSite=strict session cookies — see middleware/csrf.ts for rationale.
+// Must come after cookieParser (needs req.cookies) and before routes.
+app.use(csrfProtection);
 
 // Routes
 app.get('/health', (req: Request, res: Response) => {

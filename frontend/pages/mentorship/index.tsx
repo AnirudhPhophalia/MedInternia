@@ -21,6 +21,7 @@ export default function MentorshipDashboard() {
       try {
         const [profileRes, mentorshipsRes] = await Promise.all([
           api.get('/users/profile'),
+
           api.get('/mentorship/me')
         ]);
 

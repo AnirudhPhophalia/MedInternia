@@ -3,8 +3,10 @@ import { Box, Typography, IconButton, TextField, Button, Stack, Tooltip, Collaps
 import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
 import { MessageCircleReply } from 'lucide-react';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function ResearchPaperDiscussion({ id, modalMode }: { id: string, modalMode?: boolean }) {
+  const { userId } = useAuth();
   const [discussions, setDiscussions] = useState<any[]>([]);
   const [comment, setComment] = useState('');
   const [replyTo, setReplyTo] = useState<any>(null);
@@ -17,14 +19,18 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
     if (!id) return;
     api.get(`/research-papers/${id}`)
       .then(res => {
-        setDiscussions(res.data.data.paper.comments || []);
+        setDiscussions(res.data.comments || []);
         setLoading(false);
       })
-      .catch(() => {
-        setError('Failed to fetch discussions');
+      .catch(err => {
+        setError('Failed to fetch comments');
         setLoading(false);
       });
   }, [id]);
+
+  function toggleReplies(commentId: string) {
+    setOpenReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
+  }
 
   const handleLike = async (commentId: string) => {
     try {
@@ -61,8 +67,6 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress color="primary" /></Box>;
   // Show error as alert
   const errorAlert = error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null;
-
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
   return (
     <Box sx={{ my: 2 }}>
@@ -141,7 +145,7 @@ export default function ResearchPaperDiscussion({ id, modalMode }: { id: string,
               fullWidth
               sx={{ bgcolor: '#f8fbff', borderRadius: 2 }}
             />
-            <Button variant="contained" onClick={handleDiscussion} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
+            <Button variant="contained" onClick={() => handleDiscussion()} sx={{ borderRadius: 2, fontWeight: 700 }}>Send</Button>
             <Button variant="text" onClick={() => setReplyTo(null)} sx={{ color: '#888' }}>Cancel</Button>
           </Stack>
         ) : (

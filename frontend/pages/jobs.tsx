@@ -34,7 +34,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { useRouter } from "next/router";
 import api from "../utils/api";
-import { hasAuthToken, redirectToLogin } from "../utils/authRedirect";
+import { redirectToLogin } from "../utils/authRedirect";
+import { useAuth } from "../context/AuthContext";
 import { getCurrentUserRole } from "../utils/permissions";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/layout/EmptyState";
@@ -119,6 +120,7 @@ const RecommendationsWidget = ({ recommendedJobs, setActiveTab }: any) => (
 
 export default function Jobs() {
   const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [originalJobs, setOriginalJobs] = useState<any[]>([]);
   const [smartQuery, setSmartQuery] = useState("");
@@ -174,29 +176,23 @@ export default function Jobs() {
   };
 
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || isLoading) return;
 
-    if (!hasAuthToken()) {
+    if (!isAuthenticated) {
       redirectToLogin(router, "/jobs");
       return;
     }
 
     setAuthChecked(true);
-  }, [router]);
+  }, [router, isAuthenticated, isLoading]);
 
   useEffect(() => {
     if (!authChecked) return;
 
-    let storedUser = null;
-    try {
-      storedUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "null") : null;
-    } catch {
-      storedUser = null;
-    }
-    const currentUserType = storedUser?.userType || getCurrentUserRole() || "";
+    const currentUserType = user?.userType || getCurrentUserRole() || "";
     setUserType(String(currentUserType).toLowerCase());
-    if (storedUser?._id) {
-      setCurrentUserId(storedUser._id);
+    if (user?._id || user?.id) {
+      setCurrentUserId(String(user._id || user.id));
     }
 
     // Load applied jobs from localstorage (bookmarks are now handled server-side)

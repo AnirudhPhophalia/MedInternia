@@ -9,6 +9,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import {getCurrentUserRole} from "../utils/permissions";
 import BookmarkButton from './BookmarkButton';
 import api from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 
 // Helper to get owner name from doctor field
 function getOwnerName(caseData: any) {
@@ -34,12 +35,11 @@ function getOwnerAvatar(caseData: any) {
 }
 
 export default function CaseCard({ caseData, onOpenDiscussion, onReadMore, isExpanded }: { caseData: any, onOpenDiscussion?: (caseId: string) => void, onReadMore?: () => void, isExpanded?: boolean }) {
+  const { userId } = useAuth();
   const [starred, setStarred] = useState(false);
   const [starring, setStarring] = useState(false);
   const [showPinned, setShowPinned] = useState(false);
   const userRole = getCurrentUserRole();
-
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
   useEffect(() => {
     const starredBy = caseData.starredBy || [];

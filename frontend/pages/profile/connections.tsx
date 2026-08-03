@@ -23,6 +23,7 @@ export default function ConnectionsPage() {
       setFollowing(res.data.following || []);
       setFollowers(res.data.followers || []);
     });
+
   }, []);
 
   return (

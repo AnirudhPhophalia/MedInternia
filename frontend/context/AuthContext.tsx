@@ -14,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (userId: string, user: any) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => void;
 }
 
@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   login: () => {},
-  logout: () => {},
+  logout: async () => {},
   refreshUser: () => {},
 });
 
@@ -77,10 +77,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const logout = useCallback(async () => {
+    // Send this before clearing client state so the cookie-backed server
+    // session can be revoked as well as removed.
     try {
       await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Failed to invalidate server session during logout:", error);
+    } catch {
+      // Clear the local session even when the server session is already gone.
     }
 
     setUserId(null);

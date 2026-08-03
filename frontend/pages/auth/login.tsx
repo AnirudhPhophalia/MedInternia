@@ -48,7 +48,7 @@ export default function Login() {
       const user = res.data?.data?.user;
       const userId = user?._id || user?.id || '';
       authLogin(userId, user);
-  router.push(getSafeRedirectPath(router.query.redirect));
+      router.push(getSafeRedirectPath(router.query.redirect));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

@@ -115,6 +115,7 @@ export default function CreateCase() {
           const formData = new FormData();
           formData.append("attachment", file);
           const res = await api.post("/cases/attachments", formData);
+
           
           const newAttachment = res.data.data;
           setAttachments((prev) => {
@@ -161,6 +162,7 @@ export default function CreateCase() {
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
+
       setLoading(true);
       setError("");
 
@@ -171,6 +173,7 @@ export default function CreateCase() {
             formData.append("attachment", file);
             
             const res = await api.post("/cases/attachments", formData);
+
             return res.data.data;
           })
         );
@@ -223,6 +226,7 @@ export default function CreateCase() {
       };
 
       const res = await api.post("/cases", payload);
+
 
       setSuccess("Case analyzed and created successfully!");
       
