@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import api from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function PeoplePage() {
   const [isConnected, setIsConnected] = useState(false);
+  const [isConnectionLoading, setIsConnectionLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
   const router = useRouter();
   const { id } = router.query;
+  const { userId } = useAuth();
   const [activeTab, setActiveTab] = useState("cases");
   const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
   const [profile, setProfile] = useState<any>(null);
@@ -48,6 +52,36 @@ export default function PeoplePage() {
       setPosts(res.data?.data?.cases || res.data?.cases || res.data || []);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !userId) return;
+
+    api.get(`/users/${userId}/connections`).then((res) => {
+      const following = res.data?.following || [];
+      setIsConnected(
+        following.some((connection: any) =>
+          String(connection._id || connection.id) === String(id),
+        ),
+      );
+    });
+  }, [id, userId]);
+
+  const toggleConnection = async () => {
+    if (!id || isConnectionLoading) return;
+
+    setIsConnectionLoading(true);
+    setConnectionError("");
+    try {
+      await api.post(isConnected ? "/users/unfollow" : "/users/follow", {
+        userId: id,
+      });
+      setIsConnected((connected) => !connected);
+    } catch {
+      setConnectionError("Could not update this connection. Please try again.");
+    } finally {
+      setIsConnectionLoading(false);
+    }
+  };
 
   const toggleLike = (postId: number) => {
     setLikedPosts((prev) => {
@@ -203,7 +237,7 @@ export default function PeoplePage() {
                   fontSize: 16,
                   border: "none",
                   boxShadow: "0 2px 8px rgba(30,41,59,0.08)",
-                  cursor: isConnected ? "default" : "pointer",
+                  cursor: isConnectionLoading ? "default" : "pointer",
                   transition: "background 0.2s, box-shadow 0.2s",
                   opacity: isConnected ? 0.8 : 1,
                 }}
@@ -219,12 +253,20 @@ export default function PeoplePage() {
                       "linear-gradient(90deg, #0ea5e9 0%, #38bdf8 100%)";
                   }
                 }}
-                onClick={() => {
-                  if (!isConnected) setIsConnected(true);
-                }}
+                disabled={isConnectionLoading}
+                onClick={toggleConnection}
               >
-                {isConnected ? "Connected" : "Connect"}
+                {isConnectionLoading
+                  ? "Saving..."
+                  : isConnected
+                    ? "Connected"
+                    : "Connect"}
               </button>
+              {connectionError && (
+                <p role="alert" style={{ color: "#b91c1c", margin: "8px 0 0" }}>
+                  {connectionError}
+                </p>
+              )}
             </div>
             <div
               style={{
