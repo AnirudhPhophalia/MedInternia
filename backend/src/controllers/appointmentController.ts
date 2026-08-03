@@ -227,10 +227,42 @@ export const rescheduleAppointment = asyncHandler(
       throw new AppError('Appointment date must be in the future', 400);
     }
 
+    // Bug fix (#1051): Check for double-booking before rescheduling.
+    // createAppointment does this check but rescheduleAppointment did not,
+    // allowing a patient to reschedule into an already-taken slot. We exclude
+    // the current appointment's own _id so it doesn't conflict with itself.
+    const conflictingAppointment = await Appointment.findOne({
+      _id: { $ne: appointment._id },
+      doctorId: appointment.doctorId,
+      scheduledDate: newDate,
+      scheduledTime,
+      status: { $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.RESCHEDULED] }
+    });
+
+    if (conflictingAppointment) {
+      throw new AppError(
+        'Time slot already booked for this doctor. Please choose a different time.',
+        409
+      );
+    }
+
     appointment.scheduledDate = newDate;
     appointment.scheduledTime = scheduledTime;
     appointment.status = AppointmentStatus.RESCHEDULED;
-    await appointment.save();
+
+    // Bug fix (#1051): Catch duplicate key errors from the unique index in case
+    // a concurrent request books the same slot between our check and save.
+    try {
+      await appointment.save();
+    } catch (error: any) {
+      if (error.code === 11000) {
+        throw new AppError(
+          'Time slot already booked for this doctor. Please choose a different time.',
+          409
+        );
+      }
+      throw error;
+    }
 
     await appointment.populate('patientId', 'firstName lastName email');
     await appointment.populate('doctorId', 'firstName lastName specialization');
