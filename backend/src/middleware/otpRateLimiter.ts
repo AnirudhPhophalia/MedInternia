@@ -54,6 +54,18 @@ export const chatbotLimiter = rateLimit({
   message: { success: false, message: 'Too many chatbot requests. Please try again after 15 minutes.' }
 });
 
+// Baseline protection for general API data endpoints such as cases, jobs,
+// webinars, leaderboards, and search. Stricter route-specific limiters for
+// auth and chatbot traffic remain mounted before this generic limiter.
+export const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
+  message: { success: false, message: 'Too many API requests. Please try again after 15 minutes.' }
+});
+
 // Limits each authenticated user to 30 outbound messages per minute.
 // Keyed by user ID from the JWT so the window is per-sender, not per-IP
 // (which would be trivially bypassed from the same machine).
