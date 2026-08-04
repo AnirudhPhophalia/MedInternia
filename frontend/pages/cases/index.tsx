@@ -23,6 +23,7 @@ import { useRouter } from "next/router";
 import { canUser } from "../../utils/permissions";
 import {getCurrentUserRole} from "../../utils/permissions";
 import { useAuth } from "../../context/AuthContext";
+import SEO from "../../components/SEO";
 
 import PageHeader from "../../components/layout/PageHeader";
 import EmptyState from "../../components/layout/EmptyState";
@@ -166,37 +167,43 @@ export default function Cases() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <PageHeader
+    <>
+      <SEO
         title="Medical Cases"
-        subtitle="Discover, review, and contribute to clinical cases to expand medical knowledge and earn learning points."
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Cases" }]}
-        action={
-          canCreateCases ? (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<Plus size={18} />}
-              component={Link}
-              href="/cases/create"
-              sx={{
-                borderRadius: '12px',
-                fontWeight: 700,
-                boxShadow: '0 4px 14px rgba(0, 114, 255, 0.4)',
-                background: 'linear-gradient(90deg, #0072ff 0%, #00c6ff 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(90deg, #0056cc 0%, #0072ff 100%)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 20px rgba(0, 114, 255, 0.6)',
-                },
-                transition: 'all 0.2s',
-              }}
-            >
-              Post a Case
-            </Button>
-          ) : null
-        }
+        description="Explore clinical cases, peer discussions, rare disease filters, and recommended medical case studies on MedInternia."
+        path="/cases"
       />
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+        <PageHeader
+          title="Medical Cases"
+          subtitle="Discover, review, and contribute to clinical cases to expand medical knowledge and earn learning points."
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Cases" }]}
+          action={
+            canCreateCases ? (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Plus size={18} />}
+                component={Link}
+                href="/cases/create"
+                sx={{
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 14px rgba(0, 114, 255, 0.4)',
+                  background: 'linear-gradient(90deg, #0072ff 0%, #00c6ff 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(90deg, #0056cc 0%, #0072ff 100%)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 20px rgba(0, 114, 255, 0.6)',
+                  },
+                  transition: 'all 0.2s',
+                }}
+              >
+                Post a Case
+              </Button>
+            ) : null
+          }
+        />
 
       {/* Recommended for you row */}
       {isLoggedIn && (
@@ -471,6 +478,7 @@ export default function Cases() {
           {openDiscussionId && <CaseDiscussion id={openDiscussionId} modalMode hideDescription />}
         </Box>
       </Modal>
-    </Container>
+      </Container>
+    </>
   );
 }

@@ -2,7 +2,6 @@ import api, { getAuthToken } from "../utils/api";
 import dynamic from "next/dynamic";
 import { IBM_Plex_Mono, Sora } from "next/font/google";
 import React from "react";
-import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -65,6 +64,7 @@ import {
 } from 'lucide-react';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
 import { fetchTopContributors, TopContributor } from '../utils/topContributors';
+import SEO from "../components/SEO";
 const HeroProductPreview = dynamic(
   () => import("../components/landing/HeroProductPreview"),
   {
@@ -635,13 +635,12 @@ export default function HomePage() {
         maxWidth: "100%",
       }}
     >
-      <Head>
-        <title>MedInternia - Your Gateway to Medical Learning</title>
-        <meta
-          name="description"
-          content="MedInternia is a medical learning and career platform for clinical cases, webinars, internships, collaboration, and healthcare opportunities."
-        />
-      </Head>
+      <SEO
+        title="Your Gateway to Medical Learning"
+        description="MedInternia is a medical learning and career platform for clinical cases, webinars, internships, collaboration, and healthcare opportunities."
+        image="/dashboard-mockup.png"
+        path="/"
+      />
 
       {/* Landing header / navbar layout - dynamically hidden if active session is detected */}
       <Box

@@ -37,6 +37,7 @@ import api from "../utils/api";
 import { redirectToLogin } from "../utils/authRedirect";
 import { useAuth } from "../context/AuthContext";
 import { getCurrentUserRole } from "../utils/permissions";
+import SEO from "../components/SEO";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/layout/EmptyState";
 import { Briefcase } from "lucide-react";
@@ -299,12 +300,18 @@ export default function Jobs() {
     .slice(0, 2);
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, minHeight: "80vh" }}>
-      <PageHeader
-        title="Career Dashboard"
-        subtitle="Find residency openings, fellowships, and clinical job opportunities tailored for doctors and interns."
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Jobs" }]}
+    <>
+      <SEO
+        title="Medical Jobs and Internships"
+        description="Find residency openings, fellowships, internships, and clinical job opportunities tailored for doctors, interns, and medical students."
+        path="/jobs"
       />
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, minHeight: "80vh" }}>
+        <PageHeader
+          title="Career Dashboard"
+          subtitle="Find residency openings, fellowships, and clinical job opportunities tailored for doctors and interns."
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Jobs" }]}
+        />
 
       {isPatient ? (
         <Alert severity="info" sx={{ mb: 3, borderRadius: 3 }}>
@@ -595,7 +602,8 @@ export default function Jobs() {
           )}
         </Box>
       )}
-    </Container>
+      </Container>
+    </>
   );
 }
 
