@@ -12,14 +12,35 @@ export interface RecentlyViewedInternship {
 const STORAGE_KEY = "recentlyViewedInternships";
 const MAX_ITEMS = 10;
 
+function isValidRecentlyViewedInternship(
+  value: unknown
+): value is RecentlyViewedInternship {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const item = value as Record<string, unknown>;
+
+  return (
+    typeof item._id === "string" &&
+    item._id.length > 0 &&
+    typeof item.title === "string" &&
+    item.title.length > 0 &&
+    typeof item.viewedAt === "number"
+  );
+}
+
 function readFromStorage(): RecentlyViewedInternship[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(isValidRecentlyViewedInternship);
   } catch {
     return [];
   }
