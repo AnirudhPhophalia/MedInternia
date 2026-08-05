@@ -25,6 +25,7 @@ import collectionRoutes from './collections';
 import learningPathRoutes from './learningPaths';
 import waitlistRoutes from './waitlist';
 import appointmentRoutes from './appointments';
+import { apiLimiter } from '../middleware/otpRateLimiter';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -72,6 +73,7 @@ router.get('/test', (req: Request, res: Response) => {
 
 router.use('/auth', authRoutes);
 router.use('/chatbot', chatbotRoutes);
+router.use(apiLimiter);
 router.use('/video', videoRoutes);
 router.use('/users', userRoutes);
 router.use('/patients', patientRoutes);
