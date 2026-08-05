@@ -45,6 +45,30 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // The reviewee is the comment's author — never trust body.revieweeId.
+    // Otherwise a reviewer can iterate comment ids and submit rating:1 with
+    // revieweeId set to any target doctor, dragging that doctor's public
+    // averageRating toward 1.
+    const authorId = (comment as any).author?.toString();
+    if (!authorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment has no author to review'
+      });
+    }
+    if (revieweeId && revieweeId !== authorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'revieweeId does not match the comment author'
+      });
+    }
+    if (reviewerId === authorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot review your own work'
+      });
+    }
+
     // Check if review already exists
     const existingReview = await PeerReview.findOne({
       reviewer: reviewerId,
@@ -66,7 +90,7 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
 
       [peerReview] = await PeerReview.create([{
         reviewer: reviewerId,
-        reviewee: revieweeId,
+        reviewee: authorId,
         caseId,
         commentId,
         rating,
@@ -81,11 +105,11 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       }, { session });
 
       // Update reviewee's peer review count and calculate new average
-      const revieweeReviews = await PeerReview.find({ reviewee: revieweeId }).session(session);
+      const revieweeReviews = await PeerReview.find({ reviewee: authorId }).session(session);
       const totalRating = revieweeReviews.reduce((sum, review) => sum + review.rating, 0);
       const averageRating = totalRating / revieweeReviews.length;
 
-      await User.findByIdAndUpdate(revieweeId, {
+      await User.findByIdAndUpdate(authorId, {
         $inc: { peerReviewsReceived: 1 },
         $set: { averageRating: Math.round(averageRating * 10) / 10 }
       }, { session });
@@ -103,7 +127,7 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
     }
      // Notify reviewee about peer review
     await createAndEmitNotification({
-      recipientId: revieweeId,
+      recipientId: authorId,
       type:        'peer_review',
       message:     `You received a peer review with a rating of ${peerReview.rating}/5`,
       link:        `/peer-reviews/${peerReview._id}`,
