@@ -2,6 +2,14 @@ import { Request, Response } from 'express';
 import Mentorship from '../models/Mentorship';
 import User from '../models/User';
 
+// True when userId is the mentor or mentee of the mentorship. Handles both
+// populated (mentor._id) and unpopulated (mentor as ObjectId) documents.
+const isParticipant = (mentorship: any, userId: string): boolean => {
+  const mentorId = mentorship.mentor?._id?.toString() ?? mentorship.mentor?.toString();
+  const menteeId = mentorship.mentee?._id?.toString() ?? mentorship.mentee?.toString();
+  return mentorId === userId || menteeId === userId;
+};
+
 export const requestMentorship = async (req: Request, res: Response): Promise<void> => {
   try {
     const { mentorId, specialtyRequested, initialMessage } = req.body;
@@ -105,7 +113,15 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
       });
     }
 
-    // Only mentor can accept/reject
+    // Must be a participant to touch the mentorship at all.
+    if (!isParticipant(mentorship, userId)) {
+      res.status(403).json({ success: false, message: 'Not authorized' });
+      return;
+    }
+
+    // The mentor controls all status transitions; the mentee may only mark it
+    // completed. (Previously `status !== 'completed'` short-circuited the whole
+    // check, letting any authenticated user complete anyone's mentorship.)
     if (mentorship.mentor.toString() !== userId && status !== 'completed') {
       res.status(403).json({ success: false, message: 'Only the mentor can update this status' });
       return;
@@ -129,12 +145,16 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
 export const addGoal = async (req: Request, res: Response): Promise<any> => {
   try {
     const { title, description } = req.body;
+    const userId = (req as any).user.id;
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
       return res.status(404).json({
         success: false,
         message: "Mentorship not found",
       });
+    }
+    if (!isParticipant(mentorship, userId)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     mentorship.goals.push({ title, description, isCompleted: false } as any);
@@ -149,12 +169,16 @@ export const addGoal = async (req: Request, res: Response): Promise<any> => {
 export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
   try {
     const { goalId } = req.params;
+    const userId = (req as any).user.id;
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
       return res.status(404).json({
         success: false,
         message: "Mentorship not found",
       });
+    }
+    if (!isParticipant(mentorship, userId)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     const goal = mentorship.goals.find((g: any) => g._id && g._id.toString() === goalId);
@@ -172,12 +196,16 @@ export const toggleGoal = async (req: Request, res: Response): Promise<any> => {
 export const addMeeting = async (req: Request, res: Response): Promise<any> => {
   try {
     const { scheduledAt, topic, link, notes } = req.body;
+    const userId = (req as any).user.id;
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
       return res.status(404).json({
         success: false,
         message: "Mentorship not found",
       });
+    }
+    if (!isParticipant(mentorship, userId)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     mentorship.meetings.push({ scheduledAt: new Date(scheduledAt), topic, link, notes } as any);
