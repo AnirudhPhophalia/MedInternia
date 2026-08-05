@@ -10,6 +10,14 @@ const isInvalidPastDeadline = (deadline: unknown): boolean => {
   return Number.isNaN(parsedDeadline.getTime()) || parsedDeadline <= new Date();
 };
 
+// The applicants array (who applied + when) is PII visible only to the job
+// poster/admin. Strip it from any serialized job returned to a non-owner.
+const stripApplicantsForNonOwner = (jobObj: any, userId?: string): any => {
+  const ownerId = jobObj?.postedBy?._id?.toString() ?? jobObj?.postedBy?.toString();
+  if (!userId || ownerId !== userId) delete jobObj.applicants;
+  return jobObj;
+};
+
 const MAX_JOB_SEARCH_LENGTH = 100;
 
 const normalizeJobSearchTerm = (value: unknown): string | null => {
@@ -224,8 +232,11 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
     const total = await JobOpportunity.countDocuments(filter);
 
     const user = (req as AuthRequest).user;
-    let enrichedJobs: any[] = jobOpportunities.map(job => job.toObject());
-    
+    const requesterId = user ? (user._id as any).toString() : undefined;
+    let enrichedJobs: any[] = jobOpportunities.map(job =>
+      stripApplicantsForNonOwner(job.toObject(), requesterId)
+    );
+
     if (user) {
       const fullUser = await User.findById(user._id);
       if (fullUser) {
@@ -266,7 +277,8 @@ export const getJobOpportunityById = async (req: Request, res: Response) => {
     }
 
     const user = (req as AuthRequest).user;
-    const jobObj = jobOpportunity.toObject();
+    const requesterId = user ? (user._id as any).toString() : undefined;
+    const jobObj = stripApplicantsForNonOwner(jobOpportunity.toObject(), requesterId);
     if (user) {
       const fullUser = await User.findById(user._id);
       if (fullUser) {
