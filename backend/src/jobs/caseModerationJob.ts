@@ -54,16 +54,40 @@ export async function processCaseModeration(caseId: string): Promise<void> {
   ]);
   const reviewedAt = new Date();
 
+  // Bug fix (#1075): Only overwrite title/description when the case is flagged.
+  // For approved cases we preserve the original content — the compliance service
+  // should return the original text unchanged, but if it returns "" or null the
+  // case content would be silently destroyed with no recovery path.
+  // For flagged cases we store the original text in originalTitle/originalDescription
+  // before overwriting, giving authors context about what was changed.
+  const contentUpdate: Record<string, any> = {
+    moderationStatus: status,
+    moderationReason: reason,
+    reviewedAt,
+  };
+
+  if (isFlagged) {
+    // Preserve originals on first moderation so the author can see what changed.
+    // $setOnInsert-style logic: only set originalTitle if it isn't already set.
+    if (!caseDoc.get("originalTitle")) {
+      contentUpdate.originalTitle = caseDoc.title;
+    }
+    if (!caseDoc.get("originalDescription")) {
+      contentUpdate.originalDescription = caseDoc.description;
+    }
+    // Only apply redacted text when the service actually returned non-empty content.
+    if (titleResult.redacted_text) {
+      contentUpdate.title = titleResult.redacted_text;
+    }
+    if (descriptionResult.redacted_text) {
+      contentUpdate.description = descriptionResult.redacted_text;
+    }
+  }
+
   const updatedCase = await Case.findOneAndUpdate(
     { _id: caseId, moderationStatus: "pending" },
     {
-      $set: {
-        title: titleResult.redacted_text,
-        description: descriptionResult.redacted_text,
-        moderationStatus: status,
-        moderationReason: reason,
-        reviewedAt,
-      },
+      $set: contentUpdate,
       $push: {
         moderationAuditTrail: {
           status,
@@ -76,9 +100,10 @@ export async function processCaseModeration(caseId: string): Promise<void> {
 
   if (status === "approved" && updatedCase) {
     try {
+      // Use the original (unredacted) text for RAG ingestion on approved cases.
       await ingestCase(
         caseId,
-        `${titleResult.redacted_text}\n${descriptionResult.redacted_text}`,
+        `${caseDoc.title}\n${caseDoc.description}`,
         {
           specialization: caseDoc.specialization,
           isPatientCase: caseDoc.isPatientCase,
@@ -136,7 +161,15 @@ export async function processCaseModerationWithRetries(
     }
   }
 
-  await markCaseModerationFailed(caseId, lastError!);
+  // Bug fix (#1075): Wrap markCaseModerationFailed in its own try/catch so
+  // that a DB connectivity error during failure-marking doesn't swallow
+  // lastError — the case would otherwise stay "pending" indefinitely with
+  // no indication of failure and Agenda would not record the job as failed.
+  try {
+    await markCaseModerationFailed(caseId, lastError!);
+  } catch (markError) {
+    console.error(`Failed to mark case ${caseId} as failed:`, markError);
+  }
   throw lastError;
 }
 
