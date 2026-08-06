@@ -6,6 +6,7 @@ import {
   addComment,
   getCases,
   getPinnedComments,
+  repostCase,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
@@ -352,6 +353,116 @@ describe("Case Controller", () => {
 
       expect(mockedCase.findById).toHaveBeenCalledWith("declared-case-id");
       expect(mockedCase.findById).not.toHaveBeenCalledWith("wrong-id");
+    });
+  });
+
+  describe("repostCase", () => {
+    const originalCaseData = {
+      _id: "case-123",
+      title: "Original Case",
+      description: "A medical case",
+      symptoms: ["fever", "cough"],
+      patientInfo: { age: 45, gender: "male" },
+      difficulty: "intermediate",
+      specialization: "Cardiology",
+      tags: ["heart", "cardiology"],
+      images: ["img1.jpg"],
+      attachments: [{ url: "http://example.com/file.pdf", type: "image" }],
+      diagnosis: "Hypertension",
+      treatment: "Beta blockers",
+      isRareDisease: false,
+      doctor: { toString: () => "original-doctor" },
+      allowRepost: true,
+    };
+
+    it("creates a repost when allowRepost is true", async () => {
+      mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
+      mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
+
+      const req = mockRequest("user-2", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await repostCase(req as any, res as any, jest.fn());
+
+      expect(mockedCase.create).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Repost: Original Case",
+        description: "A medical case",
+        doctor: "user-2",
+      }));
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it("copies required schema fields: difficulty and specialization", async () => {
+      mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
+      mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
+
+      const req = mockRequest("user-2", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await repostCase(req as any, res as any, jest.fn());
+
+      expect(mockedCase.create).toHaveBeenCalledWith(expect.objectContaining({
+        difficulty: "intermediate",
+        specialization: "Cardiology",
+      }));
+    });
+
+    it("copies optional medical metadata fields", async () => {
+      mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
+      mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
+
+      const req = mockRequest("user-2", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await repostCase(req as any, res as any, jest.fn());
+
+      expect(mockedCase.create).toHaveBeenCalledWith(expect.objectContaining({
+        tags: ["heart", "cardiology"],
+        images: ["img1.jpg"],
+        attachments: [{ url: "http://example.com/file.pdf", type: "image" }],
+        diagnosis: "Hypertension",
+        treatment: "Beta blockers",
+        isRareDisease: false,
+      }));
+    });
+
+    it("sets the repost owner to the requesting user", async () => {
+      mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
+      mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
+
+      const req = mockRequest("user-2", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await repostCase(req as any, res as any, jest.fn());
+
+      const createCall = (mockedCase.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.doctor.toString()).toBe("user-2");
+      expect(createCall.doctor.toString()).not.toBe("original-doctor");
+    });
+
+    it("returns 400 when allowRepost is false", async () => {
+      mockedCase.findById.mockResolvedValue({
+        ...originalCaseData,
+        allowRepost: false,
+      } as any);
+
+      const req = mockRequest("user-2", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await expect(
+        repostCase(req as any, res as any, jest.fn())
+      ).rejects.toThrow("This case cannot be reposted per author restrictions");
+    });
+
+    it("returns 404 for a nonexistent case", async () => {
+      mockedCase.findById.mockResolvedValue(null);
+
+      const req = mockRequest("user-2", "doctor", { id: "missing" });
+      const res = mockResponse();
+
+      await expect(
+        repostCase(req as any, res as any, jest.fn())
+      ).rejects.toThrow("Case not found");
     });
   });
 });
