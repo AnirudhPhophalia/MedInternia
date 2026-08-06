@@ -684,19 +684,23 @@ export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
     if (!doctor || (doctor.userType !== 'doctor' && doctor.userType !== 'admin')) {
       return res.status(403).json({ success: false, message: 'Only doctors or admins can award points.' });
     }
-    if (typeof points !== 'number' || points <= 0) {
-      return res.status(400).json({ success: false, message: 'Points must be a positive number.' });
+    if (typeof points !== 'number' || !Number.isInteger(points) || points <= 0) {
+      return res.status(400).json({ success: false, message: 'Points must be a positive integer.' });
     }
     const intern = await User.findById(internId);
     if (!intern || intern.userType !== 'intern') {
       return res.status(404).json({ success: false, message: 'Intern not found.' });
     }
+    // Doctors can only award points to their assigned mentees
+    if (doctor.userType === 'doctor' && intern.mentorDoctor?.toString() !== doctor._id.toString()) {
+      return res.status(403).json({ success: false, message: 'You can only award points to your assigned mentees.' });
+    }
     const updatedIntern = await User.findByIdAndUpdate(
-    internId,
-    { $inc: { points } },
-    { new: true }
-  );
-  res.json({ success: true, points: updatedIntern?.points ?? 0 });
+      internId,
+      { $inc: { points } },
+      { new: true }
+    );
+    res.json({ success: true, points: updatedIntern?.points ?? 0 });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
