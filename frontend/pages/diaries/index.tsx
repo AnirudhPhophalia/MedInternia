@@ -6,7 +6,8 @@ import React, { useEffect, useState } from 'react';
 import { FaPlusCircle, FaBookOpen, FaMedal } from 'react-icons/fa';
 import Image from 'next/image';
 import { getInternProfile, getInternCredits, getDiaries, createDiary, addDiaryEntry } from '../../utils/api';
-import { withAuth } from '../../components/withAuth'; 
+import { withAuth } from '../../components/withAuth';
+import DiaryAnalytics from '../../components/DiaryAnalytics';
 
 // Type definitions
 type InternProfile = {
@@ -64,8 +65,12 @@ const DiariesPage: React.FC = () => {
     const [newEntryTags, setNewEntryTags] = useState<string[]>([]);
     const [newEntrySymptomsChecklist, setNewEntrySymptomsChecklist] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [diariesLoading, setDiariesLoading] = useState(true);
+    const [diariesError, setDiariesError] = useState<string | null>(null);
 
    const loadDiaries = async () => {
+  setDiariesLoading(true);
+  setDiariesError(null);
   try {
     const data = await getDiaries();
     const normalized = data.map((d: any) => ({
@@ -76,6 +81,9 @@ const DiariesPage: React.FC = () => {
     setDiaries(normalized);
   } catch (error) {
     console.error(error);
+    setDiariesError('Could not load diary trends. Try refreshing the page.');
+  } finally {
+    setDiariesLoading(false);
   }
 };
 const handleCreateDiary = async () => {
@@ -380,11 +388,11 @@ setSelectedDiary(normalizedDiary);
                             </div>
                         </div>
                     )}
-                    {/* Charts & Analytics Placeholder */}
-                    <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px #e3eafe', padding: 24, marginTop: 32, border: '1.5px solid #e3eafe' }}>
-                        <div style={{ fontWeight: 700, fontSize: 16, color: '#2456e0', marginBottom: 8 }}>Charts & Analytics (Coming Soon)</div>
-                        <div style={{ color: '#888', fontSize: 15 }}>Symptom trends, location-based health issues, etc.</div>
-                    </div>
+                    <DiaryAnalytics
+                        diaries={diaries}
+                        loading={diariesLoading}
+                        error={diariesError}
+                    />
                     {/* Removed bottom Create button as requested */}
                 </div>
             </div>
