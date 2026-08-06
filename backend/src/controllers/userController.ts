@@ -633,23 +633,27 @@ export const createUser = (req: Request, res: Response) => {
   });
 };
 
-// Grant contributor badge if points or recommended by doctor
+// Grant contributor badge if points >= 50
 export const grantContributorBadge = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
+
+    if (req.user && req.user._id.toString() === userId) {
+      return res.status(403).json({ success: false, message: 'Cannot grant badge to yourself' });
+    }
+
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     if (user.badges && user.badges.includes('CONTRIBUTOR')) {
       return res.status(400).json({ success: false, message: 'Already has badge' });
     }
-    const recommendedByDoctor = req.body.recommendedByDoctor;
-    if (user.points >= 50 || recommendedByDoctor) {
+    if (user.points >= 50) {
       user.badges = user.badges || [];
       user.badges.push('CONTRIBUTOR');
       await user.save();
       res.json({ success: true, badges: user.badges });
     } else {
-      res.status(403).json({ success: false, message: 'Insufficient points or recommendation' });
+      res.status(403).json({ success: false, message: 'Insufficient points' });
     }
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' });
