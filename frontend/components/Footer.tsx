@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Linkedin, X, Instagram, Mail, Send } from 'lucide-react';
 import { Box, Typography, Stack, Divider, IconButton, InputBase, Paper, useTheme } from '@mui/material';
 import { getLoginHref, protectedLandingPaths } from '../utils/authRedirect';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
 const quickLinks = [
   { label: 'Cases', href: '/cases' },
@@ -25,6 +26,8 @@ const socialLinks = [
   { label: 'Instagram', href: 'https://instagram.com/medinternia', icon: Instagram },
   { label: 'Email', href: 'mailto:medinternia@gmail.com', icon: Mail },
 ];
+
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 function FooterLinkColumn({
   title,
@@ -68,9 +71,45 @@ export default function Footer() {
   const theme = useTheme();
   const { isAuthenticated } = useAuth();
   const isLoggedIn = isAuthenticated;
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
 
   const getAuthAwareHref = (path: string) =>
     !isLoggedIn && protectedLandingPaths.includes(path) ? getLoginHref(path) : path;
+
+  const handleSubscribe = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = email.trim();
+
+    if (!trimmed) {
+      setStatus('error');
+      setMessage('Please enter your email address.');
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(trimmed)) {
+      setStatus('error');
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setStatus('loading');
+    setMessage('');
+
+    try {
+      const res = await api.post('/newsletter/subscribe', { email: trimmed });
+      setStatus('success');
+      setMessage(res.data?.message || 'Subscribed successfully.');
+      setEmail('');
+    } catch (error: any) {
+      const apiMessage =
+        error?.response?.data?.message ||
+        'Could not subscribe right now. Please try again.';
+      setStatus('error');
+      setMessage(apiMessage);
+    }
+  };
 
   return (
     <Box
@@ -144,6 +183,7 @@ export default function Footer() {
           <Paper
             component="form"
             elevation={0}
+            onSubmit={handleSubscribe}
             sx={{
               p: '4px 4px 4px 12px',
               display: 'flex',
@@ -161,22 +201,52 @@ export default function Footer() {
                 '& input::placeholder': { color: 'rgba(255,255,255,0.4)', opacity: 1 },
               }}
               placeholder="Enter your email"
-              inputProps={{ 'aria-label': 'Newsletter email address' }}
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (status !== 'idle' && status !== 'loading') {
+                  setStatus('idle');
+                  setMessage('');
+                }
+              }}
+              disabled={status === 'loading'}
+              inputProps={{
+                'aria-label': 'Newsletter email address',
+                type: 'email',
+                autoComplete: 'email',
+              }}
             />
             <IconButton
-              type="button"
+              type="submit"
               aria-label="Subscribe to newsletter"
+              disabled={status === 'loading'}
               sx={{
                 p: 1,
                 color: '#fff',
                 background: theme.custom.heroGradient,
                 borderRadius: 1.5,
                 '&:hover': { opacity: 0.9 },
+                '&.Mui-disabled': { opacity: 0.6, color: '#fff' },
               }}
             >
               <Send size={16} />
             </IconButton>
           </Paper>
+          {status === 'loading' && (
+            <Typography variant="caption" role="status" sx={{ mt: 1, display: 'block', color: 'rgba(255,255,255,0.7)' }}>
+              Subscribing...
+            </Typography>
+          )}
+          {status === 'success' && message && (
+            <Typography variant="caption" role="status" sx={{ mt: 1, display: 'block', color: '#86efac' }}>
+              {message}
+            </Typography>
+          )}
+          {status === 'error' && message && (
+            <Typography variant="caption" role="alert" sx={{ mt: 1, display: 'block', color: '#fca5a5' }}>
+              {message}
+            </Typography>
+          )}
         </Box>
       </Stack>
 
