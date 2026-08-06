@@ -7,6 +7,7 @@ import {
   deleteAccount,
   getConnections,
   verifyDoctor,
+  getPublicProfile,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -550,6 +551,138 @@ describe("User Controller", () => {
       mockedUser.findById.mockReturnValue(query);
 
       await getConnections(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "User not found" })
+      );
+    });
+  });
+
+  describe("getPublicProfile", () => {
+    const userId = "507f1f77bcf86cd799439011";
+
+    it("returns zeroed public aggregates when the user has no activity", async () => {
+      const req = { params: { userId } } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          userType: "doctor",
+          specialization: "Cardiology",
+          averageRating: 0,
+          profileScore: 0,
+          followers: [],
+          following: [],
+          toObject: function () {
+            return { ...this };
+          },
+        }),
+      } as any);
+
+      mockedUserBadge.find.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockResolvedValue([]),
+        }),
+      } as any);
+      mockedCase.countDocuments.mockResolvedValue(0);
+      mockedCase.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any);
+
+      await getPublicProfile(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            user: expect.objectContaining({
+              firstName: "Ada",
+              followersCount: 0,
+              followingCount: 0,
+            }),
+            badges: [],
+            cases: [],
+            stats: expect.objectContaining({
+              caseCount: 0,
+              averageRating: 0,
+              profileScore: 0,
+              badgesEarned: 0,
+            }),
+          }),
+        })
+      );
+    });
+
+    it("returns real follower, badge, rating, and case totals for different users", async () => {
+      const req = { params: { userId } } as any;
+      const res = mockResponse();
+      const cases = [
+        { _id: "c1", title: "Case A" },
+        { _id: "c2", title: "Case B" },
+      ];
+      const badges = [{ _id: "b1", badge: { name: "Mentor", icon: "M" } }];
+
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          firstName: "Grace",
+          lastName: "Hopper",
+          userType: "doctor",
+          specialization: "Neurology",
+          averageRating: 4.5,
+          profileScore: 70,
+          followers: ["u1", "u2", "u3"],
+          following: ["u4"],
+          toObject: function () {
+            return { ...this };
+          },
+        }),
+      } as any);
+
+      mockedUserBadge.find.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockResolvedValue(badges),
+        }),
+      } as any);
+      mockedCase.countDocuments.mockResolvedValue(2);
+      mockedCase.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(cases),
+          }),
+        }),
+      } as any);
+
+      await getPublicProfile(req, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.data.user.followersCount).toBe(3);
+      expect(payload.data.user.followingCount).toBe(1);
+      expect(payload.data.user.followers).toBeUndefined();
+      expect(payload.data.user.following).toBeUndefined();
+      expect(payload.data.stats.caseCount).toBe(2);
+      expect(payload.data.stats.averageRating).toBe(4.5);
+      expect(payload.data.stats.profileScore).toBe(70);
+      expect(payload.data.stats.badgesEarned).toBe(1);
+      expect(payload.data.cases).toHaveLength(2);
+      expect(payload.data.badges).toEqual(badges);
+    });
+
+    it("returns 404 when the public profile user is missing", async () => {
+      const req = { params: { userId } } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue(null),
+      } as any);
+
+      await getPublicProfile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(
