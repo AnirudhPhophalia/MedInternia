@@ -1,8 +1,11 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
 import ResearchPaper from '../models/ResearchPaper';
 import { AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
+
+const getParam = (value: string | string[]): string => Array.isArray(value) ? value[0] : value;
 
 export const addComment = asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = req.user as { _id: string } | undefined;
@@ -71,45 +74,64 @@ export const replyToComment = asyncHandler(async (req: AuthRequest, res: Respons
   res.status(201).json({ success: true, data: { reply } });
 });
 
-import mongoose from 'mongoose';
-
 export const likeComment = asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = req.user as { _id: string } | undefined;
   if (!user) throw new AppError('User not authenticated', 401);
 
   const { paperId, commentId } = req.params;
+  const paperIdParam = getParam(paperId);
+  const commentIdParam = getParam(commentId);
   const userIdObj = new mongoose.Types.ObjectId(user._id);
+  const commentIdObj = new mongoose.Types.ObjectId(commentIdParam);
 
-  let liked = false;
-  const pullResult = await ResearchPaper.updateOne(
-    { _id: paperId, 'comments._id': commentId },
-    { $pull: { 'comments.$.likes': userIdObj } },
+  const updated = await ResearchPaper.findOneAndUpdate(
+    { _id: paperIdParam, 'comments._id': commentIdParam },
+    [
+      {
+        $set: {
+          comments: {
+            $map: {
+              input: '$comments',
+              as: 'comment',
+              in: {
+                $cond: [
+                  { $eq: ['$$comment._id', commentIdObj] },
+                  {
+                    $mergeObjects: [
+                      '$$comment',
+                      {
+                        likes: {
+                          $cond: [
+                            { $in: [userIdObj, { $ifNull: ['$$comment.likes', []] }] },
+                            { $setDifference: [{ $ifNull: ['$$comment.likes', []] }, [userIdObj]] },
+                            { $concatArrays: [{ $ifNull: ['$$comment.likes', []] }, [userIdObj]] },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                  '$$comment',
+                ],
+              },
+            },
+          },
+        },
+      },
+    ],
+    {
+      new: true,
+      projection: { comments: { $elemMatch: { _id: commentIdObj } } },
+    },
   );
 
-  if (pullResult.matchedCount === 0) {
-    const paperExists = await ResearchPaper.exists({ _id: paperId });
+  if (!updated || !updated.comments.length) {
+    const paperExists = await ResearchPaper.exists({ _id: paperIdParam });
     throw new AppError(paperExists ? 'Comment not found' : 'Research paper not found', 404);
   }
 
-  if (pullResult.modifiedCount === 0) {
-    const addResult = await ResearchPaper.updateOne(
-      { _id: paperId, 'comments._id': commentId },
-      { $addToSet: { 'comments.$.likes': userIdObj } },
-    );
-    if (addResult.matchedCount === 0) {
-      throw new AppError('Comment not found', 404);
-    }
-    liked = true;
-  }
-
-  const updated = await ResearchPaper.findById(paperId, {
-    comments: { $elemMatch: { _id: commentId } },
-  });
-  if (!updated || !updated.comments.length) {
-    throw new AppError('Comment not found', 404);
-  }
-
-  const likes = ((updated?.comments as any)?.[0]?.likes as any[])?.length ?? 0;
+  const updatedLikes = ((updated.comments as any)[0]?.likes as any[]) ?? [];
+  const liked = updatedLikes.some((like: any) => like.toString() === userIdObj.toString());
+  const likes = updatedLikes.length;
 
   res.json({ success: true, message: liked ? 'Comment liked' : 'Comment unliked', data: { likes, liked } });
 });
