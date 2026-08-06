@@ -1,38 +1,186 @@
-name: Deploy (placeholder)
+name: Deploy
 
-# This workflow is a template demonstrating deployment steps.
-# Configure as needed for your hosting provider (Vercel, Render, Heroku, Netlify).
+# Builds frontend + backend, publishes a GitHub Release with artifacts, and
+# optionally triggers provider deploy hooks + health checks when secrets are set.
+#
+# Required for live provider deploy (optional):
+#   secrets.FRONTEND_DEPLOY_HOOK  - HTTPS deploy hook for the frontend
+#   secrets.BACKEND_DEPLOY_HOOK   - HTTPS deploy hook for the backend
+#   vars.FRONTEND_HEALTH_URL      - URL that must return HTTP 2xx after deploy
+#   vars.BACKEND_HEALTH_URL       - URL that must return HTTP 2xx after deploy
+#
+# Rollback: re-run this workflow against a previous release tag, or redeploy the
+# prior release artifacts / provider revision. See .github/DEPLOY.md.
 
 on:
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: Create a GitHub Release with build artifacts
+        required: true
+        type: boolean
+        default: true
+      trigger_provider_deploy:
+        description: Call provider deploy hooks when secrets are configured
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
       - name: Build frontend
         working-directory: frontend
         run: |
           npm install
-          npm run build --if-present
+          npm run build
+
       - name: Build backend
         working-directory: backend
         run: |
           npm install
-          npm run build --if-present
+          npm run build
 
-      # Example: Deploy to Render or another provider
-      # - name: Deploy to Render
-      #   env:
-      #     RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      #   run: |
-      #     # add deploy commands here
-
-      - name: Note
+      - name: Package artifacts
         run: |
-          echo "This deploy workflow is a template. Add provider-specific steps and secrets."
+          mkdir -p release-artifacts
+          tar -czf release-artifacts/frontend-build.tar.gz -C frontend .next package.json package-lock.json public
+          tar -czf release-artifacts/backend-build.tar.gz -C backend dist package.json package-lock.json
+          echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" > release-artifacts/build-meta.txt
+          echo "sha=${GITHUB_SHA}" >> release-artifacts/build-meta.txt
+          echo "ref=${GITHUB_REF_NAME}" >> release-artifacts/build-meta.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: medinternia-build
+          path: release-artifacts/
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: medinternia-build
+          path: release-artifacts
+
+      - name: Create GitHub Release
+        id: release
+        if: ${{ inputs.create_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="deploy-${GITHUB_SHA::7}-$(date -u +%Y%m%d%H%M%S)"
+          NOTES="$(cat <<EOF
+          Automated deploy build from \`${GITHUB_SHA}\` on \`${GITHUB_REF_NAME}\`.
+
+          Rollback: checkout this tag's commit and re-run Deploy, or restore the previous provider revision / release assets.
+          EOF
+          )"
+          gh release create "$TAG" release-artifacts/* \
+            --title "Deploy ${TAG}" \
+            --notes "$NOTES"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Created release $TAG"
+
+      - name: Trigger provider deploy hooks
+        id: provider
+        if: ${{ inputs.trigger_provider_deploy }}
+        env:
+          FRONTEND_DEPLOY_HOOK: ${{ secrets.FRONTEND_DEPLOY_HOOK }}
+          BACKEND_DEPLOY_HOOK: ${{ secrets.BACKEND_DEPLOY_HOOK }}
+        run: |
+          triggered=false
+          if [ -n "$FRONTEND_DEPLOY_HOOK" ]; then
+            echo "Triggering frontend deploy hook..."
+            curl --fail --show-error --silent --location -X POST "$FRONTEND_DEPLOY_HOOK"
+            triggered=true
+          else
+            echo "FRONTEND_DEPLOY_HOOK not set; skipping frontend provider deploy."
+          fi
+          if [ -n "$BACKEND_DEPLOY_HOOK" ]; then
+            echo "Triggering backend deploy hook..."
+            curl --fail --show-error --silent --location -X POST "$BACKEND_DEPLOY_HOOK"
+            triggered=true
+          else
+            echo "BACKEND_DEPLOY_HOOK not set; skipping backend provider deploy."
+          fi
+          echo "triggered=$triggered" >> "$GITHUB_OUTPUT"
+          if [ "$triggered" != "true" ] && [ "${{ inputs.create_release }}" != "true" ]; then
+            echo "::error::No deploy path succeeded. Enable create_release or configure FRONTEND_DEPLOY_HOOK / BACKEND_DEPLOY_HOOK."
+            exit 1
+          fi
+
+      - name: Post-deploy health checks
+        if: ${{ inputs.trigger_provider_deploy }}
+        env:
+          FRONTEND_HEALTH_URL: ${{ vars.FRONTEND_HEALTH_URL }}
+          BACKEND_HEALTH_URL: ${{ vars.BACKEND_HEALTH_URL }}
+          FRONTEND_DEPLOY_HOOK: ${{ secrets.FRONTEND_DEPLOY_HOOK }}
+          BACKEND_DEPLOY_HOOK: ${{ secrets.BACKEND_DEPLOY_HOOK }}
+        run: |
+          check_url() {
+            name="$1"
+            url="$2"
+            if [ -z "$url" ]; then
+              echo "No health URL configured for $name; skipping."
+              return 0
+            fi
+            echo "Checking $name health at $url"
+            for i in 1 2 3 4 5 6; do
+              if curl --fail --show-error --silent --location --max-time 20 "$url" > /dev/null; then
+                echo "$name healthy"
+                return 0
+              fi
+              echo "Attempt $i failed; retrying in 10s..."
+              sleep 10
+            done
+            echo "::error::$name health check failed for $url"
+            return 1
+          }
+
+          status=0
+          if [ -n "$FRONTEND_DEPLOY_HOOK" ]; then
+            check_url "frontend" "$FRONTEND_HEALTH_URL" || status=1
+          fi
+          if [ -n "$BACKEND_DEPLOY_HOOK" ]; then
+            check_url "backend" "$BACKEND_HEALTH_URL" || status=1
+          fi
+          exit $status
+
+      - name: Summarize deploy result
+        run: |
+          {
+            echo "## Deploy result"
+            if [ "${{ inputs.create_release }}" = "true" ]; then
+              echo "- Release: \`${{ steps.release.outputs.tag }}\`"
+            else
+              echo "- Release: skipped"
+            fi
+            if [ "${{ steps.provider.outputs.triggered }}" = "true" ]; then
+              echo "- Provider deploy hooks: triggered"
+            else
+              echo "- Provider deploy hooks: not configured or skipped"
+            fi
+            echo "- Rollback: see \`.github/DEPLOY.md\`"
+          } >> "$GITHUB_STEP_SUMMARY"
