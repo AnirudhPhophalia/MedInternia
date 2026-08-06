@@ -30,7 +30,7 @@ export function useNotifications() {
     // 1. Fetch existing notifications from REST API using api helper
     api.get('/notifications')
       .then((res) => {
-        if (res.data?.success) setNotifications(res.data.notifications);
+        if (res.data?.success) setNotifications(res.data.data.notifications);
       })
       .catch(() => { }); // Silently fail — non-critical
 
