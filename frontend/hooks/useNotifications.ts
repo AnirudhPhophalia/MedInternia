@@ -64,18 +64,43 @@ export function useNotifications() {
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-    );
+    let previousState: Notification[] = [];
 
-    await api.patch(`/notifications/${id}/read`).catch(() => { });
+    setNotifications((prev) => {
+      previousState = prev;
+
+      return prev.map((n) =>
+        n._id === id ? { ...n, isRead: true } : n
+      );
+    });
+
+    try {
+      await api.patch(`/notifications/${id}/read`);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      setNotifications(previousState);
+    }
   }, []);
 
   // ── Mark all notifications as read ──────────────────────────
   const markAllAsRead = useCallback(async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    let previousState: Notification[] = [];
 
-    await api.patch('/notifications/read-all').catch(() => { });
+    setNotifications((prev) => {
+      previousState = prev;
+
+      return prev.map((n) => ({
+        ...n,
+        isRead: true,
+      }));
+    });
+
+    try {
+      await api.patch("/notifications/read-all");
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      setNotifications(previousState);
+    }
   }, []);
 
   // ── Clear toast after it's been shown ───────────────────────

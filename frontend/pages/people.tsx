@@ -13,54 +13,66 @@ export default function PeoplePage() {
   const [activeTab, setActiveTab] = useState("cases");
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [badges, setBadges] = useState<any[]>([]);
+  const [stats, setStats] = useState<{
+    caseCount: number;
+    averageRating: number;
+    profileScore: number;
+    badgesEarned: number;
+  } | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [researchPapers, setResearchPapers] = useState<any[]>([]);
   const [webinars, setWebinars] = useState<any[]>([]);
 
-  // Dummy data for posts (fallback)
-  const dummyPosts = [
-    {
-      id: 1,
-      title: "Complex Iron Deficiency Case Study",
-      content:
-        "A comprehensive analysis of a 21-year-old patient with severe fatigue and iron deficiency anemia. This case demonstrates innovative treatment approaches and patient recovery tracking...",
-      date: "Aug 21, 2025",
-      privacy: "Private",
-      views: 142,
-      comments: 8,
-      likes: 23,
-    },
-    {
-      id: 2,
-      title: "Emergency Cardiac Arrest Protocol",
-      content:
-        "A unique case of sudden cardiac arrest in the emergency ward with atypical presentation. This study covers rapid response protocols and successful intervention strategies...",
-      date: "Aug 20, 2025",
-      privacy: "Public",
-      views: 318,
-      comments: 15,
-      likes: 67,
-    },
-  ];
-
   useEffect(() => {
     if (!id) return;
-    // Fetch profile
-    api.get(`/users/${id}/profile`).then((res) => {
-      setProfile(res.data?.data?.user || res.data?.user || res.data);
-    });
-    // Fetch posts/cases
-    api.get(`/cases?authorId=${id}`).then((res) => {
-      setPosts(res.data?.data?.cases || res.data?.cases || res.data || []);
-    });
-    // Fetch research papers for this user
-    api.get(`/research-papers?author=${id}`).then((res) => {
-      setResearchPapers(res.data?.data?.papers || res.data?.papers || res.data || []);
-    }).catch(() => setResearchPapers([]));
-    // Fetch webinars hosted by this user for the Announcements tab
-    api.get(`/webinars?hosted=${id}`).then((res) => {
-      setWebinars(res.data?.data?.webinars || res.data?.webinars || res.data || []);
-    }).catch(() => setWebinars([]));
+
+    setProfileLoading(true);
+    setProfileError("");
+    api
+      .get(`/users/${id}/public`)
+      .then((res) => {
+        const data = res.data?.data || {};
+        setProfile(data.user || null);
+        setBadges(Array.isArray(data.badges) ? data.badges : []);
+        setStats(
+          data.stats || {
+            caseCount: Array.isArray(data.cases) ? data.cases.length : 0,
+            averageRating: 0,
+            profileScore: 0,
+            badgesEarned: 0,
+          },
+        );
+        setPosts(Array.isArray(data.cases) ? data.cases : []);
+      })
+      .catch(() => {
+        setProfile(null);
+        setBadges([]);
+        setStats(null);
+        setPosts([]);
+        setProfileError("Could not load this profile.");
+      })
+      .finally(() => setProfileLoading(false));
+
+    api
+      .get(`/research-papers?author=${id}`)
+      .then((res) => {
+        setResearchPapers(
+          res.data?.data?.papers || res.data?.papers || res.data || [],
+        );
+      })
+      .catch(() => setResearchPapers([]));
+
+    api
+      .get(`/webinars?hosted=${id}`)
+      .then((res) => {
+        setWebinars(
+          res.data?.data?.webinars || res.data?.webinars || res.data || [],
+        );
+      })
+      .catch(() => setWebinars([]));
   }, [id]);
 
   useEffect(() => {
@@ -81,11 +93,23 @@ export default function PeoplePage() {
 
     setIsConnectionLoading(true);
     setConnectionError("");
+    const wasConnected = isConnected;
     try {
-      await api.post(isConnected ? "/users/unfollow" : "/users/follow", {
+      await api.post(wasConnected ? "/users/unfollow" : "/users/follow", {
         userId: id,
       });
-      setIsConnected((connected) => !connected);
+      setIsConnected(!wasConnected);
+      setProfile((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              followersCount: Math.max(
+                0,
+                Number(prev.followersCount || 0) + (wasConnected ? -1 : 1),
+              ),
+            }
+          : prev,
+      );
     } catch {
       setConnectionError("Could not update this connection. Please try again.");
     } finally {
@@ -221,8 +245,8 @@ export default function PeoplePage() {
                     }}
                   />
                 ) : (
-                  `${(profile?.firstName?.[0] || "A").toUpperCase()}${(
-                    profile?.lastName?.[0] || "V"
+                  `${(profile?.firstName?.[0] || "?").toUpperCase()}${(
+                    profile?.lastName?.[0] || ""
                   ).toUpperCase()}`
                 )}
               </div>
@@ -236,9 +260,14 @@ export default function PeoplePage() {
                   margin: "0 0 8px 0",
                 }}
               >
-                {profile
-                  ? `Dr. ${profile.firstName} ${profile.lastName}`
-                  : "Dr. Anushka Verma"}
+                {profileLoading
+                  ? "Loading profile..."
+                  : profile
+                    ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+                      "Unnamed user"
+                    : profileError
+                      ? "Profile unavailable"
+                      : "Profile"}
               </h2>
               <p
                 style={{
@@ -248,8 +277,13 @@ export default function PeoplePage() {
                   lineHeight: 1.5,
                 }}
               >
-                {profile?.specialization || "Cardiology Specialist"}
+                {profile?.specialization || "Specialization not listed"}
               </p>
+              {profileError && (
+                <p role="alert" style={{ color: "#b91c1c", margin: "8px 0 0" }}>
+                  {profileError}
+                </p>
+              )}
               <button
                 style={{
                   marginTop: 16,
@@ -306,7 +340,7 @@ export default function PeoplePage() {
                 <div
                   style={{ fontSize: 16, fontWeight: 700, color: "#0ea5e9" }}
                 >
-                  {profile?.followersCount ?? "1,245"}
+                  {profileLoading ? "—" : Number(profile?.followersCount ?? 0)}
                 </div>
                 <div
                   style={{ fontSize: 12, color: "#64748b", cursor: "pointer" }}
@@ -318,7 +352,7 @@ export default function PeoplePage() {
                 <div
                   style={{ fontSize: 16, fontWeight: 700, color: "#10b981" }}
                 >
-                  {profile?.followingCount ?? "90"}
+                  {profileLoading ? "—" : Number(profile?.followingCount ?? 0)}
                 </div>
                 <div
                   style={{ fontSize: 12, color: "#64748b", cursor: "pointer" }}
@@ -337,7 +371,9 @@ export default function PeoplePage() {
                 }}
               >
                 <span style={{ fontSize: 14, color: "#64748b" }}>
-                  85% to next badge
+                  {profileLoading
+                    ? "Loading profile completeness..."
+                    : `${Number(stats?.profileScore ?? 0)}% profile completeness`}
                 </span>
               </div>
               <div
@@ -351,7 +387,7 @@ export default function PeoplePage() {
               >
                 <div
                   style={{
-                    width: "85%",
+                    width: `${Math.min(100, Math.max(0, Number(stats?.profileScore ?? 0)))}%`,
                     height: "100%",
                     background:
                       "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)",
@@ -379,36 +415,37 @@ export default function PeoplePage() {
                   justifyContent: "center",
                 }}
               >
-                <img
-                  src="/p1.png"
-                  alt="Badge 1"
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: "50%",
-                    border: "2px solid #e0e7ef",
-                  }}
-                />
-                <img
-                  src="/p4.png"
-                  alt="Badge 2"
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: "50%",
-                    border: "2px solid #e0e7ef",
-                  }}
-                />
-                <img
-                  src="/p2.png"
-                  alt="Badge 3"
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: "50%",
-                    border: "2px solid #e0e7ef",
-                  }}
-                />
+                {profileLoading ? (
+                  <span style={{ fontSize: 13, color: "#64748b" }}>Loading badges...</span>
+                ) : badges.length === 0 ? (
+                  <span style={{ fontSize: 13, color: "#64748b" }}>
+                    No badges earned yet
+                  </span>
+                ) : (
+                  badges.map((entry, idx) => {
+                    const badge = entry.badge || entry;
+                    return (
+                      <div
+                        key={entry._id || badge._id || idx}
+                        title={badge.description || badge.name || "Badge"}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: "50%",
+                          border: "2px solid #e0e7ef",
+                          background: badge.color || "#e0f2fe",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 22,
+                        }}
+                        aria-label={badge.name || "Badge"}
+                      >
+                        {badge.icon || (badge.name?.[0] || "B")}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
             <div style={{ marginBottom: 24 }}>
@@ -419,7 +456,7 @@ export default function PeoplePage() {
                   Specialization:
                 </span>
                 <span style={{ fontWeight: 500, color: "#1e293b" }}>
-                  {profile?.specialization || "Cardiology"}
+                  {profile?.specialization || "Not specified"}
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -429,7 +466,10 @@ export default function PeoplePage() {
                   Qualifications:
                 </span>
                 <span style={{ fontWeight: 500, color: "#1e293b" }}>
-                  {profile?.qualifications?.join(" ") || "MBBS MD"}
+                  {Array.isArray(profile?.qualifications) &&
+                  profile.qualifications.length > 0
+                    ? profile.qualifications.join(" ")
+                    : "Not specified"}
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -439,7 +479,9 @@ export default function PeoplePage() {
                   Experience:
                 </span>
                 <span style={{ fontWeight: 700, color: "#1e293b" }}>
-                  {profile?.experience || "5+ Years"}
+                  {profile?.experience != null && profile?.experience !== ""
+                    ? `${profile.experience} Years`
+                    : "Not specified"}
                 </span>
               </div>
             </div>
@@ -457,7 +499,11 @@ export default function PeoplePage() {
                 <div
                   style={{ fontSize: 24, fontWeight: 700, color: "#10b981" }}
                 >
-                  4.9
+                  {profileLoading
+                    ? "—"
+                    : Number(stats?.averageRating ?? 0) > 0
+                      ? Number(stats?.averageRating).toFixed(1)
+                      : "0"}
                 </div>
                 <div style={{ fontSize: 12, color: "#64748b" }}>Rating</div>
               </div>
@@ -465,7 +511,9 @@ export default function PeoplePage() {
                 <div
                   style={{ fontSize: 24, fontWeight: 700, color: "#0ea5e9" }}
                 >
-                  2
+                  {profileLoading
+                    ? "—"
+                    : Number(stats?.caseCount ?? posts.length ?? 0)}
                 </div>
                 <div style={{ fontSize: 12, color: "#64748b" }}>Cases</div>
               </div>
@@ -525,7 +573,12 @@ export default function PeoplePage() {
           </div>
           {activeTab === "cases" && (
             <div>
-              {(posts.length > 0 ? posts : dummyPosts).map((post, idx) => {
+              {posts.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 15 }}>
+                  No published cases yet.
+                </p>
+              ) : (
+              posts.map((post, idx) => {
                 // Safely handle comments and likes
                 const commentsCount = Array.isArray(post.comments)
                   ? post.comments.length
@@ -700,7 +753,8 @@ export default function PeoplePage() {
                     </div>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
           {activeTab === "research" && (
