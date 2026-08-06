@@ -35,13 +35,14 @@ describe("case moderation job", () => {
     jest.clearAllMocks();
   });
 
-  it("redacts and approves a clean pending case before RAG ingestion", async () => {
+  it("approves a clean pending case and ingests original content into RAG", async () => {
     mockedCase.findOne.mockResolvedValue({
       title: "Original title",
       description: "Original description",
       patientInfo: { age: 28 },
       specialization: "Cardiology",
       isPatientCase: false,
+      get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance
       .mockResolvedValueOnce(complianceResult("Redacted title"))
@@ -52,12 +53,13 @@ describe("case moderation job", () => {
 
     expect(mockedCheckCompliance).toHaveBeenNthCalledWith(1, "Original title", 28);
     expect(mockedCheckCompliance).toHaveBeenNthCalledWith(2, "Original description", 28);
+
+    // Bug fix (#1075): approved cases must NOT overwrite title/description —
+    // only moderationStatus, moderationReason, and reviewedAt are updated.
     expect(mockedCase.findOneAndUpdate).toHaveBeenCalledWith(
       { _id: "case-1", moderationStatus: "pending" },
       expect.objectContaining({
         $set: expect.objectContaining({
-          title: "Redacted title",
-          description: "Redacted description",
           moderationStatus: "approved",
         }),
         $push: {
@@ -65,20 +67,27 @@ describe("case moderation job", () => {
         },
       })
     );
+    // The $set must NOT include title or description for approved cases.
+    const callArgs = mockedCase.findOneAndUpdate.mock.calls[0][1] as any;
+    expect(callArgs.$set).not.toHaveProperty("title");
+    expect(callArgs.$set).not.toHaveProperty("description");
+
+    // RAG ingestion uses the ORIGINAL text, not the compliance service output.
     expect(mockedIngestCase).toHaveBeenCalledWith(
       "case-1",
-      "Redacted title\nRedacted description",
+      "Original title\nOriginal description",
       { specialization: "Cardiology", isPatientCase: false }
     );
   });
 
-  it("requests changes for flagged content and does not index it", async () => {
+  it("requests changes for flagged content, stores originals, and does not index it", async () => {
     mockedCase.findOne.mockResolvedValue({
       title: "Patient name",
       description: "Clinical note",
       patientInfo: {},
       specialization: "General Medicine",
       isPatientCase: true,
+      get: jest.fn().mockReturnValue(undefined), // no originalTitle/Description yet
     } as any);
     mockedCheckCompliance
       .mockResolvedValueOnce(
@@ -97,6 +106,12 @@ describe("case moderation job", () => {
         $set: expect.objectContaining({
           moderationStatus: "changes_requested",
           moderationReason: "PHI detected; Age mismatch",
+          // Originals preserved on first moderation
+          originalTitle: "Patient name",
+          originalDescription: "Clinical note",
+          // Redacted text applied for flagged cases
+          title: "[REDACTED]",
+          description: "Clinical note",
         }),
       })
     );
@@ -119,6 +134,7 @@ describe("case moderation job", () => {
       patientInfo: {},
       specialization: "Cardiology",
       isPatientCase: false,
+      get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance
       .mockResolvedValueOnce(complianceResult("Redacted title"))
@@ -135,6 +151,7 @@ describe("case moderation job", () => {
       title: "Unavailable service",
       description: "Unavailable service",
       patientInfo: {},
+      get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance.mockRejectedValue(new Error("service offline"));
     mockedCase.findOneAndUpdate.mockResolvedValue({} as any);

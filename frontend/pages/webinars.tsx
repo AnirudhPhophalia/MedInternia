@@ -28,6 +28,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import api from '../utils/api';
 import WebinarJoin from "../components/WebinarJoin";
 import { canUser } from "../utils/permissions";
+import SEO from "../components/SEO";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/layout/EmptyState";
 import { Plus, Video, Calendar as CalendarIcon, ExternalLink } from "lucide-react";
@@ -210,24 +211,30 @@ export default function WebinarsPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, minHeight: "80vh" }}>
-      <PageHeader
+    <>
+      <SEO
         title="Medical Webinars"
-        subtitle="Join live clinical classes, AMAs, and interactive case discussions led by specialists."
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Webinars" }]}
-        action={
-          canManageWebinars ? (
-            <Button
-              onClick={() => router.push('/webinars/create')}
-              variant="contained"
-              startIcon={<Plus size={18} />}
-              sx={{ borderRadius: 3, fontWeight: 700 }}
-            >
-              Create Webinar
-            </Button>
-          ) : null
-        }
+        description="Join live clinical classes, AMAs, specialist webinars, and interactive case discussions for medical learning on MedInternia."
+        path="/webinars"
       />
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, minHeight: "80vh" }}>
+        <PageHeader
+          title="Medical Webinars"
+          subtitle="Join live clinical classes, AMAs, and interactive case discussions led by specialists."
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Webinars" }]}
+          action={
+            canManageWebinars ? (
+              <Button
+                onClick={() => router.push('/webinars/create')}
+                variant="contained"
+                startIcon={<Plus size={18} />}
+                sx={{ borderRadius: 3, fontWeight: 700 }}
+              >
+                Create Webinar
+              </Button>
+            ) : null
+          }
+        />
 
       {/* Tab selection */}
       <Tabs
@@ -475,7 +482,8 @@ export default function WebinarsPage() {
           })}
         </Grid>
       )}
-    </Container>
+      </Container>
+    </>
   );
 }
 

@@ -11,9 +11,11 @@ export default function PeoplePage() {
   const { id } = router.query;
   const { userId } = useAuth();
   const [activeTab, setActiveTab] = useState("cases");
-  const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [researchPapers, setResearchPapers] = useState<any[]>([]);
+  const [webinars, setWebinars] = useState<any[]>([]);
 
   // Dummy data for posts (fallback)
   const dummyPosts = [
@@ -51,6 +53,14 @@ export default function PeoplePage() {
     api.get(`/cases?authorId=${id}`).then((res) => {
       setPosts(res.data?.data?.cases || res.data?.cases || res.data || []);
     });
+    // Fetch research papers for this user
+    api.get(`/research-papers?author=${id}`).then((res) => {
+      setResearchPapers(res.data?.data?.papers || res.data?.papers || res.data || []);
+    }).catch(() => setResearchPapers([]));
+    // Fetch webinars hosted by this user for the Announcements tab
+    api.get(`/webinars?hosted=${id}`).then((res) => {
+      setWebinars(res.data?.data?.webinars || res.data?.webinars || res.data || []);
+    }).catch(() => setWebinars([]));
   }, [id]);
 
   useEffect(() => {
@@ -83,7 +93,8 @@ export default function PeoplePage() {
     }
   };
 
-  const toggleLike = (postId: number) => {
+  const toggleLike = async (postId: string) => {
+    // Optimistic local update
     setLikedPosts((prev) => {
       const newLiked = new Set(prev);
       if (newLiked.has(postId)) {
@@ -93,6 +104,21 @@ export default function PeoplePage() {
       }
       return newLiked;
     });
+    // Persist to backend
+    try {
+      await api.post(`/cases/${postId}/like`);
+    } catch {
+      // Roll back optimistic update on failure
+      setLikedPosts((prev) => {
+        const newLiked = new Set(prev);
+        if (newLiked.has(postId)) {
+          newLiked.delete(postId);
+        } else {
+          newLiked.add(postId);
+        }
+        return newLiked;
+      });
+    }
   };
 
   return (
@@ -444,30 +470,8 @@ export default function PeoplePage() {
                 <div style={{ fontSize: 12, color: "#64748b" }}>Cases</div>
               </div>
             </div>
-            <div>
-              <h3
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  color: "#1e293b",
-                  marginBottom: 12,
-                }}
-              >
-                Contact
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14, color: "#64748b" }}>
-                    {profile?.email || "anushka5@gmail.com"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14, color: "#64748b" }}>
-                    {profile?.phone || "+91-9876543210"}
-                  </span>
-                </div>
-              </div>
-            </div>
+            {/* Contact section removed: email and phone are PII and must
+                not be visible to other users on a public profile page. */}
           </div>
         </div>
         {/* People Page Section - right, 3/4 width */}
@@ -701,158 +705,82 @@ export default function PeoplePage() {
           )}
           {activeTab === "research" && (
             <div>
-              {[
-                {
-                  title: "AI-Driven Cardiology: The Future of Diagnosis",
-                  content:
-                    "Comprehensive research exploring how artificial intelligence is revolutionizing cardiology diagnostics, with focus on machine learning algorithms for cardiac imaging analysis and early detection protocols...",
-                  meta: [
-                    "Published: July 2025",
-                    "45 citations",
-                    "1203 downloads",
-                  ],
-                },
-                {
-                  title: "Novel Cardiac Drug Trials: Phase III Results",
-                  content:
-                    "Breakthrough clinical trial results for next-generation cardiac medications showing remarkable efficacy in treating arrhythmias with reduced side effects compared to traditional treatments...",
-                  meta: [
-                    "Published: June 2025",
-                    "23 citations",
-                    "867 downloads",
-                  ],
-                },
-              ].map((card, idx) => (
-                <div
-                  key={card.title}
-                  style={{
-                    background:
-                      idx === 0
-                        ? "linear-gradient(90deg, #e0f2fe 100%, #38bdf8 50%)" // light blue
-                        : "linear-gradient(90deg, #FFE7C2 100%, #fb923c 50%)", // light orange
-                    borderRadius: 16,
-                    padding: 24,
-                    marginBottom: 16,
-                    transition: "box-shadow 0.2s, transform 0.2s",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                    cursor: "pointer",
-                    borderLeft:
-                      idx === 0 ? "8px solid #38bdf8" : "8px solid #fb923c",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 8px 24px rgba(37,99,235,0.12)";
-                    e.currentTarget.style.transform =
-                      "translateY(-2px) scale(1.02)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 2px 8px rgba(0,0,0,0.04)";
-                    e.currentTarget.style.transform = "none";
-                  }}
-                >
-                  <h2
-                    style={{
-                      fontSize: 20,
-                      fontWeight: "bold",
-                      marginBottom: 8,
-                      color: idx === 0 ? "#38bdf8" : "#fb923c",
-                    }}
-                  >
-                    {card.title}
-                  </h2>
-                  <p style={{ color: "#374151", marginBottom: 8 }}>
-                    {card.content}
-                  </p>
+              {researchPapers.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 15 }}>No research papers found for this user.</p>
+              ) : (
+                researchPapers.map((paper: any, idx: number) => (
                   <div
+                    key={paper._id || paper.id || idx}
                     style={{
-                      display: "flex",
-                      gap: 16,
-                      fontSize: 14,
-                      color: "#6b7280",
-                      marginBottom: 8,
+                      background: idx % 2 === 0
+                        ? "linear-gradient(90deg, #e0f2fe 100%, #38bdf8 50%)"
+                        : "linear-gradient(90deg, #FFE7C2 100%, #fb923c 50%)",
+                      borderRadius: 16,
+                      padding: 24,
+                      marginBottom: 16,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                      cursor: "pointer",
+                      borderLeft: idx % 2 === 0 ? "8px solid #38bdf8" : "8px solid #fb923c",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(37,99,235,0.12)";
+                      e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                      e.currentTarget.style.transform = "none";
                     }}
                   >
-                    {card.meta.map((m, i) => (
-                      <span key={i}>{m}</span>
-                    ))}
+                    <h2 style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, color: idx % 2 === 0 ? "#38bdf8" : "#fb923c" }}>
+                      {paper.title || "Untitled"}
+                    </h2>
+                    <p style={{ color: "#374151", marginBottom: 8 }}>{paper.abstract || paper.description || ""}</p>
+                    <div style={{ display: "flex", gap: 16, fontSize: 14, color: "#6b7280" }}>
+                      {paper.publishedAt && <span>Published: {new Date(paper.publishedAt).toLocaleDateString()}</span>}
+                      {paper.citations != null && <span>{paper.citations} citations</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           )}
           {activeTab === "announcements" && (
             <div>
-              {[
-                {
-                  title: "Live Webinar: Advanced Cardiac Imaging Techniques",
-                  content:
-                    "Join us on August 25th for an exclusive live webinar exploring cutting-edge advancements in cardiac imaging, featuring real-time case discussions and Q&A with leading cardiologists...",
-                  badge: {
-                    text: "Upcoming Event",
-                    style: {
-                      background: "#fde68a",
-                      color: "#92400e",
-                      borderRadius: 8,
-                      padding: "4px 12px",
-                      fontWeight: "bold",
-                    },
-                  },
-                },
-                {
-                  title: "Platform Update: Enhanced Collaboration Features",
-                  content:
-                    "Exciting new features have been added to improve collaboration between medical professionals, including advanced profile management, real-time messaging, and integrated case sharing tools.",
-                  badge: {
-                    text: "System Update",
-                    style: {
-                      background: "#6ee7b7",
-                      color: "#065f46",
-                      borderRadius: 8,
-                      padding: "4px 12px",
-                      fontWeight: "bold",
-                    },
-                  },
-                },
-              ].map((card, idx) => (
-                <div
-                  key={card.title}
-                  style={{
-                    background: idx === 0 ? "#fef3c7" : "#d1fae5",
-                    borderRadius: 16,
-                    padding: 24,
-                    marginBottom: 16,
-                    transition: "box-shadow 0.2s, transform 0.2s",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 8px 24px rgba(37,99,235,0.12)";
-                    e.currentTarget.style.transform =
-                      "translateY(-2px) scale(1.02)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      "0 2px 8px rgba(0,0,0,0.04)";
-                    e.currentTarget.style.transform = "none";
-                  }}
-                >
-                  <h2
+              {webinars.length === 0 ? (
+                <p style={{ color: "#64748b", fontSize: 15 }}>No announcements found for this user.</p>
+              ) : (
+                webinars.map((webinar: any, idx: number) => (
+                  <div
+                    key={webinar._id || webinar.id || idx}
                     style={{
-                      fontSize: 20,
-                      fontWeight: "bold",
-                      marginBottom: 8,
+                      background: idx % 2 === 0 ? "#fef3c7" : "#d1fae5",
+                      borderRadius: 16,
+                      padding: 24,
+                      marginBottom: 16,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(37,99,235,0.12)";
+                      e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                      e.currentTarget.style.transform = "none";
                     }}
                   >
-                    {card.title}
-                  </h2>
-                  <p style={{ color: "#374151", marginBottom: 8 }}>
-                    {card.content}
-                  </p>
-                  <span style={card.badge.style}>{card.badge.text}</span>
-                </div>
-              ))}
+                    <h2 style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8 }}>
+                      {webinar.title || "Untitled"}
+                    </h2>
+                    <p style={{ color: "#374151", marginBottom: 8 }}>{webinar.description || ""}</p>
+                    {webinar.scheduledAt && (
+                      <span style={{ background: "#fde68a", color: "#92400e", borderRadius: 8, padding: "4px 12px", fontWeight: "bold" }}>
+                        {new Date(webinar.scheduledAt) > new Date() ? "Upcoming" : "Past Event"}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

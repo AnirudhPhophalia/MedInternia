@@ -157,9 +157,7 @@ describe("ResearchPaperDiscussionController", () => {
     const VALID_COMMENT_ID = "507f1f77bcf86cd799439012";
 
     it("toggles like on a comment (unlike when already liked)", async () => {
-      mockedResearchPaper.updateOne
-        .mockResolvedValueOnce({ modifiedCount: 1 } as any);
-      mockedResearchPaper.findById.mockResolvedValue({
+      mockedResearchPaper.findOneAndUpdate.mockResolvedValue({
         comments: [{ likes: [] }],
       } as any);
 
@@ -169,20 +167,22 @@ describe("ResearchPaperDiscussionController", () => {
 
       await likeComment(req as any, res as any, next);
 
-      expect(mockedResearchPaper.updateOne).toHaveBeenCalledTimes(1);
+      expect(mockedResearchPaper.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(mockedResearchPaper.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: "paper-1", "comments._id": VALID_COMMENT_ID },
+        expect.any(Array),
+        expect.objectContaining({ new: true }),
+      );
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: expect.objectContaining({ liked: false }),
+          data: expect.objectContaining({ liked: false, likes: 0 }),
         }),
       );
     });
 
     it("toggles like on a comment (like when not liked)", async () => {
-      mockedResearchPaper.updateOne
-        .mockResolvedValueOnce({ modifiedCount: 0 } as any)
-        .mockResolvedValueOnce({ modifiedCount: 1 } as any);
-      mockedResearchPaper.findById.mockResolvedValue({
+      mockedResearchPaper.findOneAndUpdate.mockResolvedValue({
         comments: [{ likes: [VALID_USER_ID] }],
       } as any);
 
@@ -192,11 +192,40 @@ describe("ResearchPaperDiscussionController", () => {
 
       await likeComment(req as any, res as any, next);
 
-      expect(mockedResearchPaper.updateOne).toHaveBeenCalledTimes(2);
+      expect(mockedResearchPaper.findOneAndUpdate).toHaveBeenCalledTimes(1);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
           data: expect.objectContaining({ liked: true, likes: 1 }),
+        }),
+      );
+    });
+
+    it("uses one atomic update per concurrent toggle response", async () => {
+      mockedResearchPaper.findOneAndUpdate
+        .mockResolvedValueOnce({ comments: [{ likes: [VALID_USER_ID] }] } as any)
+        .mockResolvedValueOnce({ comments: [{ likes: [] }] } as any);
+
+      const firstRes = mockResponse();
+      const secondRes = mockResponse();
+      const firstReq = mockRequest(VALID_USER_ID, { paperId: "paper-1", commentId: VALID_COMMENT_ID });
+      const secondReq = mockRequest(VALID_USER_ID, { paperId: "paper-1", commentId: VALID_COMMENT_ID });
+
+      await Promise.all([
+        likeComment(firstReq as any, firstRes as any, jest.fn()),
+        likeComment(secondReq as any, secondRes as any, jest.fn()),
+      ]);
+
+      expect(mockedResearchPaper.findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(mockedResearchPaper.updateOne).not.toHaveBeenCalled();
+      expect(firstRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ liked: true, likes: 1 }),
+        }),
+      );
+      expect(secondRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ liked: false, likes: 0 }),
         }),
       );
     });

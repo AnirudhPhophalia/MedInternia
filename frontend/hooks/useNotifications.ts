@@ -43,11 +43,6 @@ export function useNotifications() {
 
     socketRef.current = socket;
 
-    // 3. Request browser notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
     // 4. Listen for real-time notifications
     socket.on('new_notification', (notification: Notification) => {
       setNotifications((prev) => [notification, ...prev]);
@@ -111,6 +106,19 @@ export function useNotifications() {
   // ── Clear toast after it's been shown ───────────────────────
   const clearToast = useCallback(() => setNewToast(null), []);
 
+  // ── Request browser notification permission only after explicit user interaction ────────────────
+  const requestNotificationPermission = useCallback(async () => {
+    if (
+      typeof window === "undefined" ||
+      !("Notification" in window) ||
+      Notification.permission !== "default"
+    ) {
+      return Notification.permission;
+    }
+
+    return await Notification.requestPermission();
+  }, []);
+  
   return {
     notifications,
     unreadCount,
@@ -118,5 +126,8 @@ export function useNotifications() {
     markAsRead,
     markAllAsRead,
     clearToast,
+    requestNotificationPermission,
   };
+
+
 }

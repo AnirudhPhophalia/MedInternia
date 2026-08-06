@@ -22,23 +22,23 @@ import { useNotifications, Notification } from '../hooks/useNotifications';
 // Icon per notification type
 const typeIcon = (type: Notification['type']) => {
   switch (type) {
-    case 'comment':     return <ChatBubbleIcon fontSize="small" color="primary" />;
+    case 'comment': return <ChatBubbleIcon fontSize="small" color="primary" />;
     case 'peer_review': return <StarIcon fontSize="small" color="warning" />;
-    case 'job_status':  return <WorkIcon fontSize="small" color="success" />;
-    case 'badge':       return <EmojiEventsIcon fontSize="small" color="secondary" />;
-    case 'webinar':     return <VideocamIcon fontSize="small" color="info" />;
-    default:            return <NotificationsIcon fontSize="small" />;
+    case 'job_status': return <WorkIcon fontSize="small" color="success" />;
+    case 'badge': return <EmojiEventsIcon fontSize="small" color="secondary" />;
+    case 'webinar': return <VideocamIcon fontSize="small" color="info" />;
+    default: return <NotificationsIcon fontSize="small" />;
   }
 };
 
 // Human-readable relative time
 const relativeTime = (iso: string): string => {
   const diff = Date.now() - new Date(iso).getTime();
-  const mins  = Math.floor(diff / 60000);
+  const mins = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
-  const days  = Math.floor(diff / 86400000);
-  if (mins < 1)   return 'just now';
-  if (mins < 60)  return `${mins}m ago`;
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
 };
@@ -47,10 +47,16 @@ export default function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, requestNotificationPermission } = useNotifications();
 
-  const handleToggle = () => setOpen((prev) => !prev);
-  const handleClose  = () => setOpen(false);
+  const handleToggle = async () => {
+    if (!open) {
+      await requestNotificationPermission();
+    }
+
+    setOpen((prev) => !prev);
+  };
+  const handleClose = () => setOpen(false);
 
   const handleNotificationClick = async (n: Notification) => {
     if (!n.isRead) await markAsRead(n._id);
