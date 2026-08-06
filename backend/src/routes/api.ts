@@ -25,6 +25,7 @@ import collectionRoutes from './collections';
 import learningPathRoutes from './learningPaths';
 import waitlistRoutes from './waitlist';
 import appointmentRoutes from './appointments';
+import newsletterRoutes from './newsletter';
 import { apiLimiter } from '../middleware/otpRateLimiter';
 const router = Router();
 
@@ -98,5 +99,6 @@ router.use('/flashcards', flashcardRoutes);
 router.use('/collections', collectionRoutes);
 router.use('/learning-paths', learningPathRoutes);
 router.use('/waitlist', waitlistRoutes);
+router.use('/newsletter', newsletterRoutes);
 
 export default router;

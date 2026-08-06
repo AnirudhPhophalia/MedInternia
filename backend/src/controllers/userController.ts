@@ -787,18 +787,56 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
 export const getPublicProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId).select('firstName lastName profilePicturePublicId userType specialization');
+    const user = await User.findById(userId).select(
+      'firstName lastName profilePicturePublicId userType specialization experience qualifications averageRating profileScore followers following'
+    );
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
+
+    const caseFilter = {
+      doctor: userId,
+      isActive: { $ne: false },
+      $or: [
+        { moderationStatus: 'approved' },
+        { moderationStatus: { $exists: false } },
+      ],
+    };
+
+    const [badges, caseCount, cases] = await Promise.all([
+      UserBadge.find({ user: userId, isVisible: true })
+        .populate('badge')
+        .sort({ earnedAt: -1 }),
+      Case.countDocuments(caseFilter),
+      Case.find(caseFilter)
+        .select('_id title description content createdAt privacy views comments likes')
+        .sort({ createdAt: -1 })
+        .limit(50),
+    ]);
+
+    const resolved = resolveProfilePictureUrl(user) as any;
+    const { followers, following, ...publicUser } = resolved;
+
     res.json({
       success: true,
       data: {
-        user: resolveProfilePictureUrl(user)
-      }
+        user: {
+          ...publicUser,
+          followersCount: Array.isArray(followers) ? followers.length : 0,
+          followingCount: Array.isArray(following) ? following.length : 0,
+        },
+        badges,
+        cases,
+        stats: {
+          caseCount,
+          averageRating: Number(user.averageRating || 0),
+          profileScore: Number(user.profileScore || 0),
+          badgesEarned: badges.length,
+        },
+      },
     });
   } catch (error) {
     console.error('Get public profile error:', error);

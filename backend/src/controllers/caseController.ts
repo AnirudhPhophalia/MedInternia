@@ -426,9 +426,9 @@ export const toggleRepostPermission = asyncHandler(async (req: AuthRequest, res:
     throw new AppError("Only the case author can change repost permissions", 403);
   }
 
-  const currentVal = (caseDoc as any).allowRepost === true;
-  await Case.findByIdAndUpdate(caseDoc._id, { $set: { allowRepost: !currentVal } });
-  res.json({ success: true, data: { allowRepost: !currentVal } });
+  const currentVal = (caseDoc as any).canRepost === true;
+  await Case.findByIdAndUpdate(caseDoc._id, { $set: { canRepost: !currentVal } });
+  res.json({ success: true, data: { canRepost: !currentVal } });
 });
 
 export const repostCase = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -437,7 +437,7 @@ export const repostCase = asyncHandler(async (req: AuthRequest, res: Response) =
 
   const originalCase = await Case.findById(getId(req.params.id));
   if (!originalCase) throw new AppError("Case not found", 404);
-  if (!(originalCase as any).allowRepost) {
+  if (!(originalCase as any).canRepost) {
     throw new AppError("This case cannot be reposted per author restrictions", 400);
   }
 
