@@ -14,8 +14,8 @@ export interface Notification {
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount]     = useState(0);
-  const [newToast, setNewToast]           = useState<Notification | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [newToast, setNewToast] = useState<Notification | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // ── Recalculate unread count whenever notifications change ──
@@ -32,7 +32,7 @@ export function useNotifications() {
       .then((res) => {
         if (res.data?.success) setNotifications(res.data.notifications);
       })
-      .catch(() => {}); // Silently fail — non-critical
+      .catch(() => { }); // Silently fail — non-critical
 
     // 2. Connect Socket.io with credentials (cookies)
     const socket = io(getSocketUrl(), {
@@ -52,7 +52,7 @@ export function useNotifications() {
     socket.on('new_notification', (notification: Notification) => {
       setNotifications((prev) => [notification, ...prev]);
       setNewToast(notification); // Triggers toast popup
-      
+
       // Trigger native browser push notification if permitted
       if ('Notification' in window && Notification.permission === 'granted') {
         new window.Notification('MedInternia Alert', {
@@ -69,18 +69,43 @@ export function useNotifications() {
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-    );
+    let previousState: Notification[] = [];
 
-    await api.patch(`/notifications/${id}/read`).catch(() => {});
+    setNotifications((prev) => {
+      previousState = prev;
+
+      return prev.map((n) =>
+        n._id === id ? { ...n, isRead: true } : n
+      );
+    });
+
+    try {
+      await api.patch(`/notifications/${id}/read`);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      setNotifications(previousState);
+    }
   }, []);
 
   // ── Mark all notifications as read ──────────────────────────
   const markAllAsRead = useCallback(async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    let previousState: Notification[] = [];
 
-    await api.patch('/notifications/read-all').catch(() => {});
+    setNotifications((prev) => {
+      previousState = prev;
+
+      return prev.map((n) => ({
+        ...n,
+        isRead: true,
+      }));
+    });
+
+    try {
+      await api.patch("/notifications/read-all");
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      setNotifications(previousState);
+    }
   }, []);
 
   // ── Clear toast after it's been shown ───────────────────────
