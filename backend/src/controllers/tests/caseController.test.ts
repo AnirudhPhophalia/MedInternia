@@ -6,6 +6,7 @@ import {
   addComment,
   getCases,
   getPinnedComments,
+  toggleRepostPermission,
   repostCase,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
@@ -356,6 +357,67 @@ describe("Case Controller", () => {
     });
   });
 
+  describe("toggleRepostPermission", () => {
+    it("toggles canRepost from false to true", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-123",
+        doctor: { toString: () => "doctor-1" },
+        canRepost: false,
+      } as any);
+      mockedCase.findByIdAndUpdate.mockResolvedValue({} as any);
+
+      const req = mockRequest("doctor-1", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await toggleRepostPermission(req as any, res as any, jest.fn());
+
+      expect(mockedCase.findByIdAndUpdate).toHaveBeenCalledWith("case-123", { $set: { canRepost: true } });
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: { canRepost: true } });
+    });
+
+    it("toggles canRepost from true to false", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-123",
+        doctor: { toString: () => "doctor-1" },
+        canRepost: true,
+      } as any);
+      mockedCase.findByIdAndUpdate.mockResolvedValue({} as any);
+
+      const req = mockRequest("doctor-1", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await toggleRepostPermission(req as any, res as any, jest.fn());
+
+      expect(mockedCase.findByIdAndUpdate).toHaveBeenCalledWith("case-123", { $set: { canRepost: false } });
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: { canRepost: false } });
+    });
+
+    it("returns 403 if the user is not the case author", async () => {
+      mockedCase.findById.mockResolvedValue({
+        doctor: { toString: () => "doctor-1" },
+        canRepost: false,
+      } as any);
+
+      const req = mockRequest("doctor-2", "doctor", { id: "case-123" });
+      const res = mockResponse();
+
+      await expect(
+        toggleRepostPermission(req as any, res as any, jest.fn())
+      ).rejects.toThrow("Only the case author can change repost permissions");
+    });
+
+    it("returns 404 if the case does not exist", async () => {
+      mockedCase.findById.mockResolvedValue(null);
+
+      const req = mockRequest("doctor-1", "doctor", { id: "missing" });
+      const res = mockResponse();
+
+      await expect(
+        toggleRepostPermission(req as any, res as any, jest.fn())
+      ).rejects.toThrow("Case not found");
+    });
+  });
+
   describe("repostCase", () => {
     const originalCaseData = {
       _id: "case-123",
@@ -372,10 +434,10 @@ describe("Case Controller", () => {
       treatment: "Beta blockers",
       isRareDisease: false,
       doctor: { toString: () => "original-doctor" },
-      allowRepost: true,
+      canRepost: true,
     };
 
-    it("creates a repost when allowRepost is true", async () => {
+    it("creates a repost when canRepost is true", async () => {
       mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
       mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
 
@@ -440,10 +502,10 @@ describe("Case Controller", () => {
       expect(createCall.doctor.toString()).not.toBe("original-doctor");
     });
 
-    it("returns 400 when allowRepost is false", async () => {
+    it("returns 400 when canRepost is false", async () => {
       mockedCase.findById.mockResolvedValue({
         ...originalCaseData,
-        allowRepost: false,
+        canRepost: false,
       } as any);
 
       const req = mockRequest("user-2", "doctor", { id: "case-123" });
