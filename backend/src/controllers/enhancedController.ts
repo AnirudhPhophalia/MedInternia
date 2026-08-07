@@ -10,7 +10,7 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     const { caseId, commentId } = req.params;
-    const { rating, feedback, pointsAwarded } = req.body;
+    const { rating, feedback } = req.body;
 
     if (!user) {
       return res.status(401).json({
@@ -72,6 +72,9 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Always compute points server-side; ignore any client-supplied pointsAwarded
+    const computedPoints = rating * 2;
+
     // Create new rating
     const newRating = new Rating({
       rater: user._id as any,
@@ -80,7 +83,7 @@ export const rateComment = async (req: AuthRequest, res: Response) => {
       commentId: commentId,
       rating: rating,
       feedback: feedback,
-      pointsAwarded: pointsAwarded || rating * 2 // Default: 2 points per star
+      pointsAwarded: computedPoints
     });
 
     await newRating.save();
