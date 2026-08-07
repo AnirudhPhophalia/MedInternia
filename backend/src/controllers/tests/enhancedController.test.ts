@@ -65,6 +65,49 @@ describe("Enhanced Controller", () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Can only rate intern comments" }));
     });
+
+    it("ignores client pointsAwarded and always uses rating * 2", async () => {
+      const req = mockRequest(
+        "doc-1",
+        "doctor",
+        { rating: 4, feedback: "Good", pointsAwarded: 999 },
+        { caseId: "case-1", commentId: "com-1" }
+      );
+      const res = mockResponse();
+
+      const comment = { _id: "com-1", author: "intern-1" };
+      const caseData = { comments: [comment], save: jest.fn().mockResolvedValue(true) };
+      mockedCase.findById.mockResolvedValue(caseData as any);
+      mockedUser.findById.mockResolvedValue({ userType: "intern" } as any);
+      mockedRating.findOne.mockResolvedValue(null);
+
+      const ratingInstance = {
+        pointsAwarded: 8,
+        rating: 4,
+        save: jest.fn().mockResolvedValue(true)
+      };
+      (Rating as unknown as jest.Mock).mockImplementation(() => ratingInstance);
+
+      mockedUser.findByIdAndUpdate.mockResolvedValue({
+        averageRating: 0,
+        save: jest.fn().mockResolvedValue(true)
+      } as any);
+      mockedRating.find.mockResolvedValue([{ rating: 4 }] as any);
+
+      await rateComment(req as any, res as any);
+
+      expect(Rating).toHaveBeenCalledWith(expect.objectContaining({
+        rating: 4,
+        pointsAwarded: 8
+      }));
+      expect(Rating).not.toHaveBeenCalledWith(expect.objectContaining({
+        pointsAwarded: 999
+      }));
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ pointsAwarded: 8 })
+      }));
+    });
   });
 
   describe("advancedSearch", () => {
