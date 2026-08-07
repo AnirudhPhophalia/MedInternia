@@ -33,18 +33,23 @@ describe('PatientController', () => {
   });
 
   describe('getPatients', () => {
-    it('returns paginated patients with only list-safe fields', async () => {
+    const mockFindChain = (patients: any[] = []) => {
+      mockedUser.find.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(patients),
+      } as any);
+    };
+
+    it('scopes doctors to patients with a non-cancelled appointment relationship', async () => {
       const mockPatients = [
         { _id: 'p1', firstName: 'Alice', lastName: 'Smith', email: 'alice@test.com' },
         { _id: 'p2', firstName: 'Bob', lastName: 'Jones', email: 'bob@test.com' },
       ];
 
-      mockedUser.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue(mockPatients),
-      } as any);
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue(['p1', 'p2']);
+      mockFindChain(mockPatients);
       mockedUser.countDocuments.mockResolvedValue(25);
 
       const req = mockRequest('doc-1', 'doctor', { page: '2', limit: '10' });
@@ -52,9 +57,14 @@ describe('PatientController', () => {
 
       await getPatients(req as any, res as any);
 
+      expect(mockedAppointment.distinct).toHaveBeenCalledWith('patientId', {
+        doctorId: 'doc-1',
+        status: { $ne: 'cancelled' },
+      });
       expect(mockedUser.find).toHaveBeenCalledWith({
         userType: 'patient',
         isActive: true,
+        _id: { $in: ['p1', 'p2'] },
       });
 
       const findChain = mockedUser.find();
@@ -77,13 +87,41 @@ describe('PatientController', () => {
       });
     });
 
+    it('lets admins list all active patients without relationship filtering', async () => {
+      const mockPatients = [
+        { _id: 'p1', firstName: 'Alice', lastName: 'Smith', email: 'alice@test.com' },
+      ];
+
+      mockFindChain(mockPatients);
+      mockedUser.countDocuments.mockResolvedValue(1);
+
+      const req = mockRequest('admin-1', 'admin', { page: '1', limit: '20' });
+      const res = mockResponse();
+
+      await getPatients(req as any, res as any);
+
+      expect(mockedAppointment.distinct).not.toHaveBeenCalled();
+      expect(mockedUser.find).toHaveBeenCalledWith({
+        userType: 'patient',
+        isActive: true,
+      });
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          patients: mockPatients,
+          pagination: {
+            page: 1,
+            limit: 20,
+            total: 1,
+            pages: 1,
+          },
+        },
+      });
+    });
+
     it('uses default page 1 and limit 20 when no query params provided', async () => {
-      mockedUser.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
-      } as any);
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue([]);
+      mockFindChain([]);
       mockedUser.countDocuments.mockResolvedValue(0);
 
       const req = mockRequest('doc-1', 'doctor', {});
@@ -105,12 +143,8 @@ describe('PatientController', () => {
     });
 
     it('clamps limit to max 100', async () => {
-      mockedUser.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
-      } as any);
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue(['p1']);
+      mockFindChain([]);
       mockedUser.countDocuments.mockResolvedValue(0);
 
       const req = mockRequest('doc-1', 'doctor', { limit: '999' });
@@ -123,12 +157,8 @@ describe('PatientController', () => {
     });
 
     it('handles invalid page parameter gracefully', async () => {
-      mockedUser.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
-      } as any);
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue([]);
+      mockFindChain([]);
       mockedUser.countDocuments.mockResolvedValue(0);
 
       const req = mockRequest('doc-1', 'doctor', { page: '-5', limit: 'abc' });
@@ -141,13 +171,9 @@ describe('PatientController', () => {
       expect(findChain.limit).toHaveBeenCalledWith(20);
     });
 
-    it('returns empty results when no patients exist', async () => {
-      mockedUser.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
-      } as any);
+    it('returns empty results when the doctor has no related patients', async () => {
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue([]);
+      mockFindChain([]);
       mockedUser.countDocuments.mockResolvedValue(0);
 
       const req = mockRequest('doc-1', 'doctor', { page: '1', limit: '20' });
@@ -155,6 +181,11 @@ describe('PatientController', () => {
 
       await getPatients(req as any, res as any);
 
+      expect(mockedUser.find).toHaveBeenCalledWith({
+        userType: 'patient',
+        isActive: true,
+        _id: { $in: [] },
+      });
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: {
@@ -174,12 +205,8 @@ describe('PatientController', () => {
         { _id: 'p1', firstName: 'Charlie', lastName: 'Brown', email: 'charlie@test.com' },
       ];
 
-      mockedUser.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        sort: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue(mockPatients),
-      } as any);
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue(['p1']);
+      mockFindChain(mockPatients);
       mockedUser.countDocuments.mockResolvedValue(1);
 
       const req = mockRequest('doc-1', 'doctor', {});
@@ -190,12 +217,14 @@ describe('PatientController', () => {
       expect(mockedUser.find).toHaveBeenCalledWith({
         userType: 'patient',
         isActive: true,
+        _id: { $in: ['p1'] },
       });
       const findChain = mockedUser.find();
       expect(findChain.select).toHaveBeenCalledWith('_id firstName lastName email');
     });
 
     it('returns 500 on database error', async () => {
+      (mockedAppointment.distinct as jest.Mock).mockResolvedValue(['p1']);
       mockedUser.find.mockImplementation(() => {
         throw new Error('DB connection failed');
       });
