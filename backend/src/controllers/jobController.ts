@@ -551,11 +551,17 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // 5. Return the updated job information exactly as before.
+    // 5. Return the updated job without leaking other applicants' PII.
+    const rawJob =
+      typeof (jobOpportunity as any).toObject === 'function'
+        ? (jobOpportunity as any).toObject()
+        : { ...(jobOpportunity as any) };
+    const jobObj = stripApplicantsForNonOwner(rawJob, userId.toString());
+
     res.json({
       success: true,
       message: 'Application recorded successfully',
-      data: { jobOpportunity }
+      data: { jobOpportunity: jobObj }
     });
   } catch (error) {
     console.error('Apply to job error:', error);
