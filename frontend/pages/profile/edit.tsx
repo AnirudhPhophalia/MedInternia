@@ -34,6 +34,7 @@ import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import api from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
 
 // Defines the shape of the form data for type safety
 interface ProfileFormData {
@@ -186,6 +187,7 @@ const resolveProfileUser = (payload: any) =>
 export default function EditProfilePage() {
 
   const router = useRouter();
+  const { userId } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeParsing, setResumeParsing] = useState<boolean>(false);
@@ -384,7 +386,6 @@ export default function EditProfilePage() {
 
     setLoading(true);
     try {
-      const userId = localStorage.getItem('userId');
       if (!userId) throw new Error('Missing auth');
 
       let profilePictureUrl = (typeof form.image === 'string' && /^https?:\/\//.test(form.image)) ? form.image : '';

@@ -39,8 +39,6 @@ export default function SavedItemsPage() {
 
     const fetchSavedItems = async () => {
       try {
-        const userId = localStorage.getItem('userId');
-
         if (!userId) {
           router.replace('/auth/login');
           return;

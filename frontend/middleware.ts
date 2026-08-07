@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
     console.error('Invalid ya expired token:', error);
     
     // Agar token fake ya expired hai, toh us cookie ko delete karke login pe bhej do
-    const response = NextResponse.redirect(new URL('//auth/login', request.url));
+    const response = NextResponse.redirect(new URL('/auth/login', request.url));
     response.cookies.delete('token');
     return response;
   }
@@ -32,5 +32,18 @@ export async function middleware(request: NextRequest) {
 
 // Ye define karta hai ki kin routes par security lagani hai
 export const config = {
-  matcher: ['/dashboard/:path*', '/profile/:path*', '/cases/create'],
+  matcher: [
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/cases/create',
+    '/messages/:path*',
+    '/patients/:path*',
+    '/diaries/:path*',
+    '/certificates/:path*',
+    '/peer-reviews/:path*',
+    '/settings/:path*',
+    '/flashcards/:path*',
+    '/learning-paths/:path*',
+    '/upload-raw/:path*',
+  ],
 };
