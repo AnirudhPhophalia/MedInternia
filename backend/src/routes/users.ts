@@ -11,7 +11,10 @@ import {
   getLeaderboard,
   verifyDoctor,
   grantContributorBadge,
-  upgradeProfile,
+  requestRoleUpgrade,
+  approveRoleUpgrade,
+  rejectRoleUpgrade,
+  getPendingRoleUpgrades,
   awardPointsToIntern,
   followUser,
   unfollowUser,
@@ -69,8 +72,17 @@ router.patch('/:userId/verify', authenticate, requirePermission('profile:verify'
 // Grant contributor badge
 router.post('/:userId/grant-contributor', authenticate, requirePermission('badge:manage'), grantContributorBadge);
 
-// Upgrade intern profile to doctor
-router.patch('/upgrade-profile', authenticate, upgradeProfile);
+// ---------------------------------------------------------------------------
+// Role upgrade request flow (intern → doctor) — replaces self-service upgrade
+// ---------------------------------------------------------------------------
+// Intern submits a request; no userType change happens here
+router.post('/role-upgrade/request', authenticate, requestRoleUpgrade);
+// Admin views all pending requests
+router.get('/role-upgrade/pending', authenticate, requirePermission('profile:upgrade_request'), getPendingRoleUpgrades);
+// Admin approves a specific request (atomically sets userType = 'doctor')
+router.patch('/role-upgrade/:requestId/approve', authenticate, requirePermission('profile:upgrade_request'), approveRoleUpgrade);
+// Admin rejects a specific request
+router.patch('/role-upgrade/:requestId/reject', authenticate, requirePermission('profile:upgrade_request'), rejectRoleUpgrade);
 
 // Doctor awards points to intern as recommendation
 router.post('/:internId/award-points', authenticate, requirePermission('user:award_points'), awardPointsToIntern);
