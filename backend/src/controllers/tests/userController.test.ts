@@ -8,6 +8,7 @@ import {
   getConnections,
   verifyDoctor,
   getPublicProfile,
+  grantContributorBadge,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -690,4 +691,181 @@ describe("User Controller", () => {
       );
     });
   });
+
+  describe("grantContributorBadge", () => {
+    const doctorId = "507f1f77bcf86cd799439011";
+    const targetUserId = "507f1f77bcf86cd799439012";
+
+    it("returns 403 when doctor tries to grant badge to themselves", async () => {
+      const req = {
+        params: { userId: doctorId },
+        user: { _id: doctorId, userType: "doctor" },
+      } as any;
+      const res = mockResponse();
+
+      await grantContributorBadge(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Cannot grant badge to yourself",
+        })
+      );
+      expect(mockedUser.findById).not.toHaveBeenCalled();
+    });
+
+    it("rejects client-supplied recommendedByDoctor=true as sole eligibility", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { recommendedByDoctor: true },
+      } as any;
+      const res = mockResponse();
+
+      const targetUser = {
+        _id: targetUserId,
+        points: 10,
+        badges: [],
+        save: jest.fn(),
+      };
+      mockedUser.findById.mockResolvedValue(targetUser as any);
+
+      await grantContributorBadge(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Insufficient points",
+        })
+      );
+      expect(targetUser.save).not.toHaveBeenCalled();
+    });
+
+    it("grants badge to eligible user with >= 50 points", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: {},
+      } as any;
+      const res = mockResponse();
+
+      const targetUser = {
+        _id: targetUserId,
+        points: 50,
+        badges: [],
+        save: jest.fn(),
+      };
+      mockedUser.findById.mockResolvedValue(targetUser as any);
+
+      await grantContributorBadge(req, res);
+
+      expect(targetUser.badges).toContain("CONTRIBUTOR");
+      expect(targetUser.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          badges: expect.arrayContaining(["CONTRIBUTOR"]),
+        })
+      );
+    });
+
+    it("rejects ineligible user without enough points", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: {},
+      } as any;
+      const res = mockResponse();
+
+      const targetUser = {
+        _id: targetUserId,
+        points: 30,
+        badges: [],
+        save: jest.fn(),
+      };
+      mockedUser.findById.mockResolvedValue(targetUser as any);
+
+      await grantContributorBadge(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(targetUser.save).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when user already has CONTRIBUTOR badge", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: {},
+      } as any;
+      const res = mockResponse();
+
+      const targetUser = {
+        _id: targetUserId,
+        points: 100,
+        badges: ["CONTRIBUTOR"],
+        save: jest.fn(),
+      };
+      mockedUser.findById.mockResolvedValue(targetUser as any);
+
+      await grantContributorBadge(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Already has badge",
+        })
+      );
+    });
+
+    it("returns 404 when target user not found", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: {},
+      } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue(null);
+
+      await grantContributorBadge(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "User not found",
+        })
+      );
+    });
+
+    it("works for admin granting badge to another user", async () => {
+      const adminId = "507f1f77bcf86cd799439013";
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: adminId, userType: "admin" },
+        body: {},
+      } as any;
+      const res = mockResponse();
+
+      const targetUser = {
+        _id: targetUserId,
+        points: 75,
+        badges: [],
+        save: jest.fn(),
+      };
+      mockedUser.findById.mockResolvedValue(targetUser as any);
+
+      await grantContributorBadge(req, res);
+
+      expect(targetUser.badges).toContain("CONTRIBUTOR");
+      expect(targetUser.save).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true })
+      );
+    });
+  });
 });
+
