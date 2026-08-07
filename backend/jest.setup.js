@@ -5,3 +5,14 @@
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     process.env.JWT_SECRET = "test-jwt-secret-for-unit-tests-only-not-real";
 }
+
+// Stub email credentials so mailer.ts (which throws at module load when these
+// are absent) can be safely imported during test collection. Individual test
+// files that need to assert email behaviour mock the transporter directly via
+// jest.mock('../../utils/mailer', () => ({ sendMail: jest.fn() })).
+if (!process.env.EMAIL_USER) {
+    process.env.EMAIL_USER = "test@example.com";
+}
+if (!process.env.EMAIL_PASS) {
+    process.env.EMAIL_PASS = "test-password-for-unit-tests-only";
+}
