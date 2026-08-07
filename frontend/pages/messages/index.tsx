@@ -43,6 +43,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
 
   // New states for cache, typing indicator, and new chat recipient info
   const [messagesCache, setMessagesCache] = useState<Record<string, Message[]>>({});
@@ -259,7 +260,7 @@ export default function MessagesPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeConversationId) return;
+    if (!newMessage.trim() || !activeConversationId || sending) return;
 
     let targetUserId = '';
     if (activeConversationId.startsWith('new-')) {
@@ -287,6 +288,7 @@ export default function MessagesPage() {
       });
     }
 
+    setSending(true);
     try {
       const res = await api.post('/messages', {
         receiverId: targetUserId,
@@ -332,6 +334,8 @@ export default function MessagesPage() {
       }
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -466,7 +470,7 @@ export default function MessagesPage() {
                       />
                     </Grid>
                     <Grid>
-                      <Button type="submit" variant="contained" disabled={!newMessage.trim()}>
+                      <Button type="submit" variant="contained" disabled={!newMessage.trim() || sending}>
                         Send
                       </Button>
                     </Grid>
