@@ -25,6 +25,13 @@ const canModerateComments = (userType?: string) => ["admin", "doctor", "moderato
 const canAddCaseFollowUp = (userType?: string) => ["admin", "doctor", "intern", "hospital_staff"].includes(userType ?? "");
 const canModerateCases = (userType?: string) => ["admin", "doctor", "moderator"].includes(userType ?? "");
 
+const canAccessVerifiedCases = (user?: any): boolean => {
+  if (!user) return false;
+  if (user.userType === "admin" || user.userType === "moderator") return true;
+  if (user.userType === "doctor" && user.isVerifiedDoctor === true) return true;
+  return false;
+};
+
 const CASE_UPDATABLE_FIELDS = [
   "title",
   "description",
@@ -50,6 +57,10 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
       { moderationStatus: { $exists: false } },
     ],
   };
+
+  if (!canAccessVerifiedCases(req.user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
 
   if (req.query.specialization) {
     filter.specialization = { $regex: String(req.query.specialization), $options: "i" };
@@ -89,7 +100,8 @@ export const getCases = asyncHandler(async (req: AuthRequest, res: Response) => 
 
 // Get a single case by ID
 export const getCaseById = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const baseFilter = {
+  const filter: any = {
+    _id: getId(req.params.id),
     isActive: { $ne: false },
     $or: [
       { moderationStatus: "approved" },
@@ -97,10 +109,11 @@ export const getCaseById = asyncHandler(async (req: AuthRequest, res: Response) 
     ],
   };
 
-  const caseDoc = await Case.findOne({
-    _id: getId(req.params.id),
-    ...baseFilter,
-  })
+  if (!canAccessVerifiedCases(req.user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
+
+  const caseDoc = await Case.findOne(filter)
     .populate("doctor", "firstName lastName specialization avatar medicalLicenseVerified")
     .populate("comments.author", USER_PUBLIC_FIELDS)
     .populate("followUps.author", "firstName lastName userType avatar");
@@ -232,13 +245,17 @@ export const getStarredCases = asyncHandler(async (req: AuthRequest, res: Respon
   }
   const { page, limit, skip } = parsePagination(req.query);
 
-  const baseFilter = {
+  const filter: any = {
     isActive: { $ne: false },
     $or: [
       { moderationStatus: "approved" },
       { moderationStatus: { $exists: false } },
     ],
   };
+
+  if (!canAccessVerifiedCases(user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
 
   const userDoc = await User.findById(user._id).select("savedCases");
   const savedCaseIds = (userDoc as any)?.savedCases || [];
@@ -252,7 +269,7 @@ export const getStarredCases = asyncHandler(async (req: AuthRequest, res: Respon
     return;
   }
 
-  const filter = { _id: { $in: savedCaseIds }, ...baseFilter };
+  filter._id = { $in: savedCaseIds };
 
   const [cases, total] = await Promise.all([
     Case.find(filter)
@@ -276,7 +293,8 @@ export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response
   }
   const { page, limit, skip } = parsePagination(req.query);
 
-  const baseFilter = {
+  const filter: any = {
+    likes: user._id,
     isActive: { $ne: false },
     $or: [
       { moderationStatus: "approved" },
@@ -284,7 +302,9 @@ export const getLikedCases = asyncHandler(async (req: AuthRequest, res: Response
     ],
   };
 
-  const filter = { likes: user._id, ...baseFilter };
+  if (!canAccessVerifiedCases(user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
 
   const [cases, total] = await Promise.all([
     Case.find(filter)
@@ -467,7 +487,9 @@ export const getRecommendedCases = asyncHandler(async (req: AuthRequest, res: Re
   if (!user) throw new AppError("User not authenticated", 401);
   const spec = (user as any).specialization || "General Medicine";
 
-  const baseFilter = {
+  const filter: any = {
+    specialization: spec,
+    doctor: { $ne: user._id },
     isActive: { $ne: false },
     $or: [
       { moderationStatus: "approved" },
@@ -475,11 +497,11 @@ export const getRecommendedCases = asyncHandler(async (req: AuthRequest, res: Re
     ],
   };
 
-  const cases = await Case.find({
-    specialization: spec,
-    doctor: { $ne: user._id },
-    ...baseFilter
-  }).limit(5);
+  if (!canAccessVerifiedCases(user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
+
+  const cases = await Case.find(filter).limit(5);
 
   res.json({ success: true, data: { cases } });
 });
@@ -561,7 +583,11 @@ export const generateAISuggestions = asyncHandler(async (req: AuthRequest, res: 
 });
 
 export const getCaseAISuggestions = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const filter: any = { _id: getId(req.params.id) };
+  if (!canAccessVerifiedCases(req.user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
+  const caseDoc = await Case.findOne(filter);
   if (!caseDoc) throw new AppError("Case not found", 404);
   res.json({ success: true, data: { aiAnalysis: (caseDoc as any).aiAnalysis || null } });
 });
@@ -587,7 +613,11 @@ export const addFollowUp = asyncHandler(async (req: AuthRequest, res: Response) 
 });
 
 export const getCaseFollowUps = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const filter: any = { _id: getId(req.params.id) };
+  if (!canAccessVerifiedCases(req.user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
+  const caseDoc = await Case.findOne(filter);
   if (!caseDoc) throw new AppError("Case not found", 404);
   res.json({ success: true, data: { followUps: (caseDoc as any).followUps || [] } });
 });
@@ -924,7 +954,11 @@ export const createCase = asyncHandler(
 );
 
 export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const filter: any = { _id: getId(req.params.id) };
+  if (!canAccessVerifiedCases(req.user)) {
+    filter.verifiedDoctorsOnly = { $ne: true };
+  }
+  const caseDoc = await Case.findOne(filter);
   if (!caseDoc) {
     throw new AppError("Case not found", 404);
   }

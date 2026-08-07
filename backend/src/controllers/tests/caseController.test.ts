@@ -5,6 +5,7 @@ import {
   deleteCase,
   addComment,
   getCases,
+  getCaseById,
   getPinnedComments,
   toggleRepostPermission,
   repostCase,
@@ -354,6 +355,233 @@ describe("Case Controller", () => {
 
       expect(mockedCase.findById).toHaveBeenCalledWith("declared-case-id");
       expect(mockedCase.findById).not.toHaveBeenCalledWith("wrong-id");
+    });
+  });
+
+  describe("verifiedDoctorsOnly enforcement", () => {
+    const verifiedOnlyCase = {
+      _id: "case-verified",
+      title: "Restricted Case",
+      description: "Sensitive medical case",
+      verifiedDoctorsOnly: true,
+      isActive: true,
+      moderationStatus: "approved",
+    };
+
+    const publicCase = {
+      _id: "case-public",
+      title: "Public Case",
+      description: "Normal medical case",
+      verifiedDoctorsOnly: false,
+      isActive: true,
+      moderationStatus: "approved",
+    };
+
+    describe("getCases", () => {
+      it("excludes verifiedDoctorsOnly cases for unauthenticated users", async () => {
+        mockedCase.find.mockReturnValue({
+          populate: jest.fn().mockReturnThis(),
+          skip: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockResolvedValue([publicCase]),
+        } as any);
+        mockedCase.countDocuments.mockResolvedValue(1);
+
+        const req = mockRequest("", "", {}, {}, {});
+        const res = mockResponse();
+
+        await getCases(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.find as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toEqual({ $ne: true });
+      });
+
+      it("includes verifiedDoctorsOnly cases for verified doctors", async () => {
+        mockedCase.find.mockReturnValue({
+          populate: jest.fn().mockReturnThis(),
+          skip: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockResolvedValue([verifiedOnlyCase, publicCase]),
+        } as any);
+        mockedCase.countDocuments.mockResolvedValue(2);
+
+        const req = mockRequest("doctor-1", "doctor", {}, {}, {});
+        (req as any).user = { _id: "doctor-1", userType: "doctor", isVerifiedDoctor: true };
+        const res = mockResponse();
+
+        await getCases(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.find as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toBeUndefined();
+      });
+
+      it("excludes verifiedDoctorsOnly cases for unverified doctors", async () => {
+        mockedCase.find.mockReturnValue({
+          populate: jest.fn().mockReturnThis(),
+          skip: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockResolvedValue([publicCase]),
+        } as any);
+        mockedCase.countDocuments.mockResolvedValue(1);
+
+        const req = mockRequest("doctor-2", "doctor", {}, {}, {});
+        (req as any).user = { _id: "doctor-2", userType: "doctor", isVerifiedDoctor: false };
+        const res = mockResponse();
+
+        await getCases(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.find as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toEqual({ $ne: true });
+      });
+
+      it("excludes verifiedDoctorsOnly cases for patients", async () => {
+        mockedCase.find.mockReturnValue({
+          populate: jest.fn().mockReturnThis(),
+          skip: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockResolvedValue([publicCase]),
+        } as any);
+        mockedCase.countDocuments.mockResolvedValue(1);
+
+        const req = mockRequest("patient-1", "patient", {}, {}, {});
+        const res = mockResponse();
+
+        await getCases(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.find as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toEqual({ $ne: true });
+      });
+
+      it("includes verifiedDoctorsOnly cases for admins", async () => {
+        mockedCase.find.mockReturnValue({
+          populate: jest.fn().mockReturnThis(),
+          skip: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockResolvedValue([verifiedOnlyCase, publicCase]),
+        } as any);
+        mockedCase.countDocuments.mockResolvedValue(2);
+
+        const req = mockRequest("admin-1", "admin", {}, {}, {});
+        (req as any).user = { _id: "admin-1", userType: "admin" };
+        const res = mockResponse();
+
+        await getCases(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.find as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toBeUndefined();
+      });
+
+      it("includes verifiedDoctorsOnly cases for moderators", async () => {
+        mockedCase.find.mockReturnValue({
+          populate: jest.fn().mockReturnThis(),
+          skip: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockResolvedValue([verifiedOnlyCase, publicCase]),
+        } as any);
+        mockedCase.countDocuments.mockResolvedValue(2);
+
+        const req = mockRequest("mod-1", "moderator", {}, {}, {});
+        (req as any).user = { _id: "mod-1", userType: "moderator" };
+        const res = mockResponse();
+
+        await getCases(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.find as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toBeUndefined();
+      });
+    });
+
+    describe("getCaseById", () => {
+      const makeMockChain = (result: any) => {
+        const chain: any = {
+          populate: jest.fn().mockReturnThis(),
+        };
+        chain.then = (resolve: any, reject: any) =>
+          Promise.resolve(result).then(resolve, reject);
+        return chain;
+      };
+
+      it("adds verifiedDoctorsOnly filter for unauthenticated users", async () => {
+        mockedCase.findOne.mockReturnValue(makeMockChain(null));
+
+        const req = mockRequest("", "", { id: "case-verified" });
+        const res = mockResponse();
+
+        await expect(
+          getCaseById(req as any, res as any, jest.fn())
+        ).rejects.toThrow("Case not found or not approved");
+
+        expect(mockedCase.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({ verifiedDoctorsOnly: { $ne: true } })
+        );
+      });
+
+      it("adds verifiedDoctorsOnly filter for unverified doctors", async () => {
+        mockedCase.findOne.mockReturnValue(makeMockChain(null));
+
+        const req = mockRequest("doctor-2", "doctor", { id: "case-verified" });
+        (req as any).user = { _id: "doctor-2", userType: "doctor", isVerifiedDoctor: false };
+        const res = mockResponse();
+
+        await expect(
+          getCaseById(req as any, res as any, jest.fn())
+        ).rejects.toThrow("Case not found or not approved");
+
+        expect(mockedCase.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({ verifiedDoctorsOnly: { $ne: true } })
+        );
+      });
+
+      it("adds verifiedDoctorsOnly filter for patients", async () => {
+        mockedCase.findOne.mockReturnValue(makeMockChain(null));
+
+        const req = mockRequest("patient-1", "patient", { id: "case-verified" });
+        const res = mockResponse();
+
+        await expect(
+          getCaseById(req as any, res as any, jest.fn())
+        ).rejects.toThrow("Case not found or not approved");
+
+        expect(mockedCase.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({ verifiedDoctorsOnly: { $ne: true } })
+        );
+      });
+
+      it("does NOT add verifiedDoctorsOnly filter for verified doctors", async () => {
+        mockedCase.findOne.mockReturnValue(makeMockChain(verifiedOnlyCase));
+
+        const req = mockRequest("doctor-1", "doctor", { id: "case-verified" });
+        (req as any).user = { _id: "doctor-1", userType: "doctor", isVerifiedDoctor: true };
+        const res = mockResponse();
+
+        await getCaseById(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.findOne as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toBeUndefined();
+      });
+
+      it("does NOT add verifiedDoctorsOnly filter for admins", async () => {
+        mockedCase.findOne.mockReturnValue(makeMockChain(verifiedOnlyCase));
+
+        const req = mockRequest("admin-1", "admin", { id: "case-verified" });
+        (req as any).user = { _id: "admin-1", userType: "admin" };
+        const res = mockResponse();
+
+        await getCaseById(req as any, res as any, jest.fn());
+
+        const findCall = (mockedCase.findOne as jest.Mock).mock.calls[0][0];
+        expect(findCall.verifiedDoctorsOnly).toBeUndefined();
+      });
+
+      it("still returns public cases to unauthenticated users", async () => {
+        mockedCase.findOne.mockReturnValue(makeMockChain(publicCase));
+
+        const req = mockRequest("", "", { id: "case-public" });
+        const res = mockResponse();
+
+        await getCaseById(req as any, res as any, jest.fn());
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            data: expect.objectContaining({ case: publicCase }),
+          })
+        );
+      });
     });
   });
 
