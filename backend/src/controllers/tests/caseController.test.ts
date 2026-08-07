@@ -530,11 +530,10 @@ describe("Case Controller", () => {
   });
 
   describe("addFollowUp", () => {
-    it("allows the case author to add a follow-up", async () => {
+    it("allows the case owner to add a follow-up", async () => {
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        author: "user-1",
-        doctor: "doctor-1",
+        doctor: "user-1",
         comments: [],
       } as any);
       mockedCase.findByIdAndUpdate.mockResolvedValue({} as any);
@@ -551,7 +550,6 @@ describe("Case Controller", () => {
     it("allows a prior commenter to add a follow-up", async () => {
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        author: "author-1",
         doctor: "doctor-1",
         comments: [{ author: "user-2" }],
       } as any);
@@ -568,11 +566,12 @@ describe("Case Controller", () => {
     it("rejects unrelated users without case involvement", async () => {
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        author: "author-1",
         doctor: "doctor-1",
         comments: [],
       } as any);
-      mockedUser.findById.mockResolvedValue({ mentorDoctor: "other-doctor" } as any);
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue({ mentorDoctor: "other-doctor" }),
+      } as any);
 
       const req = mockRequest("stranger-1", "doctor", { id: "case-1" }, { content: "Nope" });
       const res = mockResponse();

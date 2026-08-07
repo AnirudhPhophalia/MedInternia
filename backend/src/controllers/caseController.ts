@@ -576,31 +576,25 @@ export const addFollowUp = asyncHandler(async (req: AuthRequest, res: Response) 
   if (!caseDoc) throw new AppError("Case not found", 404);
 
   const userId = String(user._id);
+  const caseOwnerId = String((caseDoc as any).doctor);
   const isAdmin = user.userType === "admin";
-  const isCaseDoctor = caseDoc.doctor?.toString() === userId;
-  const isCaseAuthor = caseDoc.author?.toString() === userId;
-  const hasPriorComment = (caseDoc.comments || []).some(
-    (comment) => comment.author?.toString() === userId
+  const isCaseOwner = caseOwnerId === userId;
+  const hasPriorComment = ((caseDoc as any).comments || []).some(
+    (comment: any) => comment.author?.toString() === userId
   );
 
   let hasMentoringRelationship = false;
-  if (!isAdmin && !isCaseDoctor && !isCaseAuthor && !hasPriorComment) {
+  if (!isAdmin && !isCaseOwner && !hasPriorComment) {
     if (user.userType === "doctor") {
-      const author = await User.findById(caseDoc.author).select("mentorDoctor");
-      hasMentoringRelationship = author?.mentorDoctor?.toString() === userId;
-    } else if (user.userType === "intern" && user.mentorDoctor) {
+      const caseOwner = await User.findById(caseOwnerId).select("mentorDoctor");
+      hasMentoringRelationship = caseOwner?.mentorDoctor?.toString() === userId;
+    } else if (user.userType === "intern" && (user as any).mentorDoctor) {
       hasMentoringRelationship =
-        user.mentorDoctor.toString() === caseDoc.doctor?.toString();
+        (user as any).mentorDoctor.toString() === caseOwnerId;
     }
   }
 
-  if (
-    !isAdmin &&
-    !isCaseDoctor &&
-    !isCaseAuthor &&
-    !hasPriorComment &&
-    !hasMentoringRelationship
-  ) {
+  if (!isAdmin && !isCaseOwner && !hasPriorComment && !hasMentoringRelationship) {
     throw new AppError("Forbidden: you cannot add a follow-up on this case", 403);
   }
 
