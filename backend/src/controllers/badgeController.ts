@@ -11,6 +11,13 @@ export const createBadge = async (req: AuthRequest, res: Response) => {
     console.log("===== CREATE BADGE =====");
   console.log(req.body);
   try {
+    if (req.user?.userType !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: only admins can create badges'
+      });
+    }
+
     const { name, description, icon, category, criteria, color } = req.body;
 
     const badge = new Badge({
@@ -86,6 +93,13 @@ export const awardBadge = async (req: AuthRequest, res: Response) => {
     console.log("===== AWARD BADGE =====");
   console.log(req.body);
   try {
+    if (req.user?.userType !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: only admins can award badges'
+      });
+    }
+
     const { userId, badgeId, caseId, commentId, metadata } = req.body;
     const verifiedBy = req.user!._id;
 
