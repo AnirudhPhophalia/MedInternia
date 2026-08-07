@@ -7,7 +7,7 @@ import {
   deleteAccount,
   getConnections,
   verifyDoctor,
-  getPublicProfile,
+  awardPointsToIntern,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -559,134 +559,200 @@ describe("User Controller", () => {
     });
   });
 
-  describe("getPublicProfile", () => {
-    const userId = "507f1f77bcf86cd799439011";
+  describe("awardPointsToIntern", () => {
+    const doctorId = "doctor-1";
+    const internId = "intern-1";
 
-    it("returns zeroed public aggregates when the user has no activity", async () => {
-      const req = { params: { userId } } as any;
+    it("allows mentor to award points to their mentee", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 10 },
+      } as any;
       const res = mockResponse();
 
-      mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue({
-          firstName: "Ada",
-          lastName: "Lovelace",
-          userType: "doctor",
-          specialization: "Cardiology",
-          averageRating: 0,
-          profileScore: 0,
-          followers: [],
-          following: [],
-          toObject: function () {
-            return { ...this };
-          },
-        }),
+      mockedUser.findById.mockResolvedValue({
+        _id: internId,
+        userType: "intern",
+        mentorDoctor: doctorId,
+      } as any);
+      mockedUser.findByIdAndUpdate.mockResolvedValue({ points: 50 } as any);
+
+      await awardPointsToIntern(req, res);
+
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        internId,
+        { $inc: { points: 10 } },
+        { new: true }
+      );
+      expect(res.json).toHaveBeenCalledWith({ success: true, points: 50 });
+    });
+
+    it("rejects non-mentor doctor", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 10 },
+      } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue({
+        _id: internId,
+        userType: "intern",
+        mentorDoctor: "other-doctor",
       } as any);
 
-      mockedUserBadge.find.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue([]),
-        }),
-      } as any);
-      mockedCase.countDocuments.mockResolvedValue(0);
-      mockedCase.find.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue([]),
-          }),
-        }),
-      } as any);
+      await awardPointsToIntern(req, res);
 
-      await getPublicProfile(req, res);
-
+      expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          data: expect.objectContaining({
-            user: expect.objectContaining({
-              firstName: "Ada",
-              followersCount: 0,
-              followingCount: 0,
-            }),
-            badges: [],
-            cases: [],
-            stats: expect.objectContaining({
-              caseCount: 0,
-              averageRating: 0,
-              profileScore: 0,
-              badgesEarned: 0,
-            }),
-          }),
-        })
+        expect.objectContaining({ success: false, message: "You can only award points to your assigned mentees." })
       );
     });
 
-    it("returns real follower, badge, rating, and case totals for different users", async () => {
-      const req = { params: { userId } } as any;
+    it("rejects doctor awarding to intern with no mentor assigned", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 10 },
+      } as any;
       const res = mockResponse();
-      const cases = [
-        { _id: "c1", title: "Case A" },
-        { _id: "c2", title: "Case B" },
-      ];
-      const badges = [{ _id: "b1", badge: { name: "Mentor", icon: "M" } }];
 
-      mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue({
-          firstName: "Grace",
-          lastName: "Hopper",
-          userType: "doctor",
-          specialization: "Neurology",
-          averageRating: 4.5,
-          profileScore: 70,
-          followers: ["u1", "u2", "u3"],
-          following: ["u4"],
-          toObject: function () {
-            return { ...this };
-          },
-        }),
+      mockedUser.findById.mockResolvedValue({
+        _id: internId,
+        userType: "intern",
+        mentorDoctor: null,
       } as any);
 
-      mockedUserBadge.find.mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue(badges),
-        }),
-      } as any);
-      mockedCase.countDocuments.mockResolvedValue(2);
-      mockedCase.find.mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue(cases),
-          }),
-        }),
-      } as any);
+      await awardPointsToIntern(req, res);
 
-      await getPublicProfile(req, res);
-
-      const payload = (res.json as jest.Mock).mock.calls[0][0];
-      expect(payload.data.user.followersCount).toBe(3);
-      expect(payload.data.user.followingCount).toBe(1);
-      expect(payload.data.user.followers).toBeUndefined();
-      expect(payload.data.user.following).toBeUndefined();
-      expect(payload.data.stats.caseCount).toBe(2);
-      expect(payload.data.stats.averageRating).toBe(4.5);
-      expect(payload.data.stats.profileScore).toBe(70);
-      expect(payload.data.stats.badgesEarned).toBe(1);
-      expect(payload.data.cases).toHaveLength(2);
-      expect(payload.data.badges).toEqual(badges);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "You can only award points to your assigned mentees." })
+      );
     });
 
-    it("returns 404 when the public profile user is missing", async () => {
-      const req = { params: { userId } } as any;
+    it("allows admin to award points to any intern", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: "admin-1", userType: "admin" },
+        body: { points: 10 },
+      } as any;
       const res = mockResponse();
 
-      mockedUser.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue(null),
+      mockedUser.findById.mockResolvedValue({
+        _id: internId,
+        userType: "intern",
+        mentorDoctor: "other-doctor",
       } as any);
+      mockedUser.findByIdAndUpdate.mockResolvedValue({ points: 30 } as any);
 
-      await getPublicProfile(req, res);
+      await awardPointsToIntern(req, res);
+
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ success: true, points: 30 });
+    });
+
+    it("returns 404 for invalid intern id", async () => {
+      const req = {
+        params: { internId: "nonexistent" },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 10 },
+      } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue(null);
+
+      await awardPointsToIntern(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false, message: "User not found" })
+        expect.objectContaining({ success: false, message: "Intern not found." })
+      );
+    });
+
+    it("returns 404 when target user is not an intern", async () => {
+      const req = {
+        params: { internId: "patient-1" },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 10 },
+      } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue({
+        _id: "patient-1",
+        userType: "patient",
+      } as any);
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Intern not found." })
+      );
+    });
+
+    it("rejects zero points", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 0 },
+      } as any;
+      const res = mockResponse();
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Points must be a positive integer." })
+      );
+    });
+
+    it("rejects negative points", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: -5 },
+      } as any;
+      const res = mockResponse();
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Points must be a positive integer." })
+      );
+    });
+
+    it("rejects float values", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: 5.5 },
+      } as any;
+      const res = mockResponse();
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Points must be a positive integer." })
+      );
+    });
+
+    it("rejects non-numeric input", async () => {
+      const req = {
+        params: { internId },
+        user: { _id: doctorId, userType: "doctor" },
+        body: { points: "ten" },
+      } as any;
+      const res = mockResponse();
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Points must be a positive integer." })
       );
     });
   });
