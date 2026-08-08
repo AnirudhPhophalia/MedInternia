@@ -454,6 +454,21 @@ describe("Case Controller", () => {
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
+    it("creates the repost as pending and enqueues moderation", async () => {
+      mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
+      mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
+
+      const req = mockRequest("user-2", "intern", { id: "case-123" });
+      const res = mockResponse();
+
+      await repostCase(req as any, res as any, jest.fn());
+
+      const createCall = (mockedCase.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.moderationStatus).toBe("pending");
+      expect(createCall.moderationStatus).not.toBe("approved");
+      expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("repost-1");
+    });
+
     it("copies required schema fields: difficulty and specialization", async () => {
       mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
       mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
