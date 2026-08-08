@@ -75,12 +75,11 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(morgan('combined'));
 
-// Serve uploads folder for profile images
-import path from 'path';
-app.use('/uploads', cors(corsOptions), (_req, res, next) => {
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(__dirname, '../uploads')));
+// NOTE: There is intentionally no public static mount for the uploads folder.
+// Any file on disk (research paper PDFs, exported documents, etc.) must be
+// delivered only through the authenticated download routes
+// (e.g. /api/research-papers/download/:filename), which enforce login/ownership.
+// Exposing the raw uploads directory here would bypass that authorization.
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
