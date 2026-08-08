@@ -79,6 +79,30 @@ const canInteractWithWebinar = (
   );
 };
 
+// Shape a webinar for the public list. Only non-sensitive metadata is exposed:
+// the participant roster and the live meetingLink must never leak to the public
+// feed (they are only served to participants, the host, or admins).
+const toPublicWebinar = (webinar: any) => ({
+  _id: webinar._id,
+  title: webinar.title,
+  description: webinar.description,
+  host: webinar.host,
+  type: webinar.type,
+  specialization: webinar.specialization,
+  scheduledAt: webinar.scheduledAt,
+  duration: webinar.duration,
+  maxParticipants: webinar.maxParticipants,
+  registrationDeadline: webinar.registrationDeadline,
+  tags: webinar.tags,
+  materials: webinar.materials,
+  isActive: webinar.isActive,
+  isRecorded: webinar.isRecorded,
+  status: webinar.status,
+  createdAt: webinar.createdAt,
+  updatedAt: webinar.updatedAt,
+  participantCount: webinar.participantCount ?? webinar.participants?.length ?? 0
+});
+
 const ensureWebinarAcceptsLiveInteraction = (
   webinar: { scheduledAt: Date; duration?: number; status: string },
   res: Response
@@ -307,7 +331,7 @@ export const getWebinars = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        webinars,
+        webinars: webinars.map(toPublicWebinar),
         total,
         totalPages: Math.ceil(total / Number(limit)),
         currentPage: Number(page)
