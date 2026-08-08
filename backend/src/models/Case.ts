@@ -235,7 +235,7 @@ const CaseSchema = new Schema<ICase>({
   moderationStatus: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'changes_requested', 'failed'],
-    default: 'approved'
+    default: 'pending'
   },
   moderationReason: {
     type: String,
