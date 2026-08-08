@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import {
   registerForWebinar,
   unregisterFromWebinar,
+  getWebinars,
 } from "../webinarController";
 import Webinar from "../../models/Webinar";
 import { AuthRequest } from "../../middleware/auth";
@@ -169,6 +170,98 @@ describe("Webinar Controller", () => {
       expect(webinarMock.participants[0].user).toBe("user-2");
       expect(webinarMock.save).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("getWebinars", () => {
+    it("does not leak participants or meetingLink in the public list", async () => {
+      const webinarRow = {
+        _id: "webinar-1",
+        title: "Cardiology Live",
+        description: "desc",
+        host: { _id: "host-1", firstName: "Alice" },
+        type: "webinar",
+        specialization: ["cardiology"],
+        scheduledAt: new Date(Date.now() + 100000),
+        duration: 60,
+        maxParticipants: 100,
+        tags: [],
+        materials: [],
+        isActive: true,
+        isRecorded: false,
+        status: "scheduled",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        participants: [{ user: { _id: "participant-1", firstName: "Eve" } }],
+        meetingLink: "https://meet.jit.si/webinar-123",
+        polls: [],
+        qna: [],
+      };
+      mockedWebinar.find.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([]),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([webinarRow]),
+      } as any);
+      mockedWebinar.countDocuments.mockResolvedValue(1);
+
+      const req = { query: {} } as Request;
+      const res = mockResponse();
+
+      await getWebinars(req, res);
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      const webinar = payload.data.webinars[0];
+      expect(webinar).not.toHaveProperty("meetingLink");
+      expect(webinar).not.toHaveProperty("participants");
+      expect(webinar).not.toHaveProperty("polls");
+      expect(webinar).not.toHaveProperty("qna");
+      expect(webinar.participantCount).toBe(1);
+      expect(payload.data.total).toBe(1);
+    });
+
+    it("exposes only public metadata fields for each webinar", async () => {
+      const webinarRow = {
+        _id: "webinar-1",
+        title: "AMA Session",
+        description: "desc",
+        host: { _id: "host-1", firstName: "Bob" },
+        type: "ama",
+        specialization: ["general"],
+        scheduledAt: new Date(),
+        duration: 45,
+        maxParticipants: 50,
+        tags: [],
+        materials: [],
+        isActive: true,
+        isRecorded: false,
+        status: "scheduled",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        participants: [],
+        meetingLink: "https://meet.jit.si/secret",
+      };
+      mockedWebinar.find.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([]),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([webinarRow]),
+      } as any);
+      mockedWebinar.countDocuments.mockResolvedValue(1);
+
+      const req = { query: {} } as Request;
+      const res = mockResponse();
+
+      await getWebinars(req, res);
+
+      const webinar = (res.json as jest.Mock).mock.calls[0][0].data.webinars[0];
+      expect(webinar.title).toBe("AMA Session");
+      expect(webinar.description).toBe("desc");
+      expect(webinar.scheduledAt).toBe(webinarRow.scheduledAt);
+      expect(webinar.maxParticipants).toBe(50);
+      expect(webinar.host).toEqual(webinarRow.host);
     });
   });
 });
