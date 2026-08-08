@@ -1,6 +1,7 @@
 import { Router, Request } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
+import { requireAdmin } from '../middleware/roleVerification';
 import {
   getUserProfile,
   getPublicProfile,
@@ -72,8 +73,8 @@ router.post('/:userId/grant-contributor', authenticate, requirePermission('badge
 // Upgrade intern profile to doctor
 router.patch('/upgrade-profile', authenticate, upgradeProfile);
 
-// Doctor awards points to intern as recommendation
-router.post('/:internId/award-points', authenticate, requirePermission('user:award_points'), awardPointsToIntern);
+// Admin awards points to intern as recommendation (admin only)
+router.post('/:internId/award-points', authenticate, requireAdmin, awardPointsToIntern);
 
 // Follow a user
 router.post('/follow', authenticate, followUser);

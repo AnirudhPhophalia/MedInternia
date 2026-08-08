@@ -675,17 +675,27 @@ export const upgradeProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Doctor awards points to intern as recommendation
+// Admin awards points to intern (e.g. for verified contributions).
+// Awarding is admin-only and strictly bounded per call so that a single
+// request cannot inflate an intern's points (and thus leaderboard rank,
+// badges, or upgrade thresholds) beyond control.
+const MAX_AWARD_POINTS_PER_CALL = 100;
 export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
   try {
-    const doctor = req.user;
+    const admin = req.user;
     const { internId } = req.params;
     const { points } = req.body;
-    if (!doctor || (doctor.userType !== 'doctor' && doctor.userType !== 'admin')) {
-      return res.status(403).json({ success: false, message: 'Only doctors or admins can award points.' });
+    if (!admin || admin.userType !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only admins can award points.' });
     }
-    if (typeof points !== 'number' || points <= 0) {
-      return res.status(400).json({ success: false, message: 'Points must be a positive number.' });
+    if (typeof points !== 'number' || !Number.isInteger(points) || points <= 0) {
+      return res.status(400).json({ success: false, message: 'Points must be a positive integer.' });
+    }
+    if (points > MAX_AWARD_POINTS_PER_CALL) {
+      return res.status(400).json({
+        success: false,
+        message: `Points cannot exceed ${MAX_AWARD_POINTS_PER_CALL} per request.`
+      });
     }
     const intern = await User.findById(internId);
     if (!intern || intern.userType !== 'intern') {
