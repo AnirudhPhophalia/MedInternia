@@ -40,7 +40,6 @@ export const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> =
   admin: APP_PERMISSIONS,
   doctor: [
   'analytics:read',
-  'badge:manage',
   'case:create',
   'case:delete',
   'case:follow_up',
