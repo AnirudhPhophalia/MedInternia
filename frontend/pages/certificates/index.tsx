@@ -13,8 +13,6 @@ export default function Certificates() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-
     if (!userId) {
       setLoading(false);
       return;

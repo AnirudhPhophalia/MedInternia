@@ -199,28 +199,24 @@ function Doctors() {
 
   const fetchInitData = async () => {
     try {
-      const storedUserId = localStorage.getItem('userId');
-
-      if (!storedUserId) {
-
-        router.replace('/auth/login');
-        return;
-      }
-
       if (userId) {
         setCurrentUserId(userId);
       }
 
       // Fetch user profile to see if they are a doctor or intern
-      const userRes = await api.get('/auth/me');
-      const user = userRes.data?.user || userRes.data?.data?.user || userRes.data;
-      if (user) {
-        setUserRole(user.userType || '');
-        if (user._id || user.id) {
-          setCurrentUserId(String(user._id || user.id));
-        }
-        if (user.mentorDoctor) {
-          setCurrentMentorId(user.mentorDoctor._id || user.mentorDoctor);
+      // Public browse still works when unauthenticated; mentorship needs auth.
+      let user: any = null;
+      if (isAuthenticated && userId) {
+        const userRes = await api.get('/auth/me');
+        user = userRes.data?.user || userRes.data?.data?.user || userRes.data;
+        if (user) {
+          setUserRole(user.userType || '');
+          if (user._id || user.id) {
+            setCurrentUserId(String(user._id || user.id));
+          }
+          if (user.mentorDoctor) {
+            setCurrentMentorId(user.mentorDoctor._id || user.mentorDoctor);
+          }
         }
       }
 

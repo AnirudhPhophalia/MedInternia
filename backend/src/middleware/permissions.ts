@@ -25,6 +25,7 @@ export const APP_PERMISSIONS = [
   'comment:moderate',
   'import:run',
   'job:manage',
+  'profile:upgrade_request', // approve / reject intern → doctor role upgrade requests
   'profile:verify',
   'rating:create',
   'user:award_points',
@@ -39,7 +40,6 @@ export const ROLE_PERMISSION_MATRIX: Record<AppRole, readonly AppPermission[]> =
   admin: APP_PERMISSIONS,
   doctor: [
   'analytics:read',
-  'badge:manage',
   'case:create',
   'case:delete',
   'case:follow_up',

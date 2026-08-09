@@ -1,6 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { submitPeerReview, getUserReviews, getReviewsByUser } from "../peerReviewController";
+import { submitPeerReview, getUserReviews, getReviewsByUser, getPeerReviewAnalytics } from "../peerReviewController";
 import PeerReview from "../../models/PeerReview";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -68,12 +68,13 @@ describe("Peer Review Controller", () => {
     });
 
     it("rejects duplicate review for the same commentId", async () => {
-      const req = mockRequest("intern-1", "intern", { revieweeId: "intern-2", caseId: "case-1", commentId: "comment-1" });
+      const revieweeId = "507f1f77bcf86cd799439011";
+      const req = mockRequest("intern-1", "intern", { revieweeId, caseId: "case-1", commentId: "comment-1" });
       const res = mockResponse();
 
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        comments: [{ _id: "comment-1" }]
+        comments: [{ _id: "comment-1", author: { toString: () => revieweeId } }]
       } as any);
 
       mockedPeerReview.findOne.mockResolvedValue({ _id: "existing-review" } as any);
@@ -84,9 +85,35 @@ describe("Peer Review Controller", () => {
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "You have already reviewed this comment" }));
     });
 
-    it("successfully creates review, calculates average rating, and sends notification", async () => {
+    it("rejects review when revieweeId does not match the comment author", async () => {
       const req = mockRequest("intern-1", "intern", {
-        revieweeId: "intern-2",
+        revieweeId: "65f0000000000000000000aa",
+        caseId: "case-1",
+        commentId: "comment-1",
+        rating: 1,
+        feedback: "bad",
+      });
+      const res = mockResponse();
+
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        comments: [{ _id: "comment-1", author: { toString: () => "intern-2" } }]
+      } as any);
+
+      await submitPeerReview(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Reviewee must be the author of the comment being reviewed" })
+      );
+      expect(mockedPeerReview.create).not.toHaveBeenCalled();
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("successfully creates review, calculates average rating, and sends notification", async () => {
+      const revieweeId = "507f1f77bcf86cd799439011";
+      const req = mockRequest("intern-1", "intern", {
+        revieweeId,
         caseId: "case-1",
         commentId: "comment-1",
         rating: 4,
@@ -95,7 +122,7 @@ describe("Peer Review Controller", () => {
 
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        comments: [{ _id: "comment-1" }]
+        comments: [{ _id: "comment-1", author: { toString: () => revieweeId } }]
       } as any);
 
       mockedPeerReview.findOne.mockResolvedValue(null);
@@ -114,7 +141,7 @@ describe("Peer Review Controller", () => {
       expect(mockSession.startTransaction).toHaveBeenCalled();
       expect(mockedPeerReview.create).toHaveBeenCalledWith([{
         reviewer: "intern-1",
-        reviewee: "intern-2",
+        reviewee: revieweeId,
         caseId: "case-1",
         commentId: "comment-1",
         rating: 4,
@@ -127,7 +154,7 @@ describe("Peer Review Controller", () => {
         $inc: { peerReviewsGiven: 1 }
       }, { session: mockSession });
 
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("intern-2", {
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(revieweeId, {
         $inc: { peerReviewsReceived: 1 },
         $set: { averageRating: 4.5 }
       }, { session: mockSession });
@@ -136,7 +163,7 @@ describe("Peer Review Controller", () => {
       expect(mockSession.endSession).toHaveBeenCalled();
 
       expect(mockedNotification).toHaveBeenCalledWith(expect.objectContaining({
-        recipientId: "intern-2",
+        recipientId: revieweeId,
         type: "peer_review"
       }));
 
@@ -275,6 +302,73 @@ describe("Peer Review Controller", () => {
       mockedPeerReview.countDocuments.mockResolvedValue(0);
 
       await getReviewsByUser(req as any, res as any);
+
+      expect(mockedPeerReview.find).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("getPeerReviewAnalytics", () => {
+    const targetUserId = "507f1f77bcf86cd799439011";
+
+    it("rejects viewing another user's analytics", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: "507f1f77bcf86cd799439012", userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      await getPeerReviewAnalytics(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Access denied" })
+      );
+      expect(mockedPeerReview.find).not.toHaveBeenCalled();
+    });
+
+    it("allows a user to view their own analytics", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: targetUserId, userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      const received = [
+        { rating: 4, createdAt: new Date("2025-01-10T10:00:00Z"), tags: ["accuracy", "clarity"] },
+        { rating: 5, createdAt: new Date("2025-01-20T10:00:00Z"), tags: ["accuracy"] }
+      ];
+      const given = [
+        { rating: 4, createdAt: new Date("2025-01-15T10:00:00Z"), tags: [] }
+      ];
+      mockedPeerReview.find
+        .mockResolvedValueOnce(received as any)
+        .mockResolvedValueOnce(given as any);
+
+      await getPeerReviewAnalytics(req as any, res as any);
+
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.success).toBe(true);
+      expect(payload.data.analytics.reviewsReceived).toBe(2);
+      expect(payload.data.analytics.reviewsGiven).toBe(1);
+      expect(payload.data.analytics.averageRatingReceived).toBe(4.5);
+      expect(payload.data.analytics.monthlyTrend["2025-01"].received).toBe(2);
+      expect(payload.data.analytics.monthlyTrend["2025-01"].given).toBe(1);
+      expect(payload.data.analytics.topTags.accuracy).toBe(2);
+    });
+
+    it("allows an admin to view any user's analytics", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: "507f1f77bcf86cd799439013", userType: "admin" },
+      } as any;
+      const res = mockResponse();
+
+      mockedPeerReview.find.mockResolvedValue([] as any);
+
+      await getPeerReviewAnalytics(req as any, res as any);
 
       expect(mockedPeerReview.find).toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalledWith(403);

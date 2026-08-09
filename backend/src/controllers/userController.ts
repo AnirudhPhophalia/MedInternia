@@ -18,7 +18,9 @@ import JobOpportunity from '../models/JobOpportunity';
 import Conversation from '../models/Conversation';
 import ResearchPaper from '../models/ResearchPaper';
 import AICasePostSchedule from '../models/AICasePostSchedule';
+import RoleUpgradeRequest from '../models/RoleUpgradeRequest';
 import { checkAndAwardAutoBadges } from './badgeController';
+import { createAndEmitNotification } from './notificationController';
 import { extractTextFromBuffer, parseResumeText } from '../services/resumeParserService';
 import { resolveProfilePictureUrl, resolveProfilePictureUrls } from '../utils/signedUrlResolver';
 import jwt from 'jsonwebtoken';
@@ -656,36 +658,291 @@ export const grantContributorBadge = async (req: AuthRequest, res: Response) => 
   }
 };
 
-// Upgrade intern profile to doctor if credits threshold met
-export const upgradeProfile = async (req: AuthRequest, res: Response) => {
+// ---------------------------------------------------------------------------
+// Role Upgrade Request flow (intern → doctor)
+//
+// Replacing the old self-service upgradeProfile endpoint which allowed any
+// intern to change their own userType to 'doctor' by accumulating 100
+// credits — bypassing KYC entirely (issue #1116).
+//
+// New flow:
+//   1. Intern calls requestRoleUpgrade  → creates a pending request record
+//   2. Admin calls approveRoleUpgrade   → atomically sets userType = 'doctor'
+//      OR rejectRoleUpgrade             → closes request with a reason
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/users/role-upgrade/request
+ *
+ * Submit a request to be promoted from intern to doctor. Creates a single
+ * pending request per intern — duplicates are rejected with 409.
+ * Does NOT change userType. Notifies all admins via the notification system.
+ */
+export const requestRoleUpgrade = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Unauthorized: user not found in request' });
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    const userId = req.user._id;
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (user.userType !== 'intern') return res.status(400).json({ success: false, message: 'Not an intern' });
-    if (typeof user.credits !== 'number' || user.credits < 100) return res.status(403).json({ success: false, message: 'Insufficient credits' });
-    user.userType = 'doctor';
-    await user.save();
-    res.json({ success: true, userType: user.userType });
+
+    const internId = (req.user._id as any).toString();
+    const user = await User.findById(internId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.userType !== 'intern') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only interns can request a role upgrade to doctor',
+      });
+    }
+
+    // Block duplicate pending requests
+    const existing = await RoleUpgradeRequest.findOne({ intern: internId, status: 'pending' });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'You already have a pending role upgrade request. Please wait for admin review.',
+        data: { requestId: existing._id },
+      });
+    }
+
+    const { licenseNumber, specialization, notes } = req.body;
+
+    const upgradeRequest = await RoleUpgradeRequest.create({
+      intern: internId,
+      requestedRole: 'doctor',
+      status: 'pending',
+      licenseNumber: typeof licenseNumber === 'string' ? licenseNumber.trim() : undefined,
+      specialization: typeof specialization === 'string' ? specialization.trim() : undefined,
+      notes: typeof notes === 'string' ? notes.trim() : undefined,
+    });
+
+    // Notify all admin users so they can action the request
+    const admins = await User.find({ userType: 'admin', isActive: true }).select('_id').lean();
+    await Promise.all(
+      admins.map((admin) =>
+        createAndEmitNotification({
+          recipientId: String(admin._id),
+          type: 'badge', // closest available type for an admin action notification
+          message: `Intern ${user.firstName} ${user.lastName} has requested a role upgrade to doctor.`,
+          link: `/admin/role-upgrades/${String(upgradeRequest._id)}`,
+          payload: {
+            requestId: String(upgradeRequest._id),
+            internId,
+            internName: `${user.firstName} ${user.lastName}`,
+          },
+        }),
+      ),
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Role upgrade request submitted. An admin will review your request.',
+      data: { requestId: upgradeRequest._id, status: upgradeRequest.status },
+    });
   } catch (error) {
+    console.error('requestRoleUpgrade error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-// Doctor awards points to intern as recommendation
+/**
+ * PATCH /api/users/role-upgrade/:requestId/approve
+ * Admin only (requirePermission('profile:upgrade_request')).
+ *
+ * Atomically sets userType = 'doctor' on the intern's account and marks the
+ * request approved. Uses a MongoDB session so both writes are all-or-nothing.
+ */
+export const approveRoleUpgrade = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { requestId } = req.params;
+    const adminId = (req.user._id as any).toString();
+
+    const upgradeRequest = await RoleUpgradeRequest.findById(requestId).populate(
+      'intern',
+      'firstName lastName userType isActive',
+    );
+
+    if (!upgradeRequest) {
+      return res.status(404).json({ success: false, message: 'Role upgrade request not found' });
+    }
+
+    if (upgradeRequest.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Request is already ${upgradeRequest.status}`,
+      });
+    }
+
+    const intern = upgradeRequest.intern as any;
+
+    if (!intern || intern.userType !== 'intern') {
+      return res.status(400).json({
+        success: false,
+        message: 'The associated user is no longer an intern',
+      });
+    }
+
+    // Use a session to keep the two writes atomic
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+
+      await User.findByIdAndUpdate(
+        intern._id,
+        { $set: { userType: 'doctor' } },
+        { session },
+      );
+
+      upgradeRequest.status = 'approved';
+      upgradeRequest.reviewedBy = new mongoose.Types.ObjectId(adminId);
+      upgradeRequest.reviewedAt = new Date();
+      await upgradeRequest.save({ session });
+
+      await session.commitTransaction();
+    } catch (txErr) {
+      await session.abortTransaction();
+      throw txErr;
+    } finally {
+      session.endSession();
+    }
+
+    // Notify the intern
+    await createAndEmitNotification({
+      recipientId: String(intern._id),
+      type: 'badge',
+      message: 'Congratulations! Your role upgrade request to Doctor has been approved.',
+      link: '/profile',
+      payload: { requestId: String(upgradeRequest._id) },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Role upgrade approved. User is now a doctor.',
+      data: { requestId: upgradeRequest._id, internId: String(intern._id) },
+    });
+  } catch (error) {
+    console.error('approveRoleUpgrade error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/**
+ * PATCH /api/users/role-upgrade/:requestId/reject
+ * Admin only (requirePermission('profile:upgrade_request')).
+ *
+ * Closes the request as rejected. The intern is notified and can submit a
+ * new request after addressing the reason.
+ */
+export const rejectRoleUpgrade = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { requestId } = req.params;
+    const adminId = (req.user._id as any).toString();
+    const { reason } = req.body;
+
+    const upgradeRequest = await RoleUpgradeRequest.findById(requestId).populate(
+      'intern',
+      'firstName lastName _id',
+    );
+
+    if (!upgradeRequest) {
+      return res.status(404).json({ success: false, message: 'Role upgrade request not found' });
+    }
+
+    if (upgradeRequest.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Request is already ${upgradeRequest.status}`,
+      });
+    }
+
+    upgradeRequest.status = 'rejected';
+    upgradeRequest.reviewedBy = new mongoose.Types.ObjectId(adminId);
+    upgradeRequest.reviewedAt = new Date();
+    if (typeof reason === 'string' && reason.trim()) {
+      upgradeRequest.rejectionReason = reason.trim();
+    }
+    await upgradeRequest.save();
+
+    const intern = upgradeRequest.intern as any;
+    if (intern) {
+      const reasonMsg = upgradeRequest.rejectionReason
+        ? ` Reason: ${upgradeRequest.rejectionReason}`
+        : '';
+      await createAndEmitNotification({
+        recipientId: String(intern._id),
+        type: 'badge',
+        message: `Your role upgrade request has been reviewed and was not approved.${reasonMsg}`,
+        link: '/profile',
+        payload: { requestId: String(upgradeRequest._id) },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Role upgrade request rejected.',
+      data: { requestId: upgradeRequest._id },
+    });
+  } catch (error) {
+    console.error('rejectRoleUpgrade error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/**
+ * GET /api/users/role-upgrade/pending
+ * Admin only (requirePermission('profile:upgrade_request')).
+ *
+ * Returns all pending role upgrade requests for the admin dashboard.
+ */
+export const getPendingRoleUpgrades = async (req: AuthRequest, res: Response) => {
+  try {
+    const requests = await RoleUpgradeRequest.find({ status: 'pending' })
+      .populate('intern', 'firstName lastName email medicalSchool yearOfStudy credits specialization')
+      .sort({ createdAt: 1 }) // oldest first so admins action in FIFO order
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: { requests, total: requests.length },
+    });
+  } catch (error) {
+    console.error('getPendingRoleUpgrades error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Admin awards points to intern (e.g. for verified contributions).
+// Awarding is admin-only and strictly bounded per call so that a single
+// request cannot inflate an intern's points (and thus leaderboard rank,
+// badges, or upgrade thresholds) beyond control.
+const MAX_AWARD_POINTS_PER_CALL = 100;
 export const awardPointsToIntern = async (req: AuthRequest, res: Response) => {
   try {
-    const doctor = req.user;
+    const admin = req.user;
     const { internId } = req.params;
     const { points } = req.body;
-    if (!doctor || (doctor.userType !== 'doctor' && doctor.userType !== 'admin')) {
-      return res.status(403).json({ success: false, message: 'Only doctors or admins can award points.' });
+    if (!admin || admin.userType !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Only admins can award points.' });
     }
-    if (typeof points !== 'number' || points <= 0) {
-      return res.status(400).json({ success: false, message: 'Points must be a positive number.' });
+    if (typeof points !== 'number' || !Number.isInteger(points) || points <= 0) {
+      return res.status(400).json({ success: false, message: 'Points must be a positive integer.' });
+    }
+    if (points > MAX_AWARD_POINTS_PER_CALL) {
+      return res.status(400).json({
+        success: false,
+        message: `Points cannot exceed ${MAX_AWARD_POINTS_PER_CALL} per request.`
+      });
     }
     const intern = await User.findById(internId);
     if (!intern || intern.userType !== 'intern') {
@@ -797,7 +1054,13 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const caseFilter = {
+    // Determine whether the requesting user is a verified doctor so we can
+    // decide whether to include verifiedDoctorsOnly cases in the results.
+    const requester = req.user as any;
+    const requesterIsVerifiedDoctor =
+      requester?.userType === 'doctor' && requester?.isVerifiedDoctor === true;
+
+    const caseFilter: Record<string, any> = {
       doctor: userId,
       isActive: { $ne: false },
       $or: [
@@ -806,13 +1069,26 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
       ],
     };
 
+    // Cases flagged verifiedDoctorsOnly must not appear for non-verified users
+    // on a public profile page.
+    if (!requesterIsVerifiedDoctor) {
+      caseFilter.verifiedDoctorsOnly = { $ne: true };
+    }
+
     const [badges, caseCount, cases] = await Promise.all([
       UserBadge.find({ user: userId, isVisible: true })
         .populate('badge')
         .sort({ earnedAt: -1 }),
       Case.countDocuments(caseFilter),
+      // SECURITY: only return safe summary fields.
+      // - 'content' does not exist on the Case schema (no-op but removed for clarity).
+      // - 'comments' contains full clinical discussion threads with potential
+      //   patient-identifiable detail — must not be returned on a public page.
+      // - 'likes' is an array of user ObjectIds, leaking the social graph.
+      // - 'patientInfo' embeds age, gender, medical history and medications.
+      // None of these belong on a public profile card.
       Case.find(caseFilter)
-        .select('_id title description content createdAt privacy views comments likes')
+        .select('_id title description specialization difficulty tags createdAt views')
         .sort({ createdAt: -1 })
         .limit(50),
     ]);

@@ -74,6 +74,42 @@ describe("Learning Path Controller", () => {
       expect(mockedUserLearningPath.find).toHaveBeenCalledWith({ user: "user-1" });
     });
 
+    it("strips quiz correctAnswer and explanation from listed paths", async () => {
+      const req = mockRequest();
+      const res = mockResponse();
+
+      const mockPaths = [{
+        _id: "path-1",
+        title: "Path 1",
+        toObject: () => ({
+          _id: "path-1",
+          title: "Path 1",
+          steps: [{
+            type: "quiz",
+            quiz: {
+              question: "Q?",
+              options: ["A", "B"],
+              correctAnswer: 1,
+              explanation: "Because B"
+            }
+          }]
+        })
+      }];
+      mockedLearningPath.find.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockResolvedValue(mockPaths)
+      } as any);
+
+      await getLearningPaths(req as any, res as any, jest.fn());
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      const quiz = payload.data.learningPaths[0].steps[0].quiz;
+      expect(quiz.question).toBe("Q?");
+      expect(quiz.options).toEqual(["A", "B"]);
+      expect(quiz.correctAnswer).toBeUndefined();
+      expect(quiz.explanation).toBeUndefined();
+    });
+
     it("returns paths with no progress for an anonymous user", async () => {
       const req = mockRequest();
       const res = mockResponse();
@@ -103,7 +139,11 @@ describe("Learning Path Controller", () => {
       const req = mockRequest("user-1", {}, { id: "path-1" });
       const res = mockResponse();
 
-      const mockPath = { _id: "path-1", title: "Path 1" };
+      const mockPath = {
+        _id: "path-1",
+        title: "Path 1",
+        toObject: () => ({ _id: "path-1", title: "Path 1" })
+      };
       mockedLearningPath.findById.mockReturnValue({
         populate: jest.fn().mockReturnThis()
       } as any);
@@ -118,18 +158,59 @@ describe("Learning Path Controller", () => {
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: {
-          learningPath: mockPath,
+          learningPath: expect.objectContaining({ _id: "path-1", title: "Path 1" }),
           progress: expect.any(Object)
         }
       });
       expect(mockedUserLearningPath.findOne).toHaveBeenCalledWith({ user: "user-1", learningPath: "path-1" });
     });
 
+    it("strips quiz correctAnswer and explanation from path detail", async () => {
+      const req = mockRequest("user-1", {}, { id: "path-1" });
+      const res = mockResponse();
+
+      const mockPath = {
+        _id: "path-1",
+        title: "Path 1",
+        toObject: () => ({
+          _id: "path-1",
+          title: "Path 1",
+          steps: [{
+            type: "quiz",
+            quiz: {
+              question: "Q?",
+              options: ["A", "B"],
+              correctAnswer: 0,
+              explanation: "Because A"
+            }
+          }]
+        })
+      };
+      mockedLearningPath.findById.mockReturnValue({
+        populate: jest.fn().mockReturnThis()
+      } as any);
+      (mockedLearningPath.findById as any)().populate.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockPath)
+      } as any);
+      mockedUserLearningPath.findOne.mockResolvedValue(null as any);
+
+      await getLearningPathById(req as any, res as any, jest.fn());
+
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      const quiz = payload.data.learningPath.steps[0].quiz;
+      expect(quiz.correctAnswer).toBeUndefined();
+      expect(quiz.explanation).toBeUndefined();
+    });
+
     it("returns a specific path with no progress for an anonymous user", async () => {
       const req = mockRequest(undefined, {}, { id: "path-1" });
       const res = mockResponse();
 
-      const mockPath = { _id: "path-1", title: "Path 1" };
+      const mockPath = {
+        _id: "path-1",
+        title: "Path 1",
+        toObject: () => ({ _id: "path-1", title: "Path 1" })
+      };
       mockedLearningPath.findById.mockReturnValue({
         populate: jest.fn().mockReturnThis()
       } as any);
@@ -142,7 +223,7 @@ describe("Learning Path Controller", () => {
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: {
-          learningPath: mockPath,
+          learningPath: expect.objectContaining({ _id: "path-1", title: "Path 1" }),
           progress: null
         }
       });
@@ -212,7 +293,7 @@ describe("Learning Path Controller", () => {
         _id: "path-1", 
         title: "Cool Path",
         badge: "badge-1",
-        steps: [{ type: "quiz", quiz: { correctAnswer: 2 } }] 
+        steps: [{ type: "quiz", quiz: { correctAnswer: 2, explanation: "Correct because..." } }] 
       } as any);
 
       const mockSave = jest.fn();
@@ -233,7 +314,11 @@ describe("Learning Path Controller", () => {
       expect(mockSave).toHaveBeenCalled();
       expect(mockedUserBadge.create).toHaveBeenCalled();
       expect(createAndEmitNotification).toHaveBeenCalledWith(expect.objectContaining({ type: "badge" }));
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, isCorrect: true }));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        isCorrect: true,
+        data: expect.objectContaining({ explanation: "Correct because..." })
+      }));
     });
 
     it("returns incorrect answer error if quiz answer is wrong", async () => {
@@ -242,7 +327,7 @@ describe("Learning Path Controller", () => {
 
       mockedLearningPath.findById.mockResolvedValue({ 
         _id: "path-1", 
-        steps: [{ type: "quiz", quiz: { correctAnswer: 2 } }] 
+        steps: [{ type: "quiz", quiz: { correctAnswer: 2, explanation: "secret" } }] 
       } as any);
       mockedUserLearningPath.findOne.mockResolvedValue({
         isCompleted: false,
@@ -253,6 +338,10 @@ describe("Learning Path Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, isCorrect: false }));
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.correctAnswer).toBeUndefined();
+      expect(payload.explanation).toBeUndefined();
+      expect(payload.data).toBeUndefined();
     });
 
     it("throws a 401 AppError if not authenticated", async () => {

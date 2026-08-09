@@ -436,8 +436,12 @@ export const repostCase = asyncHandler(async (req: AuthRequest, res: Response) =
     isRareDisease: originalCase.isRareDisease,
     doctor: user._id,
     isPatientCase: false,
-    moderationStatus: "approved",
+    moderationStatus: "pending",
   });
+
+  // Reposts go through the same moderation queue as new cases so that spam or
+  // duplicate AI-generated content cannot bypass review by reposting.
+  await enqueueCaseModeration(String(newRepost._id));
 
   res.status(201).json({ success: true, message: "Case reposted successfully", data: { case: newRepost } });
 });
@@ -574,6 +578,29 @@ export const addFollowUp = asyncHandler(async (req: AuthRequest, res: Response) 
   const { content } = req.body;
   const caseDoc = await Case.findById(getId(req.params.id));
   if (!caseDoc) throw new AppError("Case not found", 404);
+
+  const userId = String(user._id);
+  const caseOwnerId = String((caseDoc as any).doctor);
+  const isAdmin = user.userType === "admin";
+  const isCaseOwner = caseOwnerId === userId;
+  const hasPriorComment = ((caseDoc as any).comments || []).some(
+    (comment: any) => comment.author?.toString() === userId
+  );
+
+  let hasMentoringRelationship = false;
+  if (!isAdmin && !isCaseOwner && !hasPriorComment) {
+    if (user.userType === "doctor") {
+      const caseOwner = await User.findById(caseOwnerId).select("mentorDoctor");
+      hasMentoringRelationship = caseOwner?.mentorDoctor?.toString() === userId;
+    } else if (user.userType === "intern" && (user as any).mentorDoctor) {
+      hasMentoringRelationship =
+        (user as any).mentorDoctor.toString() === caseOwnerId;
+    }
+  }
+
+  if (!isAdmin && !isCaseOwner && !hasPriorComment && !hasMentoringRelationship) {
+    throw new AppError("Forbidden: you cannot add a follow-up on this case", 403);
+  }
 
   const newFollowUp = {
     _id: new mongoose.Types.ObjectId(),

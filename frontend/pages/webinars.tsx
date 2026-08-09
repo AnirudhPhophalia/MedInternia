@@ -157,20 +157,18 @@ export default function WebinarsPage() {
       .catch(() => setCanManageWebinars(false));
   }, []);
 
-  // Update registered status when webinars or user ID loads
+  // Update registered status from the authenticated "my webinars" endpoint.
+  // The public list no longer exposes the participant roster, so registration
+  // status is derived from the user's own registered sessions.
   useEffect(() => {
     if (!currentUserId) return;
-    const registered = new Set<string>();
-    webinars.forEach((w) => {
-      const isRegistered = w.participants?.some(
-        (p: any) => (p.user?._id === currentUserId || p.user === currentUserId)
-      );
-      if (isRegistered) {
-        registered.add(w._id);
-      }
-    });
-    setRegisteredWebinars(registered);
-  }, [webinars, currentUserId]);
+    api.get('/webinars/my?type=registered&limit=100')
+      .then(res => {
+        const myWebinars = res.data?.data?.webinars || [];
+        setRegisteredWebinars(new Set(myWebinars.map((w: any) => w._id)));
+      })
+      .catch(() => setRegisteredWebinars(new Set()));
+  }, [currentUserId]);
 
   const handleRegister = async (webinarId: string) => {
     try {
@@ -196,6 +194,23 @@ export default function WebinarsPage() {
       fetchWebinars();
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to unregister';
+      alert(message);
+    }
+  };
+
+  // The public list never includes meetingLink; fetch the webinar detail (gated
+  // to participants/host/admin) before opening the join view.
+  const handleJoin = async (webinar: any) => {
+    try {
+      const res = await api.get(`/webinars/${webinar._id}`);
+      const detail = res.data?.data?.webinar;
+      if (!detail?.meetingLink) {
+        alert('The meeting link is only available to registered participants.');
+        return;
+      }
+      setSelectedWebinar(detail);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to load the webinar session';
       alert(message);
     }
   };
@@ -456,7 +471,7 @@ export default function WebinarsPage() {
                         </>
                       )}
                       {canJoin ? (
-                        <Button variant="contained" color="primary" onClick={() => setSelectedWebinar(w)} sx={{ borderRadius: 2, px: 3, textTransform: 'none' }}>
+                        <Button variant="contained" color="primary" onClick={() => handleJoin(w)} sx={{ borderRadius: 2, px: 3, textTransform: 'none' }}>
                           Join Live
                         </Button>
                       ) : canRegister ? (

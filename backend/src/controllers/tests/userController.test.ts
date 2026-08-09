@@ -8,6 +8,7 @@ import {
   getConnections,
   verifyDoctor,
   getPublicProfile,
+  awardPointsToIntern,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -687,6 +688,116 @@ describe("User Controller", () => {
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ success: false, message: "User not found" })
+      );
+    });
+  });
+
+  describe("awardPointsToIntern", () => {
+    const internId = new mongoose.Types.ObjectId().toHexString();
+
+    const mockReq = (userType: string, body: any = {}, overrides: any = {}) =>
+      ({
+        params: { internId },
+        user: { _id: new mongoose.Types.ObjectId().toHexString(), userType },
+        body,
+        ...overrides,
+      }) as any;
+
+    it("rejects non-admin users", async () => {
+      for (const userType of ["doctor", "intern", "patient", "hospital_staff", "moderator"]) {
+        const req = mockReq(userType, { points: 10 });
+        const res = mockResponse();
+
+        await awardPointsToIntern(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ success: false, message: "Only admins can award points." })
+        );
+      }
+      expect(mockedUser.findById).not.toHaveBeenCalled();
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects non-positive or non-integer points", async () => {
+      for (const points of [0, -5, 1.5, "10", null]) {
+        const req = mockReq("admin", { points });
+        const res = mockResponse();
+
+        await awardPointsToIntern(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ success: false, message: "Points must be a positive integer." })
+        );
+      }
+      expect(mockedUser.findById).not.toHaveBeenCalled();
+    });
+
+    it("rejects points exceeding the per-request maximum", async () => {
+      const req = mockReq("admin", { points: 100000 });
+      const res = mockResponse();
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Points cannot exceed 100 per request.",
+        })
+      );
+      expect(mockedUser.findById).not.toHaveBeenCalled();
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 when the target intern is not found", async () => {
+      const req = mockReq("admin", { points: 10 });
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue(null as any);
+
+      await awardPointsToIntern(req, res);
+
+      expect(mockedUser.findById).toHaveBeenCalledWith(internId);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Intern not found." })
+      );
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 when the target user is not an intern", async () => {
+      const req = mockReq("admin", { points: 10 });
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue({ _id: internId, userType: "doctor" } as any);
+
+      await awardPointsToIntern(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Intern not found." })
+      );
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("awards bounded points to a valid intern", async () => {
+      const req = mockReq("admin", { points: 100 });
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue({ _id: internId, userType: "intern" } as any);
+      mockedUser.findByIdAndUpdate.mockResolvedValue({ _id: internId, points: 150 } as any);
+
+      await awardPointsToIntern(req, res);
+
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        internId,
+        { $inc: { points: 100 } },
+        { new: true }
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, points: 150 })
       );
     });
   });

@@ -29,7 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function MeProfilePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, userId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -44,8 +44,6 @@ export default function MeProfilePage() {
 
     const fetchProfile = async () => {
       try {
-        const userId = localStorage.getItem('userId');
-
         if (!userId) {
           router.replace('/auth/login');
           return;
@@ -64,7 +62,8 @@ export default function MeProfilePage() {
       }
     };
 
-  }, [authLoading, isAuthenticated, router]);
+    fetchProfile();
+  }, [authLoading, isAuthenticated, userId, router]);
 
 
   if (loading) {

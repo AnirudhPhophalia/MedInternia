@@ -45,7 +45,8 @@ const RatingSchema = new Schema<IRating>({
   pointsAwarded: {
     type: Number,
     default: 0,
-    min: [0, 'Points awarded cannot be negative']
+    min: [0, 'Points awarded cannot be negative'],
+    max: [10, 'Points awarded cannot exceed 10']
   }
 }, {
   timestamps: true

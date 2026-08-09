@@ -339,7 +339,16 @@ describe("Job application validation (issue #818)", () => {
         );
         expect(updatedJob.applicants).toHaveLength(1);
         expect(updatedJob.applications).toBe(1);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                success: true,
+                data: {
+                    jobOpportunity: expect.not.objectContaining({
+                        applicants: expect.anything(),
+                    }),
+                },
+            })
+        );
     });
 
     it("allows applications when no deadline is configured", async () => {
@@ -359,7 +368,16 @@ describe("Job application validation (issue #818)", () => {
         await applyToJob(mockRequest("job-123", "user-1"), res);
 
         expect(mockedJobOpportunity.findOneAndUpdate).toHaveBeenCalledTimes(1);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                success: true,
+                data: {
+                    jobOpportunity: expect.not.objectContaining({
+                        applicants: expect.anything(),
+                    }),
+                },
+            })
+        );
     });
 
     it("shares the same point and badge calculation with the eligibility endpoint", async () => {
