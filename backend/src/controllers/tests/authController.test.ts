@@ -262,7 +262,7 @@ describe("Auth Controller", () => {
         attempts: 2,
       });
 
-      const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "newpwd" });
+      const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "Test@1234" });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -289,7 +289,7 @@ describe("Auth Controller", () => {
       });
       mockedOtp.deleteOne.mockResolvedValue({} as any);
 
-      const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "newpwd" });
+      const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "Test@1234" });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -317,7 +317,7 @@ describe("Auth Controller", () => {
       };
       mockedUser.findOne.mockResolvedValue(userMock as any);
 
-      const req = mockRequest({ email: "test@test.com", otp: "123456", newPassword: "newpassword" });
+      const req = mockRequest({ email: "test@test.com", otp: "123456", newPassword: "Test@1234" });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -339,7 +339,7 @@ describe("Auth Controller", () => {
         select: jest.fn().mockResolvedValue(userMock)
       } as any);
 
-      const req = mockRequest({ currentPassword: "wrong", newPassword: "newpassword" }, { _id: "user-1" });
+      const req = mockRequest({ currentPassword: "wrong", newPassword: "Test@1234" }, { _id: "user-1" });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -356,7 +356,7 @@ describe("Auth Controller", () => {
         select: jest.fn().mockResolvedValue(userMock)
       } as any);
 
-      const req = mockRequest({ currentPassword: "correct", newPassword: "newpassword" }, { _id: "user-1" });
+      const req = mockRequest({ currentPassword: "correct", newPassword: "Test@1234" }, { _id: "user-1" });
       const res = mockResponse();
       const next = jest.fn();
 

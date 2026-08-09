@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import type { AppRole } from '../middleware/permissions';
+import { PASSWORD_REGEX, PASSWORD_VALIDATION_MESSAGE } from '../utils/passwordValidation';
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -142,9 +143,9 @@ const UserSchema = new Schema<IUser>({
     required: [true, 'Password is required'],
     validate: {
       validator: function (v: string) {
-        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(v);
+        return PASSWORD_REGEX.test(v);
       },
-      message: 'Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character'
+      message: PASSWORD_VALIDATION_MESSAGE
     },
     select: false
   },
