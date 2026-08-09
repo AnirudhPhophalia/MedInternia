@@ -8,6 +8,7 @@ import {
   getPinnedComments,
   toggleRepostPermission,
   repostCase,
+  solveCase,
   addFollowUp,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
@@ -541,6 +542,68 @@ describe("Case Controller", () => {
       await expect(
         repostCase(req as any, res as any, jest.fn())
       ).rejects.toThrow("Case not found");
+    });
+  });
+
+  describe("solveCase", () => {
+    it("persists solved state using schema-backed fields", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-123",
+        doctor: { toString: () => "doctor-1" },
+      } as any);
+      mockedCase.findByIdAndUpdate.mockResolvedValue({
+        _id: "case-123",
+        status: "solved",
+        resolution: {
+          finalDiagnosis: "Pneumonia",
+          notes: "Responded to antibiotics",
+          resolvedAt: new Date("2026-08-09T00:00:00.000Z"),
+        },
+      } as any);
+
+      const req = mockRequest("doctor-1", "doctor", { id: "case-123" }, {
+        finalDiagnosis: "Pneumonia",
+        notes: "Responded to antibiotics",
+      });
+      const res = mockResponse();
+
+      await solveCase(req as any, res as any, jest.fn());
+
+      expect(mockedCase.findByIdAndUpdate).toHaveBeenCalledWith(
+        "case-123",
+        {
+          $set: expect.objectContaining({
+            status: "solved",
+            resolution: expect.objectContaining({
+              finalDiagnosis: "Pneumonia",
+              notes: "Responded to antibiotics",
+            }),
+          }),
+        },
+        { new: true, runValidators: true }
+      );
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          case: expect.objectContaining({ status: "solved" }),
+        }),
+      }));
+    });
+
+    it("rejects solving by non-authors", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-123",
+        doctor: { toString: () => "doctor-1" },
+      } as any);
+
+      const req = mockRequest("doctor-2", "doctor", { id: "case-123" }, {
+        finalDiagnosis: "Pneumonia",
+      });
+
+      await expect(
+        solveCase(req as any, mockResponse() as any, jest.fn())
+      ).rejects.toThrow("Only the case author can solve this case");
+      expect(mockedCase.findByIdAndUpdate).not.toHaveBeenCalled();
     });
   });
 

@@ -457,13 +457,22 @@ export const solveCase = asyncHandler(async (req: AuthRequest, res: Response) =>
     throw new AppError("Only the case author can solve this case", 403);
   }
 
-  await Case.findByIdAndUpdate(caseDoc._id, {
-    $set: {
-      status: "solved",
-      resolution: { finalDiagnosis, notes, resolvedAt: new Date() }
-    }
+  const resolvedCase = await Case.findByIdAndUpdate(
+    caseDoc._id,
+    {
+      $set: {
+        status: "solved",
+        resolution: { finalDiagnosis, notes, resolvedAt: new Date() }
+      }
+    },
+    { new: true, runValidators: true }
+  );
+
+  res.json({
+    success: true,
+    message: "Case resolved successfully",
+    data: { case: resolvedCase },
   });
-  res.json({ success: true, message: "Case resolved successfully" });
 });
 
 export const getRecommendedCases = asyncHandler(async (req: AuthRequest, res: Response) => {
