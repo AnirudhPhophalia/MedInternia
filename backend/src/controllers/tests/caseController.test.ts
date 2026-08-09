@@ -97,11 +97,10 @@ describe("Case Controller", () => {
         title: "Patient Case",
         isPatientCase: true,
         moderationStatus: "pending",
+        pointsAwarded: 0,
         doctor: "patient-1",
       }));
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("patient-1", {
-        $inc: { points: 5 },
-      });
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
       expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("patient-1");
       expect(res.status).toHaveBeenCalledWith(201);
     });
@@ -137,10 +136,9 @@ describe("Case Controller", () => {
         title: "Doctor Case",
         isPatientCase: false,
         moderationStatus: "pending",
+        pointsAwarded: 0,
       }));
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("doctor-1", {
-        $inc: { points: 10 },
-      });
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
       expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("new-case-id");
       expect(res.status).toHaveBeenCalledWith(201);
     });

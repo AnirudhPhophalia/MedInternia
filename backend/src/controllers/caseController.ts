@@ -919,11 +919,10 @@ export const createCase = asyncHandler(
         isPatientCase: true,
         specialization: spec,
         moderationStatus: "pending",
-        pointsAwarded: 5,
+        pointsAwarded: 0,
       });
       await newCase.save();
       await enqueueCaseModeration(String(newCase._id));
-      await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
 
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
@@ -939,12 +938,11 @@ export const createCase = asyncHandler(
       isPatientCase: false,
       specialization: spec,
       moderationStatus: "pending",
-      pointsAwarded: 10,
+      pointsAwarded: 0,
     });
 
     await newCase.save();
     await enqueueCaseModeration(String(newCase._id));
-    await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
 
     res.status(201).json({ success: true, data: { case: newCase } });
   }
