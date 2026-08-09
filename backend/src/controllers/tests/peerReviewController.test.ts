@@ -1,6 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { submitPeerReview, getUserReviews, getReviewsByUser } from "../peerReviewController";
+import { submitPeerReview, getUserReviews, getReviewsByUser, getPeerReviewAnalytics } from "../peerReviewController";
 import PeerReview from "../../models/PeerReview";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -302,6 +302,73 @@ describe("Peer Review Controller", () => {
       mockedPeerReview.countDocuments.mockResolvedValue(0);
 
       await getReviewsByUser(req as any, res as any);
+
+      expect(mockedPeerReview.find).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("getPeerReviewAnalytics", () => {
+    const targetUserId = "507f1f77bcf86cd799439011";
+
+    it("rejects viewing another user's analytics", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: "507f1f77bcf86cd799439012", userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      await getPeerReviewAnalytics(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "Access denied" })
+      );
+      expect(mockedPeerReview.find).not.toHaveBeenCalled();
+    });
+
+    it("allows a user to view their own analytics", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: targetUserId, userType: "intern" },
+      } as any;
+      const res = mockResponse();
+
+      const received = [
+        { rating: 4, createdAt: new Date("2025-01-10T10:00:00Z"), tags: ["accuracy", "clarity"] },
+        { rating: 5, createdAt: new Date("2025-01-20T10:00:00Z"), tags: ["accuracy"] }
+      ];
+      const given = [
+        { rating: 4, createdAt: new Date("2025-01-15T10:00:00Z"), tags: [] }
+      ];
+      mockedPeerReview.find
+        .mockResolvedValueOnce(received as any)
+        .mockResolvedValueOnce(given as any);
+
+      await getPeerReviewAnalytics(req as any, res as any);
+
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      const payload = (res.json as jest.Mock).mock.calls[0][0];
+      expect(payload.success).toBe(true);
+      expect(payload.data.analytics.reviewsReceived).toBe(2);
+      expect(payload.data.analytics.reviewsGiven).toBe(1);
+      expect(payload.data.analytics.averageRatingReceived).toBe(4.5);
+      expect(payload.data.analytics.monthlyTrend["2025-01"].received).toBe(2);
+      expect(payload.data.analytics.monthlyTrend["2025-01"].given).toBe(1);
+      expect(payload.data.analytics.topTags.accuracy).toBe(2);
+    });
+
+    it("allows an admin to view any user's analytics", async () => {
+      const req = {
+        params: { userId: targetUserId },
+        user: { _id: "507f1f77bcf86cd799439013", userType: "admin" },
+      } as any;
+      const res = mockResponse();
+
+      mockedPeerReview.find.mockResolvedValue([] as any);
+
+      await getPeerReviewAnalytics(req as any, res as any);
 
       expect(mockedPeerReview.find).toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalledWith(403);
