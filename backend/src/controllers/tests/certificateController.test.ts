@@ -4,13 +4,21 @@ import {
     getCertificateById,
     verifyCertificate,
     exportCertificateData,
+    generateCertificate,
 } from "../certificateController";
 
 import Certificate from "../../models/Certificate";
+import User from "../../models/User";
+import Rating from "../../models/Rating";
+import mongoose from "mongoose";
 
 jest.mock("../../models/Certificate");
+jest.mock("../../models/User");
+jest.mock("../../models/Rating");
 
 const mockedCertificate = Certificate as jest.Mocked<typeof Certificate>;
+const mockedUser = User as jest.Mocked<typeof User>;
+const mockedRating = Rating as jest.Mocked<typeof Rating>;
 
 const mockResponse = () => {
     const res: Partial<Response> = {};
@@ -24,6 +32,118 @@ const mockResponse = () => {
 describe("Certificate Controller", () => {
     beforeEach(() => {
         jest.clearAllMocks();
+    });
+
+    describe("generateCertificate", () => {
+        const validDuration = {
+            startDate: "2024-01-01",
+            endDate: "2024-06-01",
+        };
+
+        it("computes casesReviewed and pointsEarned from ratings and ignores client values", async () => {
+            const req = {
+                user: { _id: "doctor-1" },
+                body: {
+                    internId: "intern-1",
+                    title: "Mentorship",
+                    description: "Great work",
+                    casesReviewed: 999,
+                    pointsEarned: 9999,
+                    duration: validDuration,
+                    skills: ["diagnostics"],
+                },
+            } as unknown as AuthRequest;
+            const res = mockResponse();
+
+            mockedUser.findById.mockResolvedValue({
+                _id: "doctor-1",
+                userType: "doctor",
+                mentoringCredits: 10,
+            } as any);
+            mockedUser.findOne.mockResolvedValue({
+                _id: "intern-1",
+                userType: "intern",
+                points: 100,
+            } as any);
+            mockedRating.find.mockResolvedValue([
+                { pointsAwarded: 8 },
+                { pointsAwarded: 6 },
+            ] as any);
+
+            const fakeCert = {
+                populate: jest.fn().mockResolvedValue(true),
+                casesReviewed: 2,
+                pointsEarned: 14,
+            };
+            const session = {
+                startTransaction: jest.fn(),
+                commitTransaction: jest.fn(),
+                abortTransaction: jest.fn(),
+                endSession: jest.fn(),
+            };
+            jest.spyOn(mongoose, "startSession").mockResolvedValue(session as any);
+            mockedCertificate.create.mockResolvedValue([fakeCert] as any);
+            mockedUser.findOneAndUpdate.mockResolvedValue({ mentoringCredits: 8 } as any);
+            mockedUser.findByIdAndUpdate.mockResolvedValue({} as any);
+
+            await generateCertificate(req, res);
+
+            expect(mockedRating.find).toHaveBeenCalledWith({
+                rater: "doctor-1",
+                ratee: "intern-1",
+            });
+            expect(mockedCertificate.create).toHaveBeenCalledWith(
+                [
+                    expect.objectContaining({
+                        casesReviewed: 2,
+                        pointsEarned: 14,
+                    }),
+                ],
+                expect.any(Object)
+            );
+            expect(mockedUser.findOneAndUpdate).toHaveBeenCalledWith(
+                { _id: "doctor-1", mentoringCredits: { $gte: 2 } },
+                { $inc: { mentoringCredits: -2 } },
+                expect.any(Object)
+            );
+            expect(res.status).toHaveBeenCalledWith(201);
+        });
+
+        it("rejects non-admin when no ratings exist for the doctor-intern pair", async () => {
+            const req = {
+                user: { _id: "doctor-1" },
+                body: {
+                    internId: "intern-1",
+                    title: "Mentorship",
+                    casesReviewed: 5,
+                    pointsEarned: 50,
+                    duration: validDuration,
+                },
+            } as unknown as AuthRequest;
+            const res = mockResponse();
+
+            mockedUser.findById.mockResolvedValue({
+                _id: "doctor-1",
+                userType: "doctor",
+                mentoringCredits: 10,
+            } as any);
+            mockedUser.findOne.mockResolvedValue({
+                _id: "intern-1",
+                userType: "intern",
+                points: 100,
+            } as any);
+            mockedRating.find.mockResolvedValue([]);
+
+            await generateCertificate(req, res);
+
+            expect(res.status).toHaveBeenCalledWith(400);
+            expect(res.json).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: "At least one rated case is required to issue a certificate",
+                })
+            );
+            expect(mockedCertificate.create).not.toHaveBeenCalled();
+        });
     });
 
     describe("getCertificateById", () => {
@@ -149,8 +269,6 @@ describe("Certificate Controller", () => {
 
     describe("exportCertificateData", () => {
         it("should return 404 when certificate is not found", async () => {
-            const populateDoctor = jest.fn().mockResolvedValue(null);
-
             const populateMock = jest.fn();
 
             populateMock
