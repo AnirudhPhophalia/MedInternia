@@ -82,3 +82,17 @@ export const messageLimiter = rateLimit({
     return user?._id?.toString() ?? req.ip ?? 'unknown';
   }
 });
+
+// Limits case reposts so a user cannot spam the public feed with an unbounded
+// stream of reposted/duplicate content. Keyed by user ID from the JWT.
+export const repostLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many case reposts. Please try again after an hour.' },
+  keyGenerator: (req) => {
+    const user = (req as any).user;
+    return user?._id?.toString() ?? req.ip ?? 'unknown';
+  }
+});

@@ -38,6 +38,7 @@ import {
 } from '../controllers/caseController';
 import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
+import { repostLimiter } from '../middleware/otpRateLimiter';
 import { checkPlagiarismAndAI } from '../middleware/plagiarismDetection';
 import multer from 'multer';
 import { isAllowedCaseAttachment } from '../utils/uploadValidation';
@@ -107,7 +108,7 @@ router.post('/:caseId/comments/:commentId/unpin', authenticate, requirePermissio
 router.get('/:caseId/pinned-comments', authenticate, getPinnedComments);
 // Toggle repost permission (case owner only)
 router.patch('/:id/repost-permission', authenticate, requirePermission('case:update'), toggleRepostPermission);
-// Repost a case (if allowed)
-router.post('/:id/repost', authenticate, requirePermission('case:repost'), repostCase);
+// Repost a case (if allowed) - rate-limited to prevent feed spam
+router.post('/:id/repost', authenticate, requirePermission('case:repost'), repostLimiter, repostCase);
 
 export default router;

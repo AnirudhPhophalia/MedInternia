@@ -436,8 +436,12 @@ export const repostCase = asyncHandler(async (req: AuthRequest, res: Response) =
     isRareDisease: originalCase.isRareDisease,
     doctor: user._id,
     isPatientCase: false,
-    moderationStatus: "approved",
+    moderationStatus: "pending",
   });
+
+  // Reposts go through the same moderation queue as new cases so that spam or
+  // duplicate AI-generated content cannot bypass review by reposting.
+  await enqueueCaseModeration(String(newRepost._id));
 
   res.status(201).json({ success: true, message: "Case reposted successfully", data: { case: newRepost } });
 });
