@@ -23,8 +23,8 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, body: any = {}, query: any = {}, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
+const mockRequest = (userId: string, body: any = {}, query: any = {}, params: any = {}, userType: string = 'admin'): AuthRequest => ({
+  user: { _id: userId, userType },
   body,
   query,
   params,
@@ -73,6 +73,26 @@ describe("Badge Controller", () => {
   });
 
   describe("createBadge", () => {
+    it("rejects non-admin users", async () => {
+      const req = mockRequest("doctor-1", {
+        name: "Expert",
+        description: "Expert level badge",
+        icon: "star",
+        category: "points",
+        criteria: { type: "points", threshold: 100 },
+        color: "#fff"
+      }, {}, {}, "doctor");
+      const res = mockResponse();
+
+      await createBadge(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        message: "Forbidden: only admins can create badges"
+      }));
+    });
+
     it("creates and saves a new badge", async () => {
       const req = mockRequest("admin-1", {
         name: "Expert",

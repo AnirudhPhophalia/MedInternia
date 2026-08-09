@@ -13,10 +13,10 @@ import CloseIcon from "@mui/icons-material/Close";
 
 import { responses, quickActions } from "./chatbotData";
 
-const Chatbot = () => {
+const Chatbot = ({ initialOpen = false }: { initialOpen?: boolean }) => {
   const router = useRouter();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [input, setInput] = useState("");
 
   const [messages, setMessages] = useState<

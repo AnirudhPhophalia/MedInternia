@@ -1,6 +1,6 @@
 import type { AppProps } from "next/app";
 import { ReactNode, useEffect, useState } from "react";
-import { CssBaseline, Snackbar, Alert, Typography } from "@mui/material";
+import { CssBaseline, Snackbar, Alert, Typography, Fab } from "@mui/material";
 import { useNotifications } from "../hooks/useNotifications";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { CustomThemeProvider } from "../context/ThemeContext";
@@ -11,6 +11,7 @@ import ScrollToTop from "../components/ScrollToTop";
 import { useRouter } from "next/router";
 import "../styles/globals.css";
 import Head from "next/head";
+import ChatIcon from "@mui/icons-material/Chat";
 import dynamic from "next/dynamic";
 import { Inter } from "next/font/google";
 import "../i18n";
@@ -85,7 +86,8 @@ function AuthGate({ children }: { children: ReactNode }) {
 function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { newToast, clearToast } = useNotifications();
-  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatbotLoaded, setChatbotLoaded] = useState(false);
+  const [initialOpenPending, setInitialOpenPending] = useState(false);
 
   const hideNavbarRoutes = ["/", "/contact", "/auth/login", "/auth/register"];
   const showNavbar = !hideNavbarRoutes.includes(router.pathname);
@@ -96,14 +98,14 @@ function MyApp({ Component, pageProps }: AppProps) {
     "/auth/forgot-password",
   ];
   const showFooter = !hideFooterRoutes.includes(router.pathname);
+  const eligiblePage =
+    router.pathname !== "/" && router.pathname !== "/landing";
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setShowChatbot(true);
-    }, 12000);
-
-    return () => window.clearTimeout(timer);
-  }, []);
+    if (initialOpenPending) {
+      setInitialOpenPending(false);
+    }
+  }, [initialOpenPending]);
 
   return (
     <ErrorBoundary>
@@ -154,8 +156,26 @@ function MyApp({ Component, pageProps }: AppProps) {
 
             {showFooter && <Footer />}
             <ScrollToTop />
-            {showChatbot && router.pathname !== "/" && router.pathname !== "/landing" && (
-              <Chatbot />
+            {!chatbotLoaded && eligiblePage && (
+              <Fab
+                color="primary"
+                onClick={() => {
+                  setChatbotLoaded(true);
+                  setInitialOpenPending(true);
+                }}
+                aria-label="Open MedInternia assistant"
+                sx={{
+                  position: "fixed",
+                  bottom: 20,
+                  right: 20,
+                  zIndex: 9999,
+                }}
+              >
+                <ChatIcon />
+              </Fab>
+            )}
+            {chatbotLoaded && eligiblePage && (
+              <Chatbot initialOpen={initialOpenPending} />
             )}
 
             <Snackbar

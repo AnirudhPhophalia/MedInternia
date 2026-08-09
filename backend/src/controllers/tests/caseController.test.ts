@@ -8,6 +8,7 @@ import {
   getPinnedComments,
   toggleRepostPermission,
   repostCase,
+  addFollowUp,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
@@ -454,6 +455,21 @@ describe("Case Controller", () => {
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
+    it("creates the repost as pending and enqueues moderation", async () => {
+      mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
+      mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
+
+      const req = mockRequest("user-2", "intern", { id: "case-123" });
+      const res = mockResponse();
+
+      await repostCase(req as any, res as any, jest.fn());
+
+      const createCall = (mockedCase.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.moderationStatus).toBe("pending");
+      expect(createCall.moderationStatus).not.toBe("approved");
+      expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("repost-1");
+    });
+
     it("copies required schema fields: difficulty and specialization", async () => {
       mockedCase.findById.mockResolvedValue({ ...originalCaseData } as any);
       mockedCase.create.mockResolvedValue({ _id: "repost-1" } as any);
@@ -525,6 +541,60 @@ describe("Case Controller", () => {
       await expect(
         repostCase(req as any, res as any, jest.fn())
       ).rejects.toThrow("Case not found");
+    });
+  });
+
+  describe("addFollowUp", () => {
+    it("allows the case owner to add a follow-up", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        doctor: "user-1",
+        comments: [],
+      } as any);
+      mockedCase.findByIdAndUpdate.mockResolvedValue({} as any);
+
+      const req = mockRequest("user-1", "intern", { id: "case-1" }, { content: "Patient improved" });
+      const res = mockResponse();
+
+      await addFollowUp(req as any, res as any, jest.fn());
+
+      expect(mockedCase.findByIdAndUpdate).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it("allows a prior commenter to add a follow-up", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        doctor: "doctor-1",
+        comments: [{ author: "user-2" }],
+      } as any);
+      mockedCase.findByIdAndUpdate.mockResolvedValue({} as any);
+
+      const req = mockRequest("user-2", "doctor", { id: "case-1" }, { content: "Follow-up note" });
+      const res = mockResponse();
+
+      await addFollowUp(req as any, res as any, jest.fn());
+
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it("rejects unrelated users without case involvement", async () => {
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        doctor: "doctor-1",
+        comments: [],
+      } as any);
+      mockedUser.findById.mockReturnValue({
+        select: jest.fn().mockResolvedValue({ mentorDoctor: "other-doctor" }),
+      } as any);
+
+      const req = mockRequest("stranger-1", "doctor", { id: "case-1" }, { content: "Nope" });
+      const res = mockResponse();
+
+      await expect(
+        addFollowUp(req as any, res as any, jest.fn())
+      ).rejects.toThrow("Forbidden: you cannot add a follow-up on this case");
+      expect(mockedCase.findByIdAndUpdate).not.toHaveBeenCalled();
     });
   });
 });

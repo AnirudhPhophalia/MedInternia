@@ -45,6 +45,16 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // The revieweeId must belong to the user who actually authored the comment
+    // being reviewed. Trusting a client-supplied revieweeId would let anyone
+    // inflate or deflate any other user's rating/reputation.
+    if (!mongoose.isValidObjectId(revieweeId) || comment.author.toString() !== revieweeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reviewee must be the author of the comment being reviewed'
+      });
+    }
+
     // Check if review already exists
     const existingReview = await PeerReview.findOne({
       reviewer: reviewerId,
@@ -312,9 +322,20 @@ export const markReviewHelpful = async (req: AuthRequest, res: Response) => {
 };
 
 // Get peer review analytics for user
-export const getPeerReviewAnalytics = async (req: Request, res: Response) => {
+export const getPeerReviewAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
+
+    // Only the target user themself or admins may view their review analytics.
+    const requesterId = (req.user!._id as any).toString();
+    const isOwnAnalytics = requesterId === String(userId);
+    const isAdmin = req.user!.userType === 'admin';
+    if (!isOwnAnalytics && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
 
     // Reviews received
     const receivedReviews = await PeerReview.find({ reviewee: userId });

@@ -19,6 +19,8 @@ import { errorHandler } from './middleware/errorHandler';
 import { csrfProtection } from './middleware/csrf';
 import { corsOptions, isAllowedOrigin } from './config/cors';
 import { startBackgroundJobs, stopBackgroundJobs } from './jobs/caseModerationJob';
+import User from './models/User';
+import Webinar from './models/Webinar';
 
 function sanitizeObject(obj: any, path = ''): void {
   if (!obj || typeof obj !== 'object') return;
@@ -76,12 +78,11 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(morgan('combined'));
 
-// Serve uploads folder for profile images
-import path from 'path';
-app.use('/uploads', cors(corsOptions), (_req, res, next) => {
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(__dirname, '../uploads')));
+// NOTE: There is intentionally no public static mount for the uploads folder.
+// Any file on disk (research paper PDFs, exported documents, etc.) must be
+// delivered only through the authenticated download routes
+// (e.g. /api/research-papers/download/:filename), which enforce login/ownership.
+// Exposing the raw uploads directory here would bypass that authorization.
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -158,26 +159,74 @@ io.use(async (socket, next) => {
       return next(new Error('Token has been revoked'));
     }
 
-    // Attach userId to socket for later use
-    (socket as any).userId = decoded.userId;
+    const user = await User.findById(decoded.userId).select('userType isActive');
+    if (!user) {
+      return next(new Error('Invalid token - user not found'));
+    }
+    if (!user.isActive) {
+      return next(new Error('Account is deactivated'));
+    }
+
+    (socket as any).userId = String(user._id);
+    (socket as any).userType = user.userType;
     next();
   } catch (err) {
     next(new Error('Socket authentication failed'));
   }
 });
 
+const canJoinWebinarRoom = (
+  webinar: {
+    host: { toString: () => string };
+    participants: Array<{ user: { toString: () => string } }>;
+  },
+  userId: string,
+  userType?: string
+) => {
+  return (
+    userType === 'admin' ||
+    webinar.host.toString() === userId ||
+    webinar.participants.some((participant) => participant.user.toString() === userId)
+  );
+};
+
 // Handle socket connections
 io.on('connection', (socket) => {
   const userId = (socket as any).userId;
+  const userType = (socket as any).userType;
 
   // Each user joins their own private room
   // This lets us emit to a specific user from any controller
   socket.join(`user:${userId}`);
   console.log(`Socket connected: user ${userId} joined room user:${userId}`);
 
-  socket.on('join_webinar', (webinarId: string) => {
-    socket.join(`webinar:${webinarId}`);
-    console.log(`User ${userId} joined webinar room: webinar:${webinarId}`);
+  socket.on('join_webinar', async (webinarId: string) => {
+    try {
+      if (!webinarId || typeof webinarId !== 'string') {
+        socket.emit('webinar_error', { message: 'Invalid webinar id' });
+        return;
+      }
+
+      const webinar = await Webinar.findById(webinarId).select('host participants');
+      if (!webinar) {
+        socket.emit('webinar_error', { message: 'Webinar not found' });
+        return;
+      }
+
+      if (!canJoinWebinarRoom(webinar, userId, userType)) {
+        socket.emit('webinar_error', {
+          webinarId,
+          message: 'Not authorized to join this webinar room',
+        });
+        return;
+      }
+
+      socket.join(`webinar:${webinarId}`);
+      console.log(`User ${userId} joined webinar room: webinar:${webinarId}`);
+    } catch (err) {
+      console.error('join_webinar error:', err);
+      socket.emit('webinar_error', { message: 'Failed to join webinar room' });
+    }
   });
 
   socket.on('leave_webinar', (webinarId: string) => {

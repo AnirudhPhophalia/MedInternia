@@ -11,6 +11,7 @@ import { uploadProfileImage, generateSignedUrl } from '../utils/cloudinary';
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { setCsrfCookie } from "../utils/csrf";
+import { isValidPassword, PASSWORD_VALIDATION_MESSAGE } from "../utils/passwordValidation";
 
 // --- OTP configuration -----------------------------------------------------
 const OTP_TTL_MS = 10 * 60 * 1000; // OTP valid for 10 minutes
@@ -152,7 +153,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     medicalSchool,
     yearOfStudy,
     interests,
-    mentorDoctor,
     // Patient specific
     emergencyContact,
     medicalHistory,
@@ -265,7 +265,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     userData.medicalSchool = medicalSchool;
     userData.yearOfStudy = yearOfStudy;
     userData.interests = interests;
-    userData.mentorDoctor = mentorDoctor;
+    // mentorDoctor is assigned only when a mentorship request is accepted
   }
 
   // Add patient-specific fields
@@ -549,11 +549,8 @@ export const changePassword = asyncHandler(
       throw new AppError("Current password and new password are required", 400);
     }
 
-    if (newPassword.length < 6) {
-      throw new AppError(
-        "New password must be at least 6 characters long",
-        400,
-      );
+    if (!isValidPassword(newPassword)) {
+      throw new AppError(PASSWORD_VALIDATION_MESSAGE, 400);
     }
 
     // Get user with password
@@ -629,8 +626,8 @@ export const resetPassword = asyncHandler(
     if (typeof email !== 'string') {
       throw new AppError("Invalid email format", 400);
     }
-    if (newPassword.length < 6) {
-      throw new AppError("Password must be at least 6 characters", 400);
+    if (!isValidPassword(newPassword)) {
+      throw new AppError(PASSWORD_VALIDATION_MESSAGE, 400);
     }
     const result = await consumeOtp(email, 'reset', otp);
     if (!result.valid) {
