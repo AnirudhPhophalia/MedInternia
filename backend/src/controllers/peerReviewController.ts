@@ -45,6 +45,16 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // The revieweeId must belong to the user who actually authored the comment
+    // being reviewed. Trusting a client-supplied revieweeId would let anyone
+    // inflate or deflate any other user's rating/reputation.
+    if (!mongoose.isValidObjectId(revieweeId) || comment.author.toString() !== revieweeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reviewee must be the author of the comment being reviewed'
+      });
+    }
+
     // Check if review already exists
     const existingReview = await PeerReview.findOne({
       reviewer: reviewerId,
