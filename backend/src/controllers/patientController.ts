@@ -39,8 +39,19 @@ export const getPatients = async (req: AuthRequest, res: Response) => {
     const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
     const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? '20'), 10) || 20, 100));
     const skip = (page - 1) * limit;
+    const currentUser = req.user!;
 
-    const filter = { userType: 'patient' as const, isActive: true };
+    // authorize('doctor') also admits admins. Doctors only see patients they
+    // treat (non-cancelled appointments); admins retain the full directory.
+    const filter: Record<string, unknown> = { userType: 'patient', isActive: true };
+    if (currentUser.userType !== 'admin') {
+      const doctorId = (currentUser._id as any).toString();
+      const relatedPatientIds = await Appointment.distinct('patientId', {
+        doctorId,
+        status: { $ne: AppointmentStatus.CANCELLED },
+      });
+      filter._id = { $in: relatedPatientIds };
+    }
 
     const [patients, total] = await Promise.all([
       User.find(filter)
