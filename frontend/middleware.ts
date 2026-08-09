@@ -11,8 +11,11 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // JWT_SECRET ko environment variables se uthao aur encode karo
-    const secretKey = process.env.JWT_SECRET || 'default_secret';
+    const secretKey = process.env.JWT_SECRET;
+    if (!secretKey) {
+      console.error('JWT_SECRET is not configured');
+      return new NextResponse('Internal Server Error', { status: 500 });
+    }
     const secret = new TextEncoder().encode(secretKey);
 
     // Jose library se token ka signature aur expiry verify karo
