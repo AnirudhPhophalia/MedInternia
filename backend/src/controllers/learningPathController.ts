@@ -9,6 +9,27 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
 import { createAndEmitNotification } from './notificationController';
 
+/** Strip quiz answers/explanations before returning learning paths to clients. */
+const sanitizeLearningPath = (path: any) => {
+  const obj = typeof path?.toObject === 'function' ? path.toObject() : { ...path };
+
+  if (Array.isArray(obj.steps)) {
+    obj.steps = obj.steps.map((step: any) => {
+      if (!step || step.type !== 'quiz' || !step.quiz) {
+        return step;
+      }
+
+      const { correctAnswer, explanation, ...safeQuiz } = step.quiz;
+      return {
+        ...step,
+        quiz: safeQuiz
+      };
+    });
+  }
+
+  return obj;
+};
+
 // Get all learning paths
 export const getLearningPaths = asyncHandler(async (req: AuthRequest, res: Response) => {
   const paths = await LearningPath.find({ isActive: true })
@@ -23,7 +44,7 @@ export const getLearningPaths = asyncHandler(async (req: AuthRequest, res: Respo
   const pathsWithProgress = paths.map(path => {
     const progress = userProgress.find(p => String(p.learningPath) === String(path._id));
     return {
-      ...path.toObject(),
+      ...sanitizeLearningPath(path),
       progress: progress || null
     };
   });
@@ -63,7 +84,7 @@ export const getLearningPathById = asyncHandler(async (req: AuthRequest, res: Re
   res.json({
     success: true,
     data: {
-      learningPath: path,
+      learningPath: sanitizeLearningPath(path),
       progress
     }
   });
@@ -142,8 +163,9 @@ export const completeStep = asyncHandler(async (req: AuthRequest, res: Response)
   }
 
   const step = path.steps[stepIndex];
-  
-  // Validate quiz answer if it's a quiz
+  let quizExplanation: string | undefined;
+
+  // Validate quiz answer if it's a quiz (grade against full DB document)
   if (step.type === 'quiz' && step.quiz) {
     if (answerIndex !== step.quiz.correctAnswer) {
       return res.status(400).json({
@@ -152,6 +174,7 @@ export const completeStep = asyncHandler(async (req: AuthRequest, res: Response)
         isCorrect: false
       });
     }
+    quizExplanation = step.quiz.explanation;
   }
 
   progress.completedSteps.push(stepIndex);
@@ -207,7 +230,8 @@ export const completeStep = asyncHandler(async (req: AuthRequest, res: Response)
     data: {
       progress,
       pathCompleted: newlyCompleted,
-      badgeAwarded
+      badgeAwarded,
+      ...(quizExplanation !== undefined ? { explanation: quizExplanation } : {})
     }
   });
 });
