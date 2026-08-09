@@ -575,6 +575,29 @@ export const addFollowUp = asyncHandler(async (req: AuthRequest, res: Response) 
   const caseDoc = await Case.findById(getId(req.params.id));
   if (!caseDoc) throw new AppError("Case not found", 404);
 
+  const userId = String(user._id);
+  const caseOwnerId = String((caseDoc as any).doctor);
+  const isAdmin = user.userType === "admin";
+  const isCaseOwner = caseOwnerId === userId;
+  const hasPriorComment = ((caseDoc as any).comments || []).some(
+    (comment: any) => comment.author?.toString() === userId
+  );
+
+  let hasMentoringRelationship = false;
+  if (!isAdmin && !isCaseOwner && !hasPriorComment) {
+    if (user.userType === "doctor") {
+      const caseOwner = await User.findById(caseOwnerId).select("mentorDoctor");
+      hasMentoringRelationship = caseOwner?.mentorDoctor?.toString() === userId;
+    } else if (user.userType === "intern" && (user as any).mentorDoctor) {
+      hasMentoringRelationship =
+        (user as any).mentorDoctor.toString() === caseOwnerId;
+    }
+  }
+
+  if (!isAdmin && !isCaseOwner && !hasPriorComment && !hasMentoringRelationship) {
+    throw new AppError("Forbidden: you cannot add a follow-up on this case", 403);
+  }
+
   const newFollowUp = {
     _id: new mongoose.Types.ObjectId(),
     author: user._id,
