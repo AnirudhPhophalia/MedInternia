@@ -73,7 +73,7 @@ describe("Peer Review Controller", () => {
 
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        comments: [{ _id: "comment-1" }]
+        comments: [{ _id: "comment-1", author: "intern-2" }]
       } as any);
 
       mockedPeerReview.findOne.mockResolvedValue({ _id: "existing-review" } as any);
@@ -82,6 +82,24 @@ describe("Peer Review Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "You have already reviewed this comment" }));
+    });
+
+    it("rejects a forged revieweeId that does not match the comment author", async () => {
+      // The core exploit: reviewer targets a doctor via body.revieweeId while
+      // reviewing an intern's comment. The reviewee must come from the author.
+      const req = mockRequest("intern-1", "intern", { revieweeId: "victim-doctor", caseId: "case-1", commentId: "comment-1", rating: 1 });
+      const res = mockResponse();
+
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        comments: [{ _id: "comment-1", author: "intern-2" }]
+      } as any);
+
+      await submitPeerReview(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "revieweeId does not match the comment author" }));
+      expect(mockedPeerReview.create).not.toHaveBeenCalled();
     });
 
     it("successfully creates review, calculates average rating, and sends notification", async () => {
@@ -95,7 +113,7 @@ describe("Peer Review Controller", () => {
 
       mockedCase.findById.mockResolvedValue({
         _id: "case-1",
-        comments: [{ _id: "comment-1" }]
+        comments: [{ _id: "comment-1", author: "intern-2" }]
       } as any);
 
       mockedPeerReview.findOne.mockResolvedValue(null);
