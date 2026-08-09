@@ -797,7 +797,13 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const caseFilter = {
+    // Determine whether the requesting user is a verified doctor so we can
+    // decide whether to include verifiedDoctorsOnly cases in the results.
+    const requester = req.user as any;
+    const requesterIsVerifiedDoctor =
+      requester?.userType === 'doctor' && requester?.isVerifiedDoctor === true;
+
+    const caseFilter: Record<string, any> = {
       doctor: userId,
       isActive: { $ne: false },
       $or: [
@@ -806,13 +812,26 @@ export const getPublicProfile = async (req: AuthRequest, res: Response) => {
       ],
     };
 
+    // Cases flagged verifiedDoctorsOnly must not appear for non-verified users
+    // on a public profile page.
+    if (!requesterIsVerifiedDoctor) {
+      caseFilter.verifiedDoctorsOnly = { $ne: true };
+    }
+
     const [badges, caseCount, cases] = await Promise.all([
       UserBadge.find({ user: userId, isVisible: true })
         .populate('badge')
         .sort({ earnedAt: -1 }),
       Case.countDocuments(caseFilter),
+      // SECURITY: only return safe summary fields.
+      // - 'content' does not exist on the Case schema (no-op but removed for clarity).
+      // - 'comments' contains full clinical discussion threads with potential
+      //   patient-identifiable detail — must not be returned on a public page.
+      // - 'likes' is an array of user ObjectIds, leaking the social graph.
+      // - 'patientInfo' embeds age, gender, medical history and medications.
+      // None of these belong on a public profile card.
       Case.find(caseFilter)
-        .select('_id title description content createdAt privacy views comments likes')
+        .select('_id title description specialization difficulty tags createdAt views')
         .sort({ createdAt: -1 })
         .limit(50),
     ]);
