@@ -42,8 +42,6 @@ export default function PeerReviews() {
   const [analyticsError, setAnalyticsError] = useState('');
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-
     if (!userId) {
       setLoading(false);
       return;
@@ -61,7 +59,6 @@ export default function PeerReviews() {
 
   const fetchAnalytics = () => {
     setAnalyticsLoading(true);
-    const userId = localStorage.getItem('userId');
 
     if (!userId) {
       setAnalyticsError('User ID not found.');

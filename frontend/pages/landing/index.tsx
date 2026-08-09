@@ -16,6 +16,7 @@ import {
   Paperclip,
 } from "lucide-react";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
+import { useAuth } from "../../context/AuthContext";
 
 const VisibilityToggle = () => {
   const [isPublic, setIsPublic] = useState(true);
@@ -41,10 +42,9 @@ const VisibilityToggle = () => {
 };
 
 const ProfileSidebar = () => {
+  const { userId } = useAuth();
   const [user, setUser] = React.useState<Doctor | null>(null);
   React.useEffect(() => {
-    const userId =
-      typeof window !== "undefined" ? localStorage.getItem("userId") : null;
     if (!userId) return;
     import("../../utils/api").then((apiModule) => {
       apiModule.default
@@ -68,7 +68,7 @@ const ProfileSidebar = () => {
           });
         });
     });
-  }, []);
+  }, [userId]);
 
   return (
     <div

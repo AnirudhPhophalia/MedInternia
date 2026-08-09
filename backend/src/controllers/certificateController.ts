@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Certificate from '../models/Certificate';
 import User from '../models/User';
-import Case from '../models/Case';
+import Rating from '../models/Rating';
 import crypto from 'crypto';
 
 // Generate certificate for intern
@@ -13,8 +13,6 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
       internId,
       title,
       description,
-      casesReviewed,
-      pointsEarned,
       duration,
       skills
     } = req.body;
@@ -43,19 +41,32 @@ export const generateCertificate = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (doctor.userType !== 'admin' && (doctor.mentoringCredits || 0) < casesReviewed) {
-      return res.status(400).json({
-        success: false,
-        message: 'Insufficient mentoring credits'
-      });
-    }
-
     // Verify intern exists
     const intern = await User.findOne({ _id: internId, userType: 'intern' });
     if (!intern) {
       return res.status(404).json({
         success: false,
         message: 'Intern not found'
+      });
+    }
+
+    // Compute stats from ratings this doctor gave this intern (ignore client values)
+    const ratings = await Rating.find({ rater: doctorId, ratee: internId });
+    const casesReviewed = ratings.length;
+    const pointsFromRatings = ratings.reduce((sum, r) => sum + (r.pointsAwarded || 0), 0);
+    const pointsEarned = casesReviewed > 0 ? pointsFromRatings : (intern.points || 0);
+
+    if (doctor.userType !== 'admin' && casesReviewed < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one rated case is required to issue a certificate'
+      });
+    }
+
+    if (doctor.userType !== 'admin' && (doctor.mentoringCredits || 0) < casesReviewed) {
+      return res.status(400).json({
+        success: false,
+        message: 'Insufficient mentoring credits'
       });
     }
 

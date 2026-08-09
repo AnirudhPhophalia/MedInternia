@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import {
   Container, Box, Typography, Grid, List, ListItem, ListItemButton, ListItemText, ListItemAvatar,
-  Avatar, TextField, Button, Paper, Divider, CircularProgress, Alert
+  Avatar, TextField, Button, Paper, Divider, CircularProgress, Alert, Snackbar
 } from '@mui/material';
 import api, { getSocketUrl } from '../../utils/api';
 import { io, Socket } from 'socket.io-client';
@@ -44,6 +44,10 @@ export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
 
   // New states for cache, typing indicator, and new chat recipient info
   const [messagesCache, setMessagesCache] = useState<Record<string, Message[]>>({});
@@ -332,8 +336,11 @@ export default function MessagesPage() {
           return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         });
       }
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to send message');
+        } catch (err: any) {
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to send message',
+      });
     } finally {
       setSending(false);
     }
@@ -485,6 +492,22 @@ export default function MessagesPage() {
           </Paper>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity="error"
+          sx={{ width: '100%', fontWeight: 600 }}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }
