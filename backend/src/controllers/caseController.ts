@@ -4,7 +4,6 @@ import { Response } from "express";
 import Case from "../models/Case";
 import User from "../models/User";
 import Rating from "../models/Rating";
-import Notification from "../models/Notification";
 import AICasePostSchedule from "../models/AICasePostSchedule";
 import { AuthRequest } from "../middleware/auth";
 import {
@@ -762,10 +761,10 @@ export const replyToComment = asyncHandler(
     await caseDoc.save();
 
     if (parentComment.author.toString() !== user._id!.toString()) {
-      await Notification.create({
-        recipient: parentComment.author,
+      await createAndEmitNotification({
+        recipientId: parentComment.author.toString(),
+        type: "comment",
         message: `Someone replied to your comment`,
-        type: "reply",
         link: `/cases/${caseId}`,
       });
     }

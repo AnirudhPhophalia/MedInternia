@@ -4,6 +4,7 @@ import {
   updateCase,
   deleteCase,
   addComment,
+  replyToComment,
   getCases,
   getPinnedComments,
   toggleRepostPermission,
@@ -13,7 +14,6 @@ import {
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
 import User from "../../models/User";
-import Notification from "../../models/Notification";
 import { analyzeCase } from "../../services/aiTaggerService";
 import { createAndEmitNotification } from "../notificationController";
 import { enqueueCaseModeration } from "../../jobs/caseModerationJob";
@@ -24,7 +24,6 @@ jest.mock("../../utils/asyncHandler", () => ({
 
 jest.mock("../../models/Case");
 jest.mock("../../models/User");
-jest.mock("../../models/Notification");
 jest.mock("../../services/aiTaggerService");
 jest.mock("../../services/ragService", () => ({
   ingestCase: jest.fn().mockResolvedValue(undefined),
@@ -265,6 +264,75 @@ describe("Case Controller", () => {
         recipientId: "doctor-1",
         type: "comment",
       }));
+    });
+  });
+
+  describe("replyToComment", () => {
+    it("saves a reply and sends an enum-valid comment notification", async () => {
+      const replyIds: any[] = [];
+      const parentComment = {
+        _id: { toString: () => "comment-1" },
+        author: { toString: () => "author-1" },
+        replies: replyIds,
+      };
+      const caseMock = {
+        comments: [
+          parentComment,
+        ],
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      mockedCase.findById.mockResolvedValue(caseMock as any);
+
+      const req = mockRequest("replier-1", "doctor", {
+        caseId: "case-123",
+        commentId: "comment-1",
+      }, {
+        content: "Follow-up thought",
+      });
+      const res = mockResponse();
+
+      await replyToComment(req as any, res as any, jest.fn());
+
+      expect(caseMock.comments).toHaveLength(2);
+      expect(caseMock.comments[1]).toMatchObject({
+        author: "replier-1",
+        content: "Follow-up thought",
+        replyTo: parentComment._id,
+      });
+      expect(parentComment.replies).toContain(caseMock.comments[1]._id);
+      expect(caseMock.save).toHaveBeenCalled();
+      expect(mockedCreateAndEmitNotification).toHaveBeenCalledWith({
+        recipientId: "author-1",
+        type: "comment",
+        message: "Someone replied to your comment",
+        link: "/cases/case-123",
+      });
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it("does not notify the author when replying to their own comment", async () => {
+      const parentComment = {
+        _id: { toString: () => "comment-1" },
+        author: { toString: () => "author-1" },
+        replies: [],
+      };
+      mockedCase.findById.mockResolvedValue({
+        comments: [parentComment],
+        save: jest.fn().mockResolvedValue(undefined),
+      } as any);
+
+      const req = mockRequest("author-1", "doctor", {
+        caseId: "case-123",
+        commentId: "comment-1",
+      }, {
+        content: "Self follow-up",
+      });
+      const res = mockResponse();
+
+      await replyToComment(req as any, res as any, jest.fn());
+
+      expect(mockedCreateAndEmitNotification).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
     });
   });
 
