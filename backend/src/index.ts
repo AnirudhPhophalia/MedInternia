@@ -74,14 +74,6 @@ app.use(cors(corsOptions));
 // Ensure preflight OPTIONS requests are handled for all routes
 app.options(/.*/, cors(corsOptions));
 app.use(morgan('combined'));
-
-// Serve uploads folder for profile images
-import path from 'path';
-app.use('/uploads', cors(corsOptions), (_req, res, next) => {
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-}, express.static(path.join(__dirname, '../uploads')));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
