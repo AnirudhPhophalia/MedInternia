@@ -3,6 +3,15 @@ import { AuthRequest } from "../middleware/auth";
 import Diary from "../models/Diary";
 import { parsePagination, buildPaginationMeta } from "../utils/pagination";
 
+const DEFAULT_ENTRY_LIMIT = 20;
+const MAX_ENTRY_LIMIT = 100;
+
+const parseEntryLimit = (value: unknown): number => {
+  const parsed = parseInt(String(value ?? DEFAULT_ENTRY_LIMIT), 10);
+  if (Number.isNaN(parsed) || parsed < 0) return DEFAULT_ENTRY_LIMIT;
+  return Math.min(parsed, MAX_ENTRY_LIMIT);
+};
+
 // Get all diaries of the logged-in user
 export const getDiaries = async (req: AuthRequest, res: Response) => {
   try {
@@ -14,11 +23,12 @@ export const getDiaries = async (req: AuthRequest, res: Response) => {
     }
 
     const { page, limit, skip } = parsePagination(req.query);
+    const entryLimit = parseEntryLimit(req.query.entryLimit);
 
     const filter = { user: req.user._id };
 
     const [diaries, total] = await Promise.all([
-      Diary.find(filter)
+      Diary.find(filter, { entries: { $slice: -entryLimit } })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -28,7 +38,10 @@ export const getDiaries = async (req: AuthRequest, res: Response) => {
     return res.status(200).json({
       success: true,
       data: { diaries },
-      meta: buildPaginationMeta(page, limit, total),
+      meta: {
+        ...buildPaginationMeta(page, limit, total),
+        entryLimit,
+      },
     });
   } catch (error) {
     console.error("Error fetching diaries:", error);
