@@ -153,7 +153,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     medicalSchool,
     yearOfStudy,
     interests,
-    mentorDoctor,
     // Patient specific
     emergencyContact,
     medicalHistory,
@@ -266,7 +265,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     userData.medicalSchool = medicalSchool;
     userData.yearOfStudy = yearOfStudy;
     userData.interests = interests;
-    userData.mentorDoctor = mentorDoctor;
+    // mentorDoctor is assigned only when a mentorship request is accepted
   }
 
   // Add patient-specific fields
