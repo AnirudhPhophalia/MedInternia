@@ -721,7 +721,7 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
     if (type === 'hosted') {
       query = { host: userId };
     } else if (type === 'attended') {
-      query = { 'participants.user': userId, 'participants.attended': true };
+      query = { participants: { $elemMatch: { user: userId, attended: true } } };
     } else if (type === 'registered') {
       query = { 'participants.user': userId };
     } else {
