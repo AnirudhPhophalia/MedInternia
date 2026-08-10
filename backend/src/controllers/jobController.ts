@@ -159,7 +159,7 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
       sortOrder = 'desc'
     } = req.query;
 
-    const filter: any = {};
+    const filter: any = { isActive: true };
     const filterConditions: any[] = [];
     const searchQuery = normalizeJobSearchTerm(search || q);
     const locationQuery = normalizeJobSearchTerm(location);
@@ -265,7 +265,7 @@ export const getJobOpportunityById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const jobOpportunity = await JobOpportunity.findById(id)
+    const jobOpportunity = await JobOpportunity.findOne({ _id: id, isActive: true })
       .populate('postedBy', 'firstName lastName specialization isVerifiedDoctor profilePicture')
       .populate('requirements.requiredBadges', 'name description icon color');
 

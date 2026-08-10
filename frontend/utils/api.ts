@@ -106,7 +106,7 @@ export const getInternCredits = async () => {
 // Fetch all diaries for the intern
 export const getDiaries = async () => {
   const res = await api.get('/diaries');
-  return res.data.data;
+  return res.data.data?.diaries || [];
 };
 
 // Create a new diary

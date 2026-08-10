@@ -17,9 +17,11 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [newToast, setNewToast] = useState<Notification | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const notificationsRef = useRef<Notification[]>([]);
 
   // ── Recalculate unread count whenever notifications change ──
   useEffect(() => {
+    notificationsRef.current = notifications;
     setUnreadCount(notifications.filter((n) => !n.isRead).length);
   }, [notifications]);
 
@@ -64,15 +66,13 @@ export function useNotifications() {
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
-    let previousState: Notification[] = [];
+    const previousState = notificationsRef.current;
 
-    setNotifications((prev) => {
-      previousState = prev;
-
-      return prev.map((n) =>
+    setNotifications((prev) =>
+      prev.map((n) =>
         n._id === id ? { ...n, isRead: true } : n
-      );
-    });
+      )
+    );
 
     try {
       await api.patch(`/notifications/${id}/read`);
@@ -84,16 +84,14 @@ export function useNotifications() {
 
   // ── Mark all notifications as read ──────────────────────────
   const markAllAsRead = useCallback(async () => {
-    let previousState: Notification[] = [];
+    const previousState = notificationsRef.current;
 
-    setNotifications((prev) => {
-      previousState = prev;
-
-      return prev.map((n) => ({
+    setNotifications((prev) =>
+      prev.map((n) => ({
         ...n,
         isRead: true,
-      }));
-    });
+      }))
+    );
 
     try {
       await api.patch("/notifications/read-all");
@@ -118,7 +116,7 @@ export function useNotifications() {
 
     return await Notification.requestPermission();
   }, []);
-  
+
   return {
     notifications,
     unreadCount,

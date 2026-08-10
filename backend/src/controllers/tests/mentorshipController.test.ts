@@ -112,10 +112,11 @@ describe("Mentorship Controller", () => {
       const req = mockRequest("intern-1", "intern", { status: "accepted" }, { id: "req-1" });
       const res = mockResponse();
 
-      mockedMentorship.findById.mockResolvedValue({ 
-        _id: "req-1", 
-        mentor: { toString: () => "doctor-1" }, 
-        status: "pending" 
+      mockedMentorship.findById.mockResolvedValue({
+        _id: "req-1",
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
+        status: "pending"
       } as any);
 
       await updateMentorshipStatus(req as any, res as any);
@@ -204,6 +205,7 @@ describe("Mentorship Controller", () => {
       const mockSave = jest.fn();
       mockedMentorship.findById.mockResolvedValue({
         _id: "mentorship-1",
+        mentee: { toString: () => "intern-1" },
         goals: [],
         save: mockSave,
       } as any);
@@ -237,6 +239,7 @@ describe("Mentorship Controller", () => {
       const mockGoal = { _id: "goal-1", isCompleted: false };
       mockedMentorship.findById.mockResolvedValue({
         _id: "mentorship-1",
+        mentee: { toString: () => "intern-1" },
         goals: [mockGoal],
         save: mockSave,
       } as any);
@@ -270,6 +273,7 @@ describe("Mentorship Controller", () => {
       const mockSave = jest.fn();
       mockedMentorship.findById.mockResolvedValue({
         _id: "mentorship-1",
+        mentor: { toString: () => "doctor-1" },
         meetings: [],
         save: mockSave,
       } as any);

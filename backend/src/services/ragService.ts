@@ -34,6 +34,27 @@ export async function ingestCase(caseId: string, text: string, metadata: Record<
   }
 }
 
+export async function deleteCaseVectors(caseId: string): Promise<void> {
+  try {
+    const res = await fetch(`${RAG_SERVICE_URL}/api/delete-case`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+      },
+      body: JSON.stringify({ case_id: caseId }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "(no body)");
+      console.error(`RAG delete failed for case ${caseId} (${res.status}): ${body}`);
+    }
+  } catch (err) {
+    console.error(`Failed to reach RAG service for deletion (case ${caseId}):`, err);
+  }
+}
+
 export async function suggestCases(text: string, k: number = 3): Promise<SimilarCase[]> {
   try {
     const res = await fetch(`${RAG_SERVICE_URL}/api/suggest-cases`, {

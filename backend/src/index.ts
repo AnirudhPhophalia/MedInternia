@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import { Server as SocketIOServer } from 'socket.io';
 import { setSocketIO } from './utils/socket';
 import { verifyToken } from './utils/jwt';
+import { isTokenBlacklisted } from './middleware/auth';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -152,6 +153,10 @@ io.use(async (socket, next) => {
     const decoded = verifyToken(token);
     if (!decoded) {
       return next(new Error('Invalid or expired token'));
+    }
+
+    if (await isTokenBlacklisted(token)) {
+      return next(new Error('Token has been revoked'));
     }
 
     const user = await User.findById(decoded.userId).select('userType isActive');
