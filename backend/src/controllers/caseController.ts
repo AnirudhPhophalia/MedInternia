@@ -12,7 +12,7 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
-import { suggestCases } from "../services/ragService";
+import { deleteCaseVectors, ingestCase, suggestCases } from "../services/ragService";
 import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
@@ -138,6 +138,17 @@ export const updateCase = asyncHandler(async (req: AuthRequest, res: Response) =
     { new: true, runValidators: true }
   ).populate("doctor", "firstName lastName specialization");
 
+  if (updatedCase && (updatedCase as any).moderationStatus === "approved") {
+    await ingestCase(
+      String((updatedCase as any)._id),
+      `${(updatedCase as any).title}\n${(updatedCase as any).description}`,
+      {
+        specialization: (updatedCase as any).specialization,
+        isPatientCase: (updatedCase as any).isPatientCase,
+      }
+    );
+  }
+
   res.json({ success: true, message: "Case updated successfully", data: { case: updatedCase } });
 });
 
@@ -156,6 +167,7 @@ export const deleteCase = asyncHandler(async (req: AuthRequest, res: Response) =
   }
 
   await Case.findByIdAndUpdate(getId(req.params.id), { isActive: false });
+  await deleteCaseVectors(getId(req.params.id));
   res.json({ success: true, message: "Case deleted successfully" });
 });
 

@@ -17,6 +17,7 @@ import User from "../../models/User";
 import Notification from "../../models/Notification";
 import AICasePostSchedule from "../../models/AICasePostSchedule";
 import { analyzeCase } from "../../services/aiTaggerService";
+import { deleteCaseVectors, ingestCase } from "../../services/ragService";
 import { createAndEmitNotification } from "../notificationController";
 import { enqueueCaseModeration } from "../../jobs/caseModerationJob";
 
@@ -30,6 +31,7 @@ jest.mock("../../models/Notification");
 jest.mock("../../models/AICasePostSchedule");
 jest.mock("../../services/aiTaggerService");
 jest.mock("../../services/ragService", () => ({
+  deleteCaseVectors: jest.fn().mockResolvedValue(undefined),
   ingestCase: jest.fn().mockResolvedValue(undefined),
   suggestCases: jest.fn().mockResolvedValue([]),
 }));
@@ -41,6 +43,8 @@ jest.mock("../../jobs/caseModerationJob", () => ({
 const mockedCase = Case as jest.Mocked<typeof Case>;
 const mockedUser = User as jest.Mocked<typeof User>;
 const mockedAnalyzeCase = analyzeCase as jest.Mock;
+const mockedDeleteCaseVectors = deleteCaseVectors as jest.Mock;
+const mockedIngestCase = ingestCase as jest.Mock;
 const mockedCreateAndEmitNotification = createAndEmitNotification as jest.Mock;
 const mockedEnqueueCaseModeration = enqueueCaseModeration as jest.Mock;
 const mockedAICasePostSchedule = AICasePostSchedule as jest.Mocked<typeof AICasePostSchedule>;
@@ -199,6 +203,33 @@ describe("Case Controller", () => {
       expect(updatesPassed).not.toHaveProperty("pointsAwarded");
       expect(updatesPassed).not.toHaveProperty("isActive");
     });
+
+    it("upserts approved case content into RAG after edits", async () => {
+      mockedCase.findById.mockResolvedValue({ doctor: { toString: () => "doctor-1" } } as any);
+      const updatedMock = {
+        _id: "case-123",
+        title: "Updated Case",
+        description: "Updated clinical description",
+        moderationStatus: "approved",
+        specialization: "Cardiology",
+        isPatientCase: false,
+      };
+      const populateMock = jest.fn().mockResolvedValue(updatedMock);
+      mockedCase.findByIdAndUpdate.mockReturnValue({ populate: populateMock } as any);
+
+      const req = mockRequest("doctor-1", "doctor", { id: "case-123" }, {
+        title: "Updated Case",
+      });
+      const res = mockResponse();
+
+      await updateCase(req as any, res as any, jest.fn());
+
+      expect(mockedIngestCase).toHaveBeenCalledWith(
+        "case-123",
+        "Updated Case\nUpdated clinical description",
+        { specialization: "Cardiology", isPatientCase: false }
+      );
+    });
   });
 
   describe("deleteCase", () => {
@@ -223,6 +254,7 @@ describe("Case Controller", () => {
       await deleteCase(req as any, res as any, next);
 
       expect(mockedCase.findByIdAndUpdate).toHaveBeenCalledWith("case-123", { isActive: false });
+      expect(mockedDeleteCaseVectors).toHaveBeenCalledWith("case-123");
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
   });
