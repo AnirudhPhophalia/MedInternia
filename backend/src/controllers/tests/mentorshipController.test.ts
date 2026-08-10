@@ -88,14 +88,15 @@ describe("Mentorship Controller", () => {
   });
 
   describe("updateMentorshipStatus", () => {
-    it("allows mentor to accept or reject a request", async () => {
-      const req = mockRequest("doctor-1", "doctor", { status: "accepted" }, { id: "req-1" });
+    it("allows mentor to accept a pending request", async () => {
+      const req = mockRequest("doctor-1", "doctor", { status: "active" }, { id: "req-1" });
       const res = mockResponse();
 
       const mockSave = jest.fn();
       mockedMentorship.findById.mockResolvedValue({ 
         _id: "req-1", 
-        mentor: { toString: () => "doctor-1" }, 
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
         status: "pending", 
         save: mockSave 
       } as any);
@@ -108,8 +109,8 @@ describe("Mentorship Controller", () => {
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
 
-    it("returns 403 if someone other than the mentor tries to accept/reject", async () => {
-      const req = mockRequest("intern-1", "intern", { status: "accepted" }, { id: "req-1" });
+    it("returns 403 if mentee tries to complete a pending request", async () => {
+      const req = mockRequest("intern-1", "intern", { status: "completed" }, { id: "req-1" });
       const res = mockResponse();
 
       mockedMentorship.findById.mockResolvedValue({
@@ -122,11 +123,14 @@ describe("Mentorship Controller", () => {
       await updateMentorshipStatus(req as any, res as any);
 
       expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, message: 'Only the mentor can update this status' }));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        message: 'Mentees can only mark an active mentorship as completed'
+      }));
     });
 
     it("returns 404 if mentorship is not found", async () => {
-      const req = mockRequest("doctor-1", "doctor", { status: "accepted" }, { id: "non-existent" });
+      const req = mockRequest("doctor-1", "doctor", { status: "active" }, { id: "non-existent" });
       const res = mockResponse();
 
       mockedMentorship.findById.mockResolvedValue(null);
@@ -160,6 +164,29 @@ describe("Mentorship Controller", () => {
       });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("clears mentorDoctor when mentorship is rejected", async () => {
+      const mentorId = "doctor-1";
+      const menteeId = "intern-1";
+      const req = mockRequest(mentorId, "doctor", { status: "rejected" }, { id: "req-1" });
+      const res = mockResponse();
+
+      const mockSave = jest.fn();
+      mockedMentorship.findById.mockResolvedValue({
+        _id: "req-1",
+        mentor: { toString: () => mentorId },
+        mentee: menteeId,
+        status: "pending",
+        save: mockSave,
+      } as any);
+
+      await updateMentorshipStatus(req as any, res as any);
+
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(menteeId, {
+        $unset: { mentorDoctor: 1 }
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 

@@ -104,6 +104,12 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
   try {
     const { status } = req.body;
     const userId = (req as any).user.id;
+    const allowedStatuses = new Set(['pending', 'active', 'rejected', 'completed']);
+
+    if (!allowedStatuses.has(status)) {
+      res.status(400).json({ success: false, message: 'Invalid mentorship status' });
+      return;
+    }
 
     const mentorship = await Mentorship.findById(req.params.id);
     if (!mentorship) {
@@ -119,11 +125,33 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
       return;
     }
 
-    // The mentor controls all status transitions; the mentee may only mark it
-    // completed. (Previously `status !== 'completed'` short-circuited the whole
-    // check, letting any authenticated user complete anyone's mentorship.)
-    if (mentorship.mentor.toString() !== userId && status !== 'completed') {
-      res.status(403).json({ success: false, message: 'Only the mentor can update this status' });
+    const mentorId = mentorship.mentor.toString();
+    const menteeId = mentorship.mentee.toString();
+    const isMentor = mentorId === userId;
+    const isMentee = menteeId === userId;
+    const currentStatus = mentorship.status;
+
+    // Explicit transition matrix:
+    // - mentor: pending -> active|rejected
+    // - mentee: active -> completed
+    if (isMentor) {
+      if (!(currentStatus === 'pending' && (status === 'active' || status === 'rejected'))) {
+        res.status(400).json({
+          success: false,
+          message: 'Mentors can only accept or reject pending mentorship requests'
+        });
+        return;
+      }
+    } else if (isMentee) {
+      if (!(currentStatus === 'active' && status === 'completed')) {
+        res.status(403).json({
+          success: false,
+          message: 'Mentees can only mark an active mentorship as completed'
+        });
+        return;
+      }
+    } else {
+      res.status(403).json({ success: false, message: 'Not authorized' });
       return;
     }
 
@@ -133,6 +161,10 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
     if (status === 'active') {
       await User.findByIdAndUpdate(mentorship.mentee, {
         mentorDoctor: mentorship.mentor
+      });
+    } else if (status === 'rejected' || status === 'completed') {
+      await User.findByIdAndUpdate(mentorship.mentee, {
+        $unset: { mentorDoctor: 1 }
       });
     }
 
