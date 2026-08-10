@@ -223,7 +223,7 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
             recipient: intern._id,
             message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
             type: 'webinar',
-            link: webinar.meetingLink
+            link: `/webinars/${webinar._id}`
           });
 
           if (batch.length >= batchSize) {
