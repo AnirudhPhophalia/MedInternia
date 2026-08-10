@@ -128,13 +128,38 @@ export const reviewFlashcard = async (req: Request, res: Response): Promise<void
     }
 
     const updated = sm2({ interval: flashcard.interval, repetitions: flashcard.repetitions, easeFactor: flashcard.easeFactor }, qualityScore);
-    flashcard.interval = updated.interval;
-    flashcard.repetitions = updated.repetitions;
-    flashcard.easeFactor = updated.easeFactor;
-    flashcard.nextReview = updated.nextReview;
-    await flashcard.save();
+    const version = (flashcard as any).__v;
+    const updateFilter: Record<string, any> = {
+      _id: req.params.id,
+      user: (req as any).user.id
+    };
+    if (typeof version === 'number') {
+      updateFilter.__v = version;
+    }
 
-    res.status(200).json({ success: true, data: flashcard });
+    const reviewedFlashcard = await Flashcard.findOneAndUpdate(
+      updateFilter,
+      {
+        $set: {
+          interval: updated.interval,
+          repetitions: updated.repetitions,
+          easeFactor: updated.easeFactor,
+          nextReview: updated.nextReview
+        },
+        $inc: { __v: 1 }
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!reviewedFlashcard) {
+      res.status(409).json({
+        success: false,
+        message: 'Flashcard review was already updated. Refresh and try again.'
+      });
+      return;
+    }
+
+    res.status(200).json({ success: true, data: reviewedFlashcard });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
