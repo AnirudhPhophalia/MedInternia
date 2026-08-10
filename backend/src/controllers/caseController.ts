@@ -132,13 +132,40 @@ export const updateCase = asyncHandler(async (req: AuthRequest, res: Response) =
     }
   }
 
+  // Sensitive content changes require a fresh moderation pass before public/RAG exposure.
+  const SENSITIVE_CASE_FIELDS = new Set([
+    "title",
+    "description",
+    "symptoms",
+    "patientInfo",
+    "diagnosis",
+    "treatment",
+    "images",
+    "attachments",
+    "tags",
+  ]);
+  const touchesSensitiveContent = Object.keys(updates).some((field) =>
+    SENSITIVE_CASE_FIELDS.has(field)
+  );
+  const wasApproved = (caseDoc as any).moderationStatus === "approved";
+
+  if (touchesSensitiveContent && wasApproved) {
+    updates.moderationStatus = "pending";
+    updates.reviewedBy = null;
+    updates.reviewedAt = null;
+    updates.moderationReason = undefined;
+  }
+
   const updatedCase = await Case.findByIdAndUpdate(
     getId(req.params.id),
     updates,
     { new: true, runValidators: true }
   ).populate("doctor", "firstName lastName specialization");
 
-  if (updatedCase && (updatedCase as any).moderationStatus === "approved") {
+  if (updatedCase && touchesSensitiveContent && wasApproved) {
+    await enqueueCaseModeration(String((updatedCase as any)._id));
+    await deleteCaseVectors(String((updatedCase as any)._id));
+  } else if (updatedCase && (updatedCase as any).moderationStatus === "approved") {
     await ingestCase(
       String((updatedCase as any)._id),
       `${(updatedCase as any).title}\n${(updatedCase as any).description}`,
