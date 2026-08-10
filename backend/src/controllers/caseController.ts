@@ -672,6 +672,15 @@ export const reviewAICasePost = asyncHandler(
     if (!["approved", "changes_requested", "rejected"].includes(reviewStatus as string)) {
       throw new AppError("reviewStatus mismatch error", 400);
     }
+    const existingSchedule = await AICasePostSchedule.findById(scheduleId);
+    if (!existingSchedule) {
+      throw new AppError("AI case schedule not found", 404);
+    }
+    // Only the owning doctor (or an admin) may review the schedule; otherwise a
+    // doctor could approve/reject another doctor's draft and force it published.
+    if (user.userType !== 'admin' && existingSchedule.author.toString() !== user._id!.toString()) {
+      throw new AppError("You can only review your own AI case schedules", 403);
+    }
     const schedule = await AICasePostSchedule.findByIdAndUpdate(
       scheduleId,
       {
@@ -682,20 +691,35 @@ export const reviewAICasePost = asyncHandler(
       },
       { new: true, runValidators: true }
     );
-    if (!schedule) {
-      throw new AppError("AI case schedule not found", 404);
-    }
     return res.json({ success: true, data: { schedule } });
   }
 );
 
 export const publishDueAICasePosts = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const dueSchedules = await AICasePostSchedule.find({
+    const user = req.user;
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+    const isAdmin = user.userType === 'admin';
+
+    // Non-admins may only publish their own schedules or schedules explicitly
+    // admin-approved (reviewedBy is an admin). Otherwise any doctor could force
+    // another doctor's drafted schedule onto the public feed. Admins may publish
+    // any approved due schedule.
+    const query: mongoose.FilterQuery<InstanceType<typeof AICasePostSchedule>> = {
       isActive: true,
       reviewStatus: "approved",
       nextRunAt: { $lte: new Date() },
-    }).limit(10);
+    };
+    if (!isAdmin) {
+      const adminUserIds = await User.find({ userType: 'admin' }).select('_id');
+      query.$or = [
+        { author: user._id },
+        { reviewedBy: { $in: adminUserIds.map(admin => admin._id) } },
+      ];
+    }
+    const dueSchedules = await AICasePostSchedule.find(query).limit(10);
     const published: any[] = [];
     for (const schedule of dueSchedules) {
       const generatedCase = schedule.generatedCase;
