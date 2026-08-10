@@ -547,6 +547,20 @@ export const moderateCase = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError("Access denied", 403);
   }
   const { status, reason } = req.body;
+  const allowedStatuses = ["approved", "rejected", "changes_requested"];
+  if (!allowedStatuses.includes(status)) {
+    throw new AppError(`Invalid status. Allowed: ${allowedStatuses.join(", ")}`, 400);
+  }
+  const existingCase = await Case.findById(getId(req.params.id));
+  if (!existingCase) {
+    throw new AppError("Case not found", 404);
+  }
+  if (existingCase.moderationStatus !== "pending") {
+    throw new AppError("Only pending cases can be moderated", 400);
+  }
+  if (existingCase.doctor.toString() === user?._id?.toString()) {
+    throw new AppError("You cannot moderate your own case", 403);
+  }
   const updated = await Case.findByIdAndUpdate(
     getId(req.params.id),
     {
