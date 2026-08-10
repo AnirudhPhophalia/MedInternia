@@ -10,12 +10,16 @@ import {
   repostCase,
   solveCase,
   addFollowUp,
+  reviewAICasePost,
+  publishDueAICasePosts,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
 import User from "../../models/User";
 import Notification from "../../models/Notification";
+import AICasePostSchedule from "../../models/AICasePostSchedule";
 import { analyzeCase } from "../../services/aiTaggerService";
+import { deleteCaseVectors, ingestCase } from "../../services/ragService";
 import { createAndEmitNotification } from "../notificationController";
 import { enqueueCaseModeration } from "../../jobs/caseModerationJob";
 
@@ -26,8 +30,10 @@ jest.mock("../../utils/asyncHandler", () => ({
 jest.mock("../../models/Case");
 jest.mock("../../models/User");
 jest.mock("../../models/Notification");
+jest.mock("../../models/AICasePostSchedule");
 jest.mock("../../services/aiTaggerService");
 jest.mock("../../services/ragService", () => ({
+  deleteCaseVectors: jest.fn().mockResolvedValue(undefined),
   ingestCase: jest.fn().mockResolvedValue(undefined),
   suggestCases: jest.fn().mockResolvedValue([]),
 }));
@@ -39,8 +45,11 @@ jest.mock("../../jobs/caseModerationJob", () => ({
 const mockedCase = Case as jest.Mocked<typeof Case>;
 const mockedUser = User as jest.Mocked<typeof User>;
 const mockedAnalyzeCase = analyzeCase as jest.Mock;
+const mockedDeleteCaseVectors = deleteCaseVectors as jest.Mock;
+const mockedIngestCase = ingestCase as jest.Mock;
 const mockedCreateAndEmitNotification = createAndEmitNotification as jest.Mock;
 const mockedEnqueueCaseModeration = enqueueCaseModeration as jest.Mock;
+const mockedAICasePostSchedule = AICasePostSchedule as jest.Mocked<typeof AICasePostSchedule>;
 
 const mockResponse = () => {
   const res: Partial<Response> = {};
@@ -98,11 +107,10 @@ describe("Case Controller", () => {
         title: "Patient Case",
         isPatientCase: true,
         moderationStatus: "pending",
+        pointsAwarded: 0,
         doctor: "patient-1",
       }));
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("patient-1", {
-        $inc: { points: 5 },
-      });
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
       expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("patient-1");
       expect(res.status).toHaveBeenCalledWith(201);
     });
@@ -138,10 +146,9 @@ describe("Case Controller", () => {
         title: "Doctor Case",
         isPatientCase: false,
         moderationStatus: "pending",
+        pointsAwarded: 0,
       }));
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("doctor-1", {
-        $inc: { points: 10 },
-      });
+      expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
       expect(mockedEnqueueCaseModeration).toHaveBeenCalledWith("new-case-id");
       expect(res.status).toHaveBeenCalledWith(201);
     });
@@ -198,6 +205,33 @@ describe("Case Controller", () => {
       expect(updatesPassed).not.toHaveProperty("pointsAwarded");
       expect(updatesPassed).not.toHaveProperty("isActive");
     });
+
+    it("upserts approved case content into RAG after edits", async () => {
+      mockedCase.findById.mockResolvedValue({ doctor: { toString: () => "doctor-1" } } as any);
+      const updatedMock = {
+        _id: "case-123",
+        title: "Updated Case",
+        description: "Updated clinical description",
+        moderationStatus: "approved",
+        specialization: "Cardiology",
+        isPatientCase: false,
+      };
+      const populateMock = jest.fn().mockResolvedValue(updatedMock);
+      mockedCase.findByIdAndUpdate.mockReturnValue({ populate: populateMock } as any);
+
+      const req = mockRequest("doctor-1", "doctor", { id: "case-123" }, {
+        title: "Updated Case",
+      });
+      const res = mockResponse();
+
+      await updateCase(req as any, res as any, jest.fn());
+
+      expect(mockedIngestCase).toHaveBeenCalledWith(
+        "case-123",
+        "Updated Case\nUpdated clinical description",
+        { specialization: "Cardiology", isPatientCase: false }
+      );
+    });
   });
 
   describe("deleteCase", () => {
@@ -222,6 +256,7 @@ describe("Case Controller", () => {
       await deleteCase(req as any, res as any, next);
 
       expect(mockedCase.findByIdAndUpdate).toHaveBeenCalledWith("case-123", { isActive: false });
+      expect(mockedDeleteCaseVectors).toHaveBeenCalledWith("case-123");
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
   });
@@ -658,6 +693,139 @@ describe("Case Controller", () => {
         addFollowUp(req as any, res as any, jest.fn())
       ).rejects.toThrow("Forbidden: you cannot add a follow-up on this case");
       expect(mockedCase.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("reviewAICasePost", () => {
+    it("returns 403 when a doctor reviews another doctor's schedule", async () => {
+      mockedAICasePostSchedule.findById.mockResolvedValue({
+        _id: "schedule-1",
+        author: { toString: () => "doctor-1" },
+      } as any);
+
+      const req = mockRequest("doctor-2", "doctor", { scheduleId: "schedule-1" }, { reviewStatus: "approved" });
+      const res = mockResponse();
+
+      await expect(
+        reviewAICasePost(req as any, res as any, jest.fn())
+      ).rejects.toThrow("You can only review your own AI case schedules");
+
+      expect(mockedAICasePostSchedule.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("allows the owning doctor to review their own schedule", async () => {
+      mockedAICasePostSchedule.findById.mockResolvedValue({
+        _id: "schedule-1",
+        author: { toString: () => "doctor-1" },
+      } as any);
+      const updatedSchedule = { _id: "schedule-1", reviewStatus: "approved" };
+      mockedAICasePostSchedule.findByIdAndUpdate.mockResolvedValue(updatedSchedule as any);
+
+      const req = mockRequest("doctor-1", "doctor", { scheduleId: "schedule-1" }, { reviewStatus: "approved" });
+      const res = mockResponse();
+
+      await reviewAICasePost(req as any, res as any, jest.fn());
+
+      expect(mockedAICasePostSchedule.findByIdAndUpdate).toHaveBeenCalledWith(
+        "schedule-1",
+        expect.objectContaining({ reviewStatus: "approved", reviewedBy: "doctor-1" }),
+        expect.anything()
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: { schedule: updatedSchedule } })
+      );
+    });
+
+    it("allows an admin to review any schedule", async () => {
+      mockedAICasePostSchedule.findById.mockResolvedValue({
+        _id: "schedule-1",
+        author: { toString: () => "doctor-1" },
+      } as any);
+      mockedAICasePostSchedule.findByIdAndUpdate.mockResolvedValue({
+        _id: "schedule-1",
+        reviewStatus: "rejected",
+      } as any);
+
+      const req = mockRequest("admin-1", "admin", { scheduleId: "schedule-1" }, { reviewStatus: "rejected" });
+      const res = mockResponse();
+
+      await reviewAICasePost(req as any, res as any, jest.fn());
+
+      expect(mockedAICasePostSchedule.findByIdAndUpdate).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe("publishDueAICasePosts", () => {
+    const mockSchedule = (_id: string, author: string) => ({
+      _id,
+      author,
+      generatedCase: {
+        title: "AI Case",
+        description: "desc",
+        symptoms: [],
+        patientInfo: {},
+        diagnosis: "diag",
+        treatment: "tx",
+        tags: [],
+        difficulty: "intermediate",
+        specialization: "Cardiology",
+      },
+      reviewedBy: "admin-1",
+      reviewedAt: new Date(),
+      nextRunAt: new Date(),
+      interval: "weekly",
+      isActive: true,
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+
+    it("non-admin doctor only publishes schedules they own or that were admin-approved", async () => {
+      mockedUser.find.mockReturnValue({
+        select: jest.fn().mockResolvedValue([{ _id: "admin-1" }]),
+      } as any);
+      const owned = mockSchedule("schedule-1", "doctor-1");
+      mockedAICasePostSchedule.find.mockReturnValue({
+        limit: jest.fn().mockResolvedValue([owned]),
+      } as any);
+      (mockedCase.create as jest.Mock).mockResolvedValue({ _id: "case-1" } as any);
+
+      const req = mockRequest("doctor-1", "doctor");
+      const res = mockResponse();
+
+      await publishDueAICasePosts(req as any, res as any, jest.fn());
+
+      const findCall = (mockedAICasePostSchedule.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.$or).toEqual([
+        { author: "doctor-1" },
+        { reviewedBy: { $in: ["admin-1"] } },
+      ]);
+      expect(mockedCase.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "AI Case", doctor: "doctor-1" })
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: expect.objectContaining({ count: 1 }) })
+      );
+    });
+
+    it("admin can publish any approved due schedule without the ownership filter", async () => {
+      const schedule = mockSchedule("schedule-1", "doctor-9");
+      mockedAICasePostSchedule.find.mockReturnValue({
+        limit: jest.fn().mockResolvedValue([schedule]),
+      } as any);
+      (mockedCase.create as jest.Mock).mockResolvedValue({ _id: "case-1" } as any);
+      (schedule as any).save = jest.fn().mockResolvedValue(undefined);
+
+      const req = mockRequest("admin-1", "admin");
+      const res = mockResponse();
+
+      await publishDueAICasePosts(req as any, res as any, jest.fn());
+
+      const findCall = (mockedAICasePostSchedule.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.$or).toBeUndefined();
+      expect(mockedCase.create).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: expect.objectContaining({ count: 1 }) })
+      );
     });
   });
 });

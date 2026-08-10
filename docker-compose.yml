@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: medinternia-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: medinternia-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/medinternia
+      - FRONTEND_URL=http://localhost:3001
+      - RAG_SERVICE_URL=http://rag_service:8000
+      - RAG_INTERNAL_SECRET=dev_secret_key
+      - CORS_ORIGINS=http://localhost:3001
+      - JWT_SECRET=dev_jwt_secret
+      - JWT_EXPIRE=7d
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: medinternia-frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+      - NEXT_PUBLIC_API_URL=http://localhost:3000/api
+      - JWT_SECRET=dev_jwt_secret
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nlp:
+    build:
+      context: ./nlp
+      dockerfile: Dockerfile
+    container_name: medinternia-nlp
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+    volumes:
+      - ./nlp/app:/app/app
+    restart: unless-stopped
+
+  rag_service:
+    build:
+      context: ./rag_service
+      dockerfile: Dockerfile
+    container_name: medinternia-rag-service
+    ports:
+      - "8000:8000"
+    environment:
+      - RAG_INTERNAL_SECRET=dev_secret_key
+      - RAG_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+    volumes:
+      - ./rag_service:/app
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:

@@ -12,7 +12,7 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
-import { suggestCases } from "../services/ragService";
+import { deleteCaseVectors, ingestCase, suggestCases } from "../services/ragService";
 import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
@@ -138,6 +138,17 @@ export const updateCase = asyncHandler(async (req: AuthRequest, res: Response) =
     { new: true, runValidators: true }
   ).populate("doctor", "firstName lastName specialization");
 
+  if (updatedCase && (updatedCase as any).moderationStatus === "approved") {
+    await ingestCase(
+      String((updatedCase as any)._id),
+      `${(updatedCase as any).title}\n${(updatedCase as any).description}`,
+      {
+        specialization: (updatedCase as any).specialization,
+        isPatientCase: (updatedCase as any).isPatientCase,
+      }
+    );
+  }
+
   res.json({ success: true, message: "Case updated successfully", data: { case: updatedCase } });
 });
 
@@ -156,6 +167,7 @@ export const deleteCase = asyncHandler(async (req: AuthRequest, res: Response) =
   }
 
   await Case.findByIdAndUpdate(getId(req.params.id), { isActive: false });
+  await deleteCaseVectors(getId(req.params.id));
   res.json({ success: true, message: "Case deleted successfully" });
 });
 
@@ -681,6 +693,15 @@ export const reviewAICasePost = asyncHandler(
     if (!["approved", "changes_requested", "rejected"].includes(reviewStatus as string)) {
       throw new AppError("reviewStatus mismatch error", 400);
     }
+    const existingSchedule = await AICasePostSchedule.findById(scheduleId);
+    if (!existingSchedule) {
+      throw new AppError("AI case schedule not found", 404);
+    }
+    // Only the owning doctor (or an admin) may review the schedule; otherwise a
+    // doctor could approve/reject another doctor's draft and force it published.
+    if (user.userType !== 'admin' && existingSchedule.author.toString() !== user._id!.toString()) {
+      throw new AppError("You can only review your own AI case schedules", 403);
+    }
     const schedule = await AICasePostSchedule.findByIdAndUpdate(
       scheduleId,
       {
@@ -691,20 +712,35 @@ export const reviewAICasePost = asyncHandler(
       },
       { new: true, runValidators: true }
     );
-    if (!schedule) {
-      throw new AppError("AI case schedule not found", 404);
-    }
     return res.json({ success: true, data: { schedule } });
   }
 );
 
 export const publishDueAICasePosts = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const dueSchedules = await AICasePostSchedule.find({
+    const user = req.user;
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+    const isAdmin = user.userType === 'admin';
+
+    // Non-admins may only publish their own schedules or schedules explicitly
+    // admin-approved (reviewedBy is an admin). Otherwise any doctor could force
+    // another doctor's drafted schedule onto the public feed. Admins may publish
+    // any approved due schedule.
+    const query: mongoose.FilterQuery<InstanceType<typeof AICasePostSchedule>> = {
       isActive: true,
       reviewStatus: "approved",
       nextRunAt: { $lte: new Date() },
-    }).limit(10);
+    };
+    if (!isAdmin) {
+      const adminUserIds = await User.find({ userType: 'admin' }).select('_id');
+      query.$or = [
+        { author: user._id },
+        { reviewedBy: { $in: adminUserIds.map(admin => admin._id) } },
+      ];
+    }
+    const dueSchedules = await AICasePostSchedule.find(query).limit(10);
     const published: any[] = [];
     for (const schedule of dueSchedules) {
       const generatedCase = schedule.generatedCase;
@@ -928,11 +964,10 @@ export const createCase = asyncHandler(
         isPatientCase: true,
         specialization: spec,
         moderationStatus: "pending",
-        pointsAwarded: 5,
+        pointsAwarded: 0,
       });
       await newCase.save();
       await enqueueCaseModeration(String(newCase._id));
-      await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
 
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
@@ -948,12 +983,11 @@ export const createCase = asyncHandler(
       isPatientCase: false,
       specialization: spec,
       moderationStatus: "pending",
-      pointsAwarded: 10,
+      pointsAwarded: 0,
     });
 
     await newCase.save();
     await enqueueCaseModeration(String(newCase._id));
-    await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
 
     res.status(201).json({ success: true, data: { case: newCase } });
   }

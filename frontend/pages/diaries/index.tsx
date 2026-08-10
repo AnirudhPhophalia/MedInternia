@@ -45,7 +45,6 @@ type Diary = {
 
 const DiariesPage: React.FC = () => {
     const [profile, setProfile] = useState<InternProfile | null>(null);
-    const [credits, setCredits] = useState<number>(0);
     const [diaries, setDiaries] = useState<Diary[]>([]);
     const [selectedDiary, setSelectedDiary] = useState<Diary | null>(null);
     const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
@@ -100,18 +99,30 @@ const handleCreateDiary = async () => {
     setNewDiaryTitle('');
 };
     useEffect(() => {
-        // Hardcoded sample data for frontend testing
-        setProfile({
-            name: 'Dr. Anushka Verma',
-            email: 'anushka.verma@medinternia.com',
-            imageUrl: '/public/ram.jpg',
-            badge: 'Verified Intern',
-            credits: 120,
-            completion: 80,
-        });
-        setCredits(120);
-        
-    loadDiaries();}, []);
+        const loadProfile = async () => {
+            try {
+                const [profileData, creditsData] = await Promise.all([
+                    getInternProfile(),
+                    getInternCredits(),
+                ]);
+                const resolvedCredits = Number(creditsData || profileData?.credits || 0);
+                setProfile({
+                    name: profileData?.name || [profileData?.firstName, profileData?.lastName].filter(Boolean).join(' ') || profileData?.email || 'Your profile',
+                    email: profileData?.email || '',
+                    imageUrl: profileData?.imageUrl || profileData?.profilePicture,
+                    badge: profileData?.badge || profileData?.userType || 'Member',
+                    credits: resolvedCredits,
+                    completion: Number(profileData?.completion || profileData?.profileCompletion || 0),
+                });
+            } catch (error) {
+                console.error('Failed to load diary profile:', error);
+                setProfile(null);
+            }
+        };
+
+        loadProfile();
+        loadDiaries();
+    }, []);
 
     const handleAddEntry = async () => {
     if (!selectedDiary || !newEntryDay || !newEntryContent) {

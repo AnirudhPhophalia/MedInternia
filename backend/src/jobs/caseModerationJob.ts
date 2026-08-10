@@ -1,6 +1,7 @@
 import { Agenda, Job } from "agenda";
 import { createAgenda } from "../config/agenda";
 import Case from "../models/Case";
+import User from "../models/User";
 import { checkCompliance } from "../services/nerService";
 import { ingestCase } from "../services/ragService";
 
@@ -66,6 +67,11 @@ export async function processCaseModeration(caseId: string): Promise<void> {
     reviewedAt,
   };
 
+  const pointsToAward = caseDoc.isPatientCase ? 5 : 10;
+  if (status === "approved") {
+    contentUpdate.pointsAwarded = pointsToAward;
+  }
+
   if (isFlagged) {
     // Preserve originals on first moderation so the author can see what changed.
     // $setOnInsert-style logic: only set originalTitle if it isn't already set.
@@ -99,6 +105,10 @@ export async function processCaseModeration(caseId: string): Promise<void> {
   );
 
   if (status === "approved" && updatedCase) {
+    await User.findByIdAndUpdate(caseDoc.doctor, {
+      $inc: { points: pointsToAward },
+    });
+
     try {
       // Use the original (unredacted) text for RAG ingestion on approved cases.
       await ingestCase(

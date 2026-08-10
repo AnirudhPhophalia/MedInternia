@@ -16,17 +16,23 @@ class MedicalRAGService:
 
     def ingest_case(self, case_id: str, text: str, metadata: dict):
         chunks = self.text_splitter.split_text(text)
+        self.delete_case(case_id)
         
         # Ensure metadata contains the case_id
         doc_metadata = metadata.copy()
         doc_metadata["case_id"] = case_id
         
         metadatas = [doc_metadata for _ in chunks]
+        ids = [f"{case_id}:{index}" for index, _ in enumerate(chunks)]
         
         self.vector_store.add_texts(
             texts=chunks,
-            metadatas=metadatas
+            metadatas=metadatas,
+            ids=ids
         )
+
+    def delete_case(self, case_id: str):
+        self.vector_store._collection.delete(where={"case_id": case_id})
 
     def get_similar_cases(self, query_text: str, k: int = 3):
         results = self.vector_store.similarity_search_with_score(query_text, k=k)

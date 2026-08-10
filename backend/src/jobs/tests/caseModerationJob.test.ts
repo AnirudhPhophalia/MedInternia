@@ -1,5 +1,6 @@
 import { Agenda } from "agenda";
 import Case from "../../models/Case";
+import User from "../../models/User";
 import { checkCompliance } from "../../services/nerService";
 import { ingestCase } from "../../services/ragService";
 import {
@@ -10,12 +11,14 @@ import {
 } from "../caseModerationJob";
 
 jest.mock("../../models/Case");
+jest.mock("../../models/User");
 jest.mock("../../services/nerService");
 jest.mock("../../services/ragService", () => ({
   ingestCase: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockedCase = Case as jest.Mocked<typeof Case>;
+const mockedUser = User as jest.Mocked<typeof User>;
 const mockedCheckCompliance = checkCompliance as jest.Mock;
 const mockedIngestCase = ingestCase as jest.Mock;
 
@@ -42,6 +45,7 @@ describe("case moderation job", () => {
       patientInfo: { age: 28 },
       specialization: "Cardiology",
       isPatientCase: false,
+      doctor: "doctor-1",
       get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance
@@ -61,6 +65,7 @@ describe("case moderation job", () => {
       expect.objectContaining({
         $set: expect.objectContaining({
           moderationStatus: "approved",
+          pointsAwarded: 10,
         }),
         $push: {
           moderationAuditTrail: expect.objectContaining({ status: "approved" }),
@@ -71,6 +76,9 @@ describe("case moderation job", () => {
     const callArgs = mockedCase.findOneAndUpdate.mock.calls[0][1] as any;
     expect(callArgs.$set).not.toHaveProperty("title");
     expect(callArgs.$set).not.toHaveProperty("description");
+    expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("doctor-1", {
+      $inc: { points: 10 },
+    });
 
     // RAG ingestion uses the ORIGINAL text, not the compliance service output.
     expect(mockedIngestCase).toHaveBeenCalledWith(
@@ -87,6 +95,7 @@ describe("case moderation job", () => {
       patientInfo: {},
       specialization: "General Medicine",
       isPatientCase: true,
+      doctor: "patient-1",
       get: jest.fn().mockReturnValue(undefined), // no originalTitle/Description yet
     } as any);
     mockedCheckCompliance
@@ -115,6 +124,7 @@ describe("case moderation job", () => {
         }),
       })
     );
+    expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
     expect(mockedIngestCase).not.toHaveBeenCalled();
   });
 
@@ -134,6 +144,7 @@ describe("case moderation job", () => {
       patientInfo: {},
       specialization: "Cardiology",
       isPatientCase: false,
+      doctor: "doctor-1",
       get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance
@@ -144,6 +155,7 @@ describe("case moderation job", () => {
     await processCaseModeration("case-race");
 
     expect(mockedIngestCase).not.toHaveBeenCalled();
+    expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
   it("persists a failed terminal state after retries are exhausted", async () => {

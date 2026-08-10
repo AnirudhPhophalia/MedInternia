@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore, getJobOpportunities } from "../jobController";
+import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore, getJobOpportunities, getJobOpportunityById } from "../jobController";
 import { AuthRequest } from "../../middleware/auth";
 import JobOpportunity from "../../models/JobOpportunity";
 import User from "../../models/User";
@@ -174,6 +174,29 @@ describe("Job Controller ownership checks (issue #410)", () => {
     });
 
     describe("getJobOpportunities search and filter", () => {
+        it("hides inactive jobs by default", async () => {
+            const chainable = {
+                populate: jest.fn().mockReturnThis(),
+                sort: jest.fn().mockReturnThis(),
+                skip: jest.fn().mockReturnThis(),
+                limit: jest.fn().mockResolvedValue([])
+            };
+            (mockedJobOpportunity.find as jest.Mock).mockReturnValue(chainable as any);
+            (mockedJobOpportunity.countDocuments as jest.Mock).mockResolvedValue(0);
+
+            const req = { query: {} } as any;
+            const res = mockResponse();
+
+            await getJobOpportunities(req, res);
+
+            expect(mockedJobOpportunity.find).toHaveBeenCalledWith(
+                expect.objectContaining({ isActive: true })
+            );
+            expect(mockedJobOpportunity.countDocuments).toHaveBeenCalledWith(
+                expect.objectContaining({ isActive: true })
+            );
+        });
+
         it("applies search query filter on title or description", async () => {
             const chainable = {
                 populate: jest.fn().mockReturnThis(),
@@ -206,6 +229,56 @@ describe("Job Controller ownership checks (issue #410)", () => {
             expect(res.json).toHaveBeenCalledWith(
                 expect.objectContaining({ success: true })
             );
+        });
+    });
+
+    describe("getJobOpportunityById", () => {
+        it("only loads active jobs for detail views", async () => {
+            const job = {
+                toObject: () => ({
+                    _id: "job-123",
+                    title: "Medical internship",
+                    postedBy: "owner-1",
+                    requirements: {},
+                }),
+            };
+            const chainable = {
+                populate: jest.fn().mockReturnThis(),
+            };
+            chainable.populate
+                .mockReturnValueOnce(chainable)
+                .mockResolvedValueOnce(job);
+            (mockedJobOpportunity.findOne as jest.Mock).mockReturnValue(chainable);
+
+            const req = mockRequest("job-123", "user-1");
+            const res = mockResponse();
+
+            await getJobOpportunityById(req as any, res);
+
+            expect(mockedJobOpportunity.findOne).toHaveBeenCalledWith({
+                _id: "job-123",
+                isActive: true,
+            });
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+        });
+
+        it("returns 404 for inactive or missing detail records", async () => {
+            const chainable = {
+                populate: jest.fn().mockReturnThis(),
+            };
+            chainable.populate
+                .mockReturnValueOnce(chainable)
+                .mockResolvedValueOnce(null);
+            (mockedJobOpportunity.findOne as jest.Mock).mockReturnValue(chainable);
+            const res = mockResponse();
+
+            await getJobOpportunityById(mockRequest("job-123", "user-1") as any, res);
+
+            expect(res.status).toHaveBeenCalledWith(404);
+            expect(res.json).toHaveBeenCalledWith({
+                success: false,
+                message: "Job opportunity not found",
+            });
         });
     });
 });
