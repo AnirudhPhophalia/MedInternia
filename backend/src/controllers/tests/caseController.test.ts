@@ -352,7 +352,7 @@ describe("Case Controller", () => {
   describe("getPinnedComments", () => {
     it("returns pinned comments for a valid caseId", async () => {
       const pinnedComment = { _id: "comment-1", content: "Pinned", isPinned: true };
-      mockedCase.findById.mockResolvedValue({
+      mockedCase.findOne.mockResolvedValue({
         comments: [pinnedComment, { _id: "comment-2", content: "Regular", isPinned: false }],
       } as any);
       const req = mockRequest("user-1", "doctor", { caseId: "case-123" });
@@ -360,7 +360,9 @@ describe("Case Controller", () => {
 
       await getPinnedComments(req as any, res as any, jest.fn());
 
-      expect(mockedCase.findById).toHaveBeenCalledWith("case-123");
+      expect(mockedCase.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "case-123" })
+      );
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: { comments: [pinnedComment] },
@@ -368,7 +370,7 @@ describe("Case Controller", () => {
     });
 
     it("preserves the existing 404 response for a nonexistent case", async () => {
-      mockedCase.findById.mockResolvedValue(null);
+      mockedCase.findOne.mockResolvedValue(null);
       const req = mockRequest("user-1", "doctor", { caseId: "missing-case" });
       const res = mockResponse();
 
@@ -378,7 +380,7 @@ describe("Case Controller", () => {
     });
 
     it("uses caseId rather than an unrelated id parameter", async () => {
-      mockedCase.findById.mockResolvedValue({ comments: [] } as any);
+      mockedCase.findOne.mockResolvedValue({ comments: [] } as any);
       const req = mockRequest("user-1", "doctor", {
         caseId: "declared-case-id",
         id: "wrong-id",
@@ -387,8 +389,12 @@ describe("Case Controller", () => {
 
       await getPinnedComments(req as any, res as any, jest.fn());
 
-      expect(mockedCase.findById).toHaveBeenCalledWith("declared-case-id");
-      expect(mockedCase.findById).not.toHaveBeenCalledWith("wrong-id");
+      expect(mockedCase.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "declared-case-id" })
+      );
+      expect(mockedCase.findOne).not.toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "wrong-id" })
+      );
     });
   });
 
