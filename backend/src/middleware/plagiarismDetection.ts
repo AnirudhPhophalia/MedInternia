@@ -38,7 +38,6 @@ export const checkPlagiarismAndAI = async (req: Request, res: Response, next: Ne
       // Attach the flag to the request so the controller can mark the case for manual admin review
       req.body.isFlaggedForReview = true;
       req.body.reviewReason = flagReason;
-      req.body.status = 'pending_review'; // Override default status
     } else {
       console.log('[Security Guardrail] Scan complete. Content appears original.');
     }

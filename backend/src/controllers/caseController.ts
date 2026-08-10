@@ -132,6 +132,11 @@ export const updateCase = asyncHandler(async (req: AuthRequest, res: Response) =
     }
   }
 
+  if (req.body.isFlaggedForReview) {
+    updates.isFlaggedForReview = true;
+    updates.plagiarismReviewReason = req.body.reviewReason;
+  }
+
   const updatedCase = await Case.findByIdAndUpdate(
     getId(req.params.id),
     updates,
@@ -956,6 +961,8 @@ export const createCase = asyncHandler(
         specialization: spec,
         moderationStatus: "pending",
         pointsAwarded: 0,
+        isFlaggedForReview: Boolean(req.body.isFlaggedForReview),
+        plagiarismReviewReason: req.body.isFlaggedForReview ? req.body.reviewReason : undefined,
       });
       await newCase.save();
       await enqueueCaseModeration(String(newCase._id));
@@ -975,6 +982,8 @@ export const createCase = asyncHandler(
       specialization: spec,
       moderationStatus: "pending",
       pointsAwarded: 0,
+      isFlaggedForReview: Boolean(req.body.isFlaggedForReview),
+      plagiarismReviewReason: req.body.isFlaggedForReview ? req.body.reviewReason : undefined,
     });
 
     await newCase.save();

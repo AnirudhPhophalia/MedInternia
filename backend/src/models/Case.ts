@@ -46,6 +46,8 @@ export interface ICase extends Document {
   isRareDisease?: boolean;
   isPatientCase: boolean; // True if posted by patient
   moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'failed';
+  isFlaggedForReview?: boolean;
+  plagiarismReviewReason?: string;
   moderationReason?: string;
   reviewedBy?: mongoose.Types.ObjectId;
   reviewedAt?: Date;
@@ -236,6 +238,16 @@ const CaseSchema = new Schema<ICase>({
     type: String,
     enum: ['pending', 'approved', 'rejected', 'changes_requested', 'failed'],
     default: 'pending'
+  },
+  isFlaggedForReview: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  plagiarismReviewReason: {
+    type: String,
+    trim: true,
+    maxlength: [1000, 'Plagiarism review reason cannot be more than 1000 characters']
   },
   moderationReason: {
     type: String,
