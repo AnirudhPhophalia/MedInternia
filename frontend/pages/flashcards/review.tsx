@@ -18,6 +18,8 @@ const QUALITY_OPTIONS = [
   { label: 'Perfect', score: 5, color: '#8b5cf6', desc: 'Instant recall' },
 ];
 
+const REVIEW_PAGE_LIMIT = 100;
+
 export default function FlashcardReviewPage() {
   const router = useRouter();
   const [cards, setCards] = useState<any[]>([]);
@@ -32,8 +34,21 @@ export default function FlashcardReviewPage() {
   useEffect(() => {
     const fetchDue = async () => {
       try {
-        const res = await api.get('/flashcards/due');
-        setCards(res.data.data);
+        const firstPage = await api.get('/flashcards/due', {
+          params: { page: 1, limit: REVIEW_PAGE_LIMIT },
+        });
+        const pagination = firstPage.data.pagination;
+        const totalPages = pagination?.totalPages || 1;
+        const dueCards = [...(firstPage.data.data || [])];
+
+        for (let page = 2; page <= totalPages; page += 1) {
+          const pageRes = await api.get('/flashcards/due', {
+            params: { page, limit: REVIEW_PAGE_LIMIT },
+          });
+          dueCards.push(...(pageRes.data.data || []));
+        }
+
+        setCards(dueCards);
       } catch {
         setError('Failed to load cards');
       } finally {
