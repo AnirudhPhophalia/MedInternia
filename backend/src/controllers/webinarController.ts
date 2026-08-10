@@ -368,7 +368,6 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
     const userId = req.user?._id?.toString();
     const isHostOrAdmin = !!userId && (
       req.user!.userType === 'admin' ||
-      req.user!.userType === 'moderator' ||
       webinar.host._id?.toString() === userId ||
       webinar.host.toString() === userId
     );
