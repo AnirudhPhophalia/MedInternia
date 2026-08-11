@@ -108,12 +108,20 @@ export const enrollInPath = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('Already enrolled in this learning path', 400);
   }
 
-  const userPath = await UserLearningPath.create({
-    user: req.user._id,
-    learningPath: id,
-    completedSteps: [],
-    isCompleted: false
-  });
+  let userPath;
+  try {
+    userPath = await UserLearningPath.create({
+      user: req.user._id,
+      learningPath: id,
+      completedSteps: [],
+      isCompleted: false
+    });
+  } catch (err: any) {
+    if (err?.code === 11000) {
+      throw new AppError('Already enrolled in this learning path', 409);
+    }
+    throw err;
+  }
 
   res.status(201).json({
     success: true,
