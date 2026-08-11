@@ -616,11 +616,25 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     const { userId, attended } = req.body;
     const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findById(id);
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized to mark attendance'
+        message: 'Webinar not found'
+      });
+    }
+
+    if (webinar.host.toString() !== hostId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the host can mark attendance'
+      });
+    }
+
+    if (webinar.status !== 'live' && webinar.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance can only be marked for a live or completed webinar'
       });
     }
 
