@@ -1,4 +1,4 @@
-import { Agenda } from "agenda";
+type Agenda = any;
 import Case from "../../models/Case";
 import User from "../../models/User";
 import { checkCompliance } from "../../services/nerService";
@@ -15,6 +15,20 @@ jest.mock("../../models/User");
 jest.mock("../../services/nerService");
 jest.mock("../../services/ragService", () => ({
   ingestCase: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock("../../config/agenda", () => ({
+  createAgenda: jest.fn().mockReturnValue({
+    define: jest.fn(),
+    on: jest.fn(),
+    create: jest.fn().mockReturnValue({
+      unique: jest.fn().mockReturnThis(),
+      schedule: jest.fn().mockReturnThis(),
+      save: jest.fn().mockResolvedValue(undefined),
+    }),
+    start: jest.fn().mockResolvedValue(undefined),
+    drain: jest.fn().mockResolvedValue(undefined),
+    stop: jest.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 const mockedCase = Case as jest.Mocked<typeof Case>;

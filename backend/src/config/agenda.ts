@@ -1,6 +1,6 @@
-import Agenda from "agenda";
+const Agenda = require("agenda");
 
-export const createAgenda = (): Agenda => {
+export const createAgenda = (): any => {
   const mongoUri =
     process.env.MONGODB_URI || "mongodb://localhost:27017/healthcare_db";
 
@@ -13,7 +13,7 @@ export const createAgenda = (): Agenda => {
     maxConcurrency: 5,
   });
 
-  agenda.on("error", (error) => {
+  agenda.on("error", (error: any) => {
     console.error("Background job scheduler error:", error);
   });
 

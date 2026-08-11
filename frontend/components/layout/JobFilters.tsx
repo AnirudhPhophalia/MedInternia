@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -16,9 +16,11 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Stack
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import BodyMapFilter from '../BodyMapFilter';
 
 export interface JobFiltersProps {
   searchQuery?: string;
@@ -66,6 +68,7 @@ export default function JobFilters({
   onLocationChange,
   onClear
 }: JobFiltersProps) {
+  const [filterMode, setFilterMode] = useState<'bodymap' | 'list'>('bodymap');
 
   const handleSpecialtyToggle = (specValue: string) => {
     const val = specValue.toLowerCase();
@@ -111,53 +114,86 @@ export default function JobFilters({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Task 2: Dropdown filter for Specialty */}
-      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 1 }}>
-        Specialty Dropdown
-      </Typography>
-      <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-        <InputLabel id="specialty-dropdown-label">Select Specialty</InputLabel>
-        <Select
-          labelId="specialty-dropdown-label"
-          id="specialty-dropdown-select"
-          value={selectedDropdownValue}
-          label="Select Specialty"
-          onChange={(e) => {
-            const val = e.target.value;
-            if (!val) {
-              onSpecialtiesChange([]);
-            } else {
-              onSpecialtiesChange([val]);
-            }
-          }}
-        >
-          <MenuItem value=""><em>All Specialties</em></MenuItem>
-          {SPECIALTY_OPTIONS.map((spec) => (
-            <MenuItem key={spec.value} value={spec.value}>
-              {spec.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      {/* Specialty Filter with Interactive Body Map option */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Typography variant="subtitle2" fontWeight={700} sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 1 }}>
+          Specialty Filter
+        </Typography>
+        <Stack direction="row" spacing={0.5}>
+          <Button
+            size="small"
+            variant={filterMode === 'bodymap' ? 'contained' : 'text'}
+            onClick={() => setFilterMode('bodymap')}
+            sx={{ fontSize: '0.7rem', textTransform: 'none', px: 1, py: 0.2 }}
+          >
+            🫀 Body Map
+          </Button>
+          <Button
+            size="small"
+            variant={filterMode === 'list' ? 'contained' : 'text'}
+            onClick={() => setFilterMode('list')}
+            sx={{ fontSize: '0.7rem', textTransform: 'none', px: 1, py: 0.2 }}
+          >
+            📋 List
+          </Button>
+        </Stack>
+      </Box>
 
-      <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-        Or select multiple specialties:
-      </Typography>
-      <FormGroup sx={{ mb: 3, maxHeight: 180, overflowY: 'auto', pr: 1 }}>
-        {SPECIALTY_OPTIONS.map((spec) => (
-          <FormControlLabel
-            key={spec.value}
-            control={
-              <Checkbox 
-                size="small" 
-                checked={specialties.includes(spec.value)}
-                onChange={() => handleSpecialtyToggle(spec.value)}
-              />
-            }
-            label={<Typography variant="body2">{spec.label}</Typography>}
+      {filterMode === 'bodymap' ? (
+        <Box sx={{ mb: 3 }}>
+          <BodyMapFilter
+            selectedSpecialties={specialties}
+            onToggleSpecialty={handleSpecialtyToggle}
+            onClearAll={() => onSpecialtiesChange([])}
           />
-        ))}
-      </FormGroup>
+        </Box>
+      ) : (
+        <>
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel id="specialty-dropdown-label">Select Specialty</InputLabel>
+            <Select
+              labelId="specialty-dropdown-label"
+              id="specialty-dropdown-select"
+              value={selectedDropdownValue}
+              label="Select Specialty"
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  onSpecialtiesChange([]);
+                } else {
+                  onSpecialtiesChange([val]);
+                }
+              }}
+            >
+              <MenuItem value=""><em>All Specialties</em></MenuItem>
+              {SPECIALTY_OPTIONS.map((spec) => (
+                <MenuItem key={spec.value} value={spec.value}>
+                  {spec.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+            Or select multiple specialties:
+          </Typography>
+          <FormGroup sx={{ mb: 3, maxHeight: 180, overflowY: 'auto', pr: 1 }}>
+            {SPECIALTY_OPTIONS.map((spec) => (
+              <FormControlLabel
+                key={spec.value}
+                control={
+                  <Checkbox 
+                    size="small" 
+                    checked={specialties.includes(spec.value)}
+                    onChange={() => handleSpecialtyToggle(spec.value)}
+                  />
+                }
+                label={<Typography variant="body2">{spec.label}</Typography>}
+              />
+            ))}
+          </FormGroup>
+        </>
+      )}
 
       <Divider sx={{ mb: 3 }} />
 

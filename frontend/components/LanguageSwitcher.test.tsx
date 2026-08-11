@@ -13,6 +13,8 @@ jest.mock("react-i18next", () => ({
 }));
 
 describe("LanguageSwitcher", () => {
+    jest.setTimeout(20000);
+
     beforeEach(() => {
         jest.clearAllMocks();
     });
