@@ -428,7 +428,14 @@ export const unpinComment = asyncHandler(async (req: AuthRequest, res: Response)
 });
 
 export const getPinnedComments = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.caseId));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.caseId),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) throw new AppError("Case not found", 404);
   const pinned = caseDoc.comments.filter((c: any) => c.isPinned === true);
   res.json({ success: true, data: { comments: pinned } });
@@ -626,7 +633,14 @@ export const generateAISuggestions = asyncHandler(async (req: AuthRequest, res: 
 });
 
 export const getCaseAISuggestions = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) throw new AppError("Case not found", 404);
   res.json({ success: true, data: { aiAnalysis: (caseDoc as any).aiAnalysis || null } });
 });
@@ -675,7 +689,14 @@ export const addFollowUp = asyncHandler(async (req: AuthRequest, res: Response) 
 });
 
 export const getCaseFollowUps = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) throw new AppError("Case not found", 404);
   res.json({ success: true, data: { followUps: (caseDoc as any).followUps || [] } });
 });
@@ -1034,7 +1055,14 @@ export const createCase = asyncHandler(
 );
 
 export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) {
     throw new AppError("Case not found", 404);
   }
