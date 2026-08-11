@@ -67,16 +67,19 @@ export const getCollectionById = async (req: Request, res: Response): Promise<vo
     }
 
     // Reuse the project's standard visibility filter for non-owners, non-admins
-    const isPublicViewer = collection.isPublic && !isOwner && !isAdminOrMod;
+    const isAdminOrMod = userType === 'admin' || userType === 'moderator';
 
-    await collection.populate({
-      path: 'cases',
-      match: isPublicViewer
-        ? { isActive: { $ne: false }, $or: [{ moderationStatus: 'approved' }, { moderationStatus: { $exists: false } }] }
-        : undefined,
-      populate: { path: 'doctor', select: 'firstName lastName profilePicture specialization' }
-    });
-
+// FIX: Apply moderation filter to all non-admin/non-moderator users
+await collection.populate({
+  path: 'cases',
+  match: isAdminOrMod
+    ? {} // Admins and moderators see all cases
+    : {
+        isActive: { $ne: false },
+        moderationStatus: 'approved'
+      }, // All other users (including owners) see only approved, active cases
+  populate: { path: 'doctor', select: 'firstName lastName profilePicture specialization' }
+});
     res.status(200).json({ success: true, data: collection });
   } catch (error: any) {
     console.error('Get collection by ID error:', error);
@@ -111,6 +114,31 @@ export const addCaseToCollection = async (req: Request, res: Response): Promise<
     // Check if case exists
     const caseItem = await Case.findById(caseId);
     if (!caseItem) {
+  res.status(404).json({ success: false, message: 'Case not found' });
+  return;
+}
+// NEW CODE STARTS HERE - Add these validation checks:
+
+// Validate moderation status
+if (caseItem.moderationStatus !== 'approved') {
+  res.status(400).json({
+    success: false,
+    message: "Only approved cases can be added to collections",
+    currentStatus: caseItem.moderationStatus,
+  });
+  return;
+}
+
+// Validate active status
+if (caseItem.isActive === false) {
+  res.status(400).json({
+    success: false,
+    message: "Only active cases can be added to collections",
+  });
+  return;
+}
+
+// NEW CODE ENDS HERE {
       res.status(404).json({ success: false, message: 'Case not found' });
       return;
     }
