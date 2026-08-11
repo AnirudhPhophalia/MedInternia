@@ -68,7 +68,7 @@ const RoleUpgradeRequestSchema = new Schema<IRoleUpgradeRequest>(
 // One active (pending) request per intern at a time
 RoleUpgradeRequestSchema.index(
   { intern: 1, status: 1 },
-  { unique: false },
+  { unique: true },
 );
 
 // Fast admin query for pending requests

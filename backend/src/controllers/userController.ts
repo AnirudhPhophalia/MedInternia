@@ -742,7 +742,13 @@ export const requestRoleUpgrade = async (req: AuthRequest, res: Response) => {
       message: 'Role upgrade request submitted. An admin will review your request.',
       data: { requestId: upgradeRequest._id, status: upgradeRequest.status },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'You already have a pending role upgrade request. Please wait for admin review.',
+      });
+    }
     console.error('requestRoleUpgrade error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
