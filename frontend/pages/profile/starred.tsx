@@ -11,6 +11,7 @@ import {
   Alert,
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
+import api from "../../utils/api";
 
 interface CaseItem {
   _id: string; 
@@ -22,31 +23,36 @@ export default function StarredPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch the user's real starred cases on page load
   useEffect(() => {
-    fetch("/api/cases/starred") 
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load your starred cases.");
-        return res.json();
-      })
-      .then((data) => {
-        setStarredCases(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+    let cancelled = false;
+
+    const loadStarred = async () => {
+      try {
+        const res = await api.get("/cases/starred");
+        const cases = res.data?.data?.cases ?? [];
+        if (!cancelled) {
+          setStarredCases(cases);
+          setError(null);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || err.message || "Failed to load your starred cases.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadStarred();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Communicate the toggle back to the server and update local UI
   const handleUnstar = async (caseId: string) => {
     try {
-      const res = await fetch(`/api/cases/${caseId}/star`, { method: "POST" });
-      if (res.ok) {
-        // Optimistically slice it out of the UI list immediately
-        setStarredCases((prev) => prev.filter((item) => item._id !== caseId));
-      }
+      await api.post(`/cases/${caseId}/star`);
+      setStarredCases((prev) => prev.filter((item) => item._id !== caseId));
     } catch (err) {
       console.error("Failed to update star status:", err);
     }
@@ -73,7 +79,7 @@ export default function StarredPage() {
 
         {!loading && !error && starredCases.length === 0 ? (
           <Typography color="text.secondary" align="center" py={4}>
-            You haven't starred any cases yet.
+            You haven&apos;t starred any cases yet.
           </Typography>
         ) : (
           <List>
