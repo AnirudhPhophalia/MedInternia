@@ -297,7 +297,7 @@ export const getWebinars = async (req: Request, res: Response) => {
         { $limit: Number(limit) }
       ]);
       webinars = await Webinar.populate(webinars, [
-        { path: 'host', select: 'firstName lastName specialization isVerifiedDoctor profilePicturePublicId' }
+        { path: 'host', select: 'firstName lastName specialization isVerifiedDoctor profilePicture' }
       ]);
     } else if (sortBy === 'highest_rated') {
       webinars = await Webinar.aggregate([
@@ -314,13 +314,13 @@ export const getWebinars = async (req: Request, res: Response) => {
         { $limit: Number(limit) }
       ]);
       webinars = await Webinar.populate(webinars, [
-        { path: 'host', select: 'firstName lastName specialization isVerifiedDoctor profilePicturePublicId' }
+        { path: 'host', select: 'firstName lastName specialization isVerifiedDoctor profilePicture' }
       ]);
     } else {
       const sort: any = {};
       sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
       webinars = await Webinar.find(filter)
-        .populate('host', 'firstName lastName specialization isVerifiedDoctor profilePicturePublicId')
+        .populate('host', 'firstName lastName specialization isVerifiedDoctor profilePicture')
         .sort(sort)
         .skip(skip)
         .limit(Number(limit));
@@ -354,8 +354,8 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
 
     const webinar = await Webinar.findById(id)
-      .populate('host', 'firstName lastName specialization isVerifiedDoctor profilePicturePublicId bio')
-      .populate('participants.user', 'firstName lastName userType profilePicturePublicId');
+      .populate('host', 'firstName lastName specialization isVerifiedDoctor profilePicture bio')
+      .populate('participants.user', 'firstName lastName userType profilePicture');
 
     if (!webinar) {
       return res.status(404).json({
@@ -953,7 +953,7 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
     });
 
     await webinar.save();
-    await webinar.populate('qna.author', 'firstName lastName profilePicturePublicId');
+    await webinar.populate('qna.author', 'firstName lastName profilePicture');
 
     const io = getSocketIO();
     if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
@@ -989,7 +989,7 @@ export const upvoteQuestion = async (req: AuthRequest, res: Response) => {
     }
 
     await webinar.save();
-    await webinar.populate('qna.author', 'firstName lastName profilePicturePublicId');
+    await webinar.populate('qna.author', 'firstName lastName profilePicture');
 
     const io = getSocketIO();
     if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
@@ -1015,7 +1015,7 @@ export const markQuestionAnswered = async (req: AuthRequest, res: Response) => {
 
     question.isAnswered = true;
     await webinar.save();
-    await webinar.populate('qna.author', 'firstName lastName profilePicturePublicId');
+    await webinar.populate('qna.author', 'firstName lastName profilePicture');
 
     const io = getSocketIO();
     if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);

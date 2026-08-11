@@ -1,6 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { generateSignedUrl } from '../utils/cloudinary';
 import type { AppRole } from '../middleware/permissions';
 import { PASSWORD_REGEX, PASSWORD_VALIDATION_MESSAGE } from '../utils/passwordValidation';
 
@@ -414,30 +413,5 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
 // Index for better performance. email and licenseNumber have unique indexes
 // declared directly on their fields (email: unique, licenseNumber: sparse+unique).
 UserSchema.index({ userType: 1 });
-
-// Issue #1230: schema stores profilePicturePublicId; expose signed profilePicture
-// on serialize and never leak the Cloudinary public id in API responses.
-UserSchema.set('toJSON', {
-  transform(_doc, ret: any) {
-    const publicId = ret.profilePicturePublicId;
-    delete ret.profilePicturePublicId;
-    delete ret.password;
-    delete ret.passwordHash;
-    if (publicId) {
-      ret.profilePicture = generateSignedUrl(publicId, 900);
-    }
-    return ret;
-  }
-});
-UserSchema.set('toObject', {
-  transform(_doc, ret: any) {
-    const publicId = ret.profilePicturePublicId;
-    delete ret.profilePicturePublicId;
-    if (publicId) {
-      ret.profilePicture = generateSignedUrl(publicId, 900);
-    }
-    return ret;
-  }
-});
 
 export default mongoose.model<IUser>('User', UserSchema);

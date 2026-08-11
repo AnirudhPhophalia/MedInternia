@@ -12,14 +12,11 @@ export const resolveProfilePictureUrl = (user: IUser): IUser & { profilePicture?
   // Always remove the stored URL field to prevent exposure of unsigned URLs
   delete (userObj as any).profilePicture;
 
-  const publicId = (user as any).profilePicturePublicId || userObj.profilePicturePublicId;
-  delete userObj.profilePicturePublicId;
-
   // If public ID exists, generate a signed URL for the response
-  if (publicId) {
+  if ((user as any).profilePicturePublicId) {
     return {
       ...userObj,
-      profilePicture: generateSignedUrl(publicId, 900)
+      profilePicture: generateSignedUrl((user as any).profilePicturePublicId, 900)
     };
   }
 

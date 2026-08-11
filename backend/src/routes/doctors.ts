@@ -12,7 +12,7 @@ const router = Router();
 // emergencyContact, medicalHistory, allergies, loginAttempts, lockoutUntil,
 // and passwordChangedAt which have no business being visible to anonymous callers.
 const DOCTOR_PUBLIC_SELECT =
-  'firstName lastName specialization experience qualifications isVerifiedDoctor profilePicturePublicId bio createdAt';
+  'firstName lastName specialization experience qualifications isVerifiedDoctor profilePicture bio createdAt';
 
 // Get all doctors
 router.get('/', optionalAuthenticate, async (req: AuthRequest, res) => {

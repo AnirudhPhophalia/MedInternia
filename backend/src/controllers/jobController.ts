@@ -266,7 +266,7 @@ export const getJobOpportunityById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const jobOpportunity = await JobOpportunity.findOne({ _id: id, isActive: true })
-      .populate('postedBy', 'firstName lastName specialization isVerifiedDoctor profilePicturePublicId')
+      .populate('postedBy', 'firstName lastName specialization isVerifiedDoctor profilePicture')
       .populate('requirements.requiredBadges', 'name description icon color');
 
     if (!jobOpportunity) {
