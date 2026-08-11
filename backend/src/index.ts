@@ -140,11 +140,39 @@ const io = new SocketIOServer(httpServer, {
 setSocketIO(io);
 
 // Socket.io JWT Authentication Middleware
+const parseCookieValue = (cookieHeader: string | undefined, name: string): string | undefined => {
+  if (!cookieHeader) return undefined;
+  const parts = cookieHeader.split(';');
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    if (key === name) {
+      return decodeURIComponent(trimmed.slice(eq + 1).trim());
+    }
+  }
+  return undefined;
+};
+
 io.use(async (socket, next) => {
   try {
+    const authHeader = socket.handshake.headers?.authorization;
+    const bearerToken =
+      typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? authHeader.slice('Bearer '.length).trim()
+        : undefined;
+    const cookieHeader = socket.handshake.headers?.cookie;
+    const cookieToken = parseCookieValue(
+      Array.isArray(cookieHeader) ? cookieHeader.join(';') : cookieHeader,
+      'token'
+    );
+
     const token =
       socket.handshake.auth?.token ||
-      socket.handshake.headers?.authorization?.replace('Bearer ', '');
+      bearerToken ||
+      cookieToken;
 
     if (!token) {
       return next(new Error('Authentication token missing'));
