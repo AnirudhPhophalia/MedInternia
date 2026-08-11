@@ -114,8 +114,8 @@ export default function CaseDiscussion({ id: propId, modalMode, hideDescription 
     setLiking(true);
     try {
       const res = await api.post(`/cases/${id}/like`, {});
-      setIsLiked(res.data.data.isLiked);
-      setTotalLikes(res.data.data.totalLikes);
+      setIsLiked(res.data.data.hasLiked);
+      setTotalLikes(res.data.data.likesCount);
     } catch {
       setError('Failed to like case');
     } finally {
