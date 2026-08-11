@@ -309,7 +309,7 @@ export const smartSearch = async (req: AuthRequest, res: Response) => {
       }
 
       results = await User.find(filter)
-        .select('firstName lastName specialization experience qualifications isVerifiedDoctor email phone averageRating profilePicturePublicId address')
+        .select('firstName lastName specialization experience qualifications isVerifiedDoctor email phone averageRating profilePicture address')
         .sort({ points: -1 })
         .limit(20);
     }

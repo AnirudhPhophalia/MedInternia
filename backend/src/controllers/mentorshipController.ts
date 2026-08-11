@@ -63,8 +63,8 @@ export const getMyMentorships = async (req: Request, res: Response): Promise<voi
     const query = userType === 'doctor' ? { mentor: userId } : { mentee: userId };
     
     const mentorships = await Mentorship.find(query)
-      .populate('mentor', 'firstName lastName profilePicturePublicId specialization')
-      .populate('mentee', 'firstName lastName profilePicturePublicId medicalSchool')
+      .populate('mentor', 'firstName lastName profilePicture specialization')
+      .populate('mentee', 'firstName lastName profilePicture medicalSchool')
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: mentorships });
@@ -78,8 +78,8 @@ export const getMentorshipById = async (req: Request, res: Response): Promise<an
   try {
     const userId = (req as any).user.id;
     const mentorship = await Mentorship.findById(req.params.id)
-      .populate('mentor', 'firstName lastName profilePicturePublicId specialization')
-      .populate('mentee', 'firstName lastName profilePicturePublicId medicalSchool');
+      .populate('mentor', 'firstName lastName profilePicture specialization')
+      .populate('mentee', 'firstName lastName profilePicture medicalSchool');
 
     if (!mentorship) {
       return res.status(404).json({

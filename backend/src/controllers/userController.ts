@@ -457,7 +457,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
 
     if (userType === 'doctor' && sortMetric === 'mentorScore') {
       const doctors = await User.find(filter)
-        .select('firstName lastName profilePicturePublicId points casesAnalyzed upvotesReceived averageRating streak specialization experience mentoringCredits isVerifiedDoctor');
+        .select('firstName lastName profilePicture points casesAnalyzed upvotesReceived averageRating streak specialization experience mentoringCredits isVerifiedDoctor');
 
       const doctorsWithMentorStats = await Promise.all(
         doctors.map(async (doctor) => ({
@@ -488,7 +488,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
     sort[sortMetric] = -1;
 
     const leaderboard = await User.find(filter)
-      .select('firstName lastName profilePicturePublicId points casesAnalyzed upvotesReceived averageRating streak medicalSchool specialization')
+      .select('firstName lastName profilePicture points casesAnalyzed upvotesReceived averageRating streak medicalSchool specialization')
       .sort(sort)
       .limit(limitNum);
 
@@ -1031,8 +1031,8 @@ export const getConnections = async (req: AuthRequest, res: Response) => {
     }
 
     const me = await User.findById(targetUserId)
-      .populate('following', 'firstName lastName profilePicturePublicId specialization userType')
-      .populate('followers', 'firstName lastName profilePicturePublicId specialization userType');
+      .populate('following', 'firstName lastName profilePicture specialization userType')
+      .populate('followers', 'firstName lastName profilePicture specialization userType');
     if (!me) return res.status(404).json({ success: false, message: "User not found" });
     res.json({ success: true, following: me.following, followers: me.followers });
   } catch (error) {

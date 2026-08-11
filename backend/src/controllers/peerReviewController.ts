@@ -141,7 +141,7 @@ export const getCommentReviews = async (req: Request, res: Response) => {
     const { commentId } = req.params;
 
     const reviews = await PeerReview.find({ commentId })
-      .populate('reviewer', 'firstName lastName userType profilePicturePublicId')
+      .populate('reviewer', 'firstName lastName userType profilePicture')
       .populate('reviewee', 'firstName lastName userType')
       .sort({ createdAt: -1 });
 
@@ -182,7 +182,7 @@ export const getUserReviews = async (req: AuthRequest, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const reviews = await PeerReview.find({ reviewee: userId })
-      .populate('reviewer', 'firstName lastName userType profilePicturePublicId')
+      .populate('reviewer', 'firstName lastName userType profilePicture')
       .populate('caseId', 'title')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -247,7 +247,7 @@ export const getReviewsByUser = async (req: AuthRequest, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const reviews = await PeerReview.find({ reviewer: userId })
-      .populate('reviewee', 'firstName lastName userType profilePicturePublicId')
+      .populate('reviewee', 'firstName lastName userType profilePicture')
       .populate('caseId', 'title')
       .sort({ createdAt: -1 })
       .skip(skip)

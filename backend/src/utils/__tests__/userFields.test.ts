@@ -84,9 +84,8 @@ describe('User Fields Sanitization (Issue #996)', () => {
       expect(RESTRICTED_USER_FIELDS).toContain('allergies');
     });
 
-    it('should not treat profilePicturePublicId as a restricted select field (Issue #1230)', () => {
-      // Needed for populate; User.toJSON strips it from serialized responses.
-      expect(RESTRICTED_USER_FIELDS).not.toContain('profilePicturePublicId');
+    it('should restrict Cloudinary internal asset ID (Issue #1052)', () => {
+      expect(RESTRICTED_USER_FIELDS).toContain('profilePicturePublicId');
     });
 
     it('should not have duplicate restricted fields', () => {
@@ -265,15 +264,16 @@ describe('User Fields Sanitization (Issue #996)', () => {
       expect(fields).toContain('userType');
     });
 
-    it('should select profilePicturePublicId for signed URL resolution (Issue #1230)', () => {
+    it('should include profile picture URL (not internal publicId) (Issue #1052)', () => {
       const fields = USER_PUBLIC_FIELDS.split(' ');
-      expect(fields).toContain('profilePicturePublicId');
-      expect(fields).not.toContain('profilePicture');
+      expect(fields).toContain('profilePicture');
+      expect(fields).not.toContain('profilePicturePublicId');
     });
 
-    it('should exclude direct password reference', () => {
+    it('should exclude direct password reference and internal Cloudinary ID', () => {
       const fields = USER_PUBLIC_FIELDS.split(' ');
       expect(fields).not.toContain('password');
+      expect(fields).not.toContain('profilePicturePublicId');
     });
   });
 });
