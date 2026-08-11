@@ -355,7 +355,7 @@ export const getDoctorIssuedCertificates = async (req: AuthRequest, res: Respons
     const skip = (Number(page) - 1) * Number(limit);
 
     const certificates = await Certificate.find({ doctor: doctorId })
-      .populate('intern', 'firstName lastName email profilePicture')
+      .populate('intern', 'firstName lastName email profilePicturePublicId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));

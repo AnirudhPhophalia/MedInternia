@@ -74,7 +74,7 @@ export const getCollectionById = async (req: Request, res: Response): Promise<vo
       match: isPublicViewer
         ? { isActive: { $ne: false }, $or: [{ moderationStatus: 'approved' }, { moderationStatus: { $exists: false } }] }
         : undefined,
-      populate: { path: 'doctor', select: 'firstName lastName profilePicture specialization' }
+      populate: { path: 'doctor', select: 'firstName lastName profilePicturePublicId specialization' }
     });
 
     res.status(200).json({ success: true, data: collection });

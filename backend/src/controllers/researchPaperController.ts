@@ -7,7 +7,7 @@ import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 export const getResearchPaperById = async (req: Request, res: Response) => {
   try {
     const paper = await ResearchPaper.findById(req.params.id)
-      .populate('comments.author', 'firstName lastName profilePicture userType');
+      .populate('comments.author', 'firstName lastName profilePicturePublicId userType');
     if (!paper) return res.status(404).json({ success: false, message: 'Research paper not found.' });
     res.json({ success: true, data: { paper } });
   } catch (err) {

@@ -493,7 +493,7 @@ export const getProfile = asyncHandler(
 
 const ALLOWED_UPDATE_FIELDS = [
   'firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'address',
-  'bio', 'profilePicture', 'linkedInProfile', 'githubProfile', 'orcidId',
+  'bio', 'linkedInProfile', 'githubProfile', 'orcidId',
   'specialization', 'experience', 'qualifications',
   'medicalSchool', 'yearOfStudy', 'interests',
   'academicAchievements', 'careerGoals',

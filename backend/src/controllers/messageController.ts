@@ -14,7 +14,7 @@ export const getConversations = asyncHandler(async (req: AuthRequest, res: Respo
   const conversations = await Conversation.find({
     participants: userId
   })
-    .populate('participants', 'firstName lastName profilePicture userType isVerifiedDoctor')
+    .populate('participants', 'firstName lastName profilePicturePublicId userType isVerifiedDoctor')
     .sort({ updatedAt: -1 });
 
   res.json({
@@ -40,7 +40,7 @@ export const getMessages = asyncHandler(async (req: AuthRequest, res: Response) 
   }
 
   const messages = await Message.find({ conversationId })
-    .populate('sender', 'firstName lastName profilePicture')
+    .populate('sender', 'firstName lastName profilePicturePublicId')
     .sort({ createdAt: 1 });
 
   // Check if there are unread messages to mark as read
@@ -186,7 +186,7 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
   conversation.updatedAt = new Date();
   await conversation.save();
 
-  await message.populate('sender', 'firstName lastName profilePicture');
+  await message.populate('sender', 'firstName lastName profilePicturePublicId');
 
   // Emit to receiver
   emitToUser(receiverId.toString(), 'new_message', {
