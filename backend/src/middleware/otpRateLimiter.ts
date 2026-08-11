@@ -43,6 +43,7 @@ export const registerLimiter = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  skipFailedRequests: true,
   message: { success: false, message: 'Too many registration attempts. Please try again after an hour.' }
 });
 
