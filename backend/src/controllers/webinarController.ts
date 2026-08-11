@@ -781,11 +781,18 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findById(id);
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized'
+        message: 'Webinar not found'
+      });
+    }
+
+    if (webinar.host.toString() !== hostId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the host can generate a meeting link'
       });
     }
 
@@ -793,6 +800,13 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Cannot generate a meeting link for an expired webinar'
+      });
+    }
+
+    if (new Date() < new Date(webinar.scheduledAt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Webinar has not started yet'
       });
     }
 
