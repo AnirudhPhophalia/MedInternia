@@ -76,16 +76,14 @@ export const subscribeNewsletter = async (req: Request, res: Response) => {
 
         // Re-send confirmation with a fresh unsubscribe link
         await sendSubscriptionConfirmation(normalizedEmail);
-
-        return res.status(200).json({
-          success: true,
-          message: 'Successfully resubscribed to the newsletter',
-        });
       }
 
-      return res.status(409).json({
-        success: false,
-        message: 'This email is already subscribed',
+      // Return 200 in all cases (new, active, or reactivated) to prevent
+      // email enumeration — the caller cannot distinguish whether the
+      // address was already subscribed.
+      return res.status(200).json({
+        success: true,
+        message: 'Successfully subscribed to the newsletter',
       });
     }
 
@@ -106,9 +104,10 @@ export const subscribeNewsletter = async (req: Request, res: Response) => {
       });
     }
     if ((error as any)?.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: 'This email is already subscribed',
+      // Duplicate key — treat as success to prevent email enumeration
+      return res.status(200).json({
+        success: true,
+        message: 'Successfully subscribed to the newsletter',
       });
     }
     console.error('Newsletter subscribe error:', error);
@@ -126,56 +125,33 @@ export const subscribeNewsletter = async (req: Request, res: Response) => {
 /**
  * PATCH /api/newsletter/unsubscribe
  *
- * Two supported flows:
+ * Token flow (recommended, used from email links):
+ *    Body: { token: "<signed JWT>" }
+ *    The JWT was issued by subscribeNewsletter and embeds the email — so no
+ *    account login is required (required by CAN-SPAM one-click rule).
  *
- *   1. Token flow (recommended, used from email links):
- *      Body: { token: "<signed JWT>" }
- *      The JWT was issued by subscribeNewsletter and embeds the email — so no
- *      account login is required (required by CAN-SPAM one-click rule).
+ * The direct email flow has been removed: an unauthenticated caller must
+ * never be able to unsubscribe an arbitrary address by email alone.
  *
- *   2. Direct email flow (API clients / authenticated frontends):
- *      Body: { email: "<address>" }
- *      Accepts a plain email for convenience when called from an
- *      authenticated session where the email is already known.
- *
- * Both paths set status = 'unsubscribed'. Idempotent: unsubscribing an
- * already-unsubscribed address returns 200 without error.
+ * Idempotent: unsubscribing an already-unsubscribed address returns 200
+ * without error.
  */
 export const unsubscribeNewsletter = async (req: Request, res: Response) => {
   try {
-    const { token, email } = req.body;
+    const { token } = req.body;
 
-    let normalizedEmail: string | null = null;
-
-    if (token) {
-      // --- Token flow ---
-      if (typeof token !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid unsubscribe token',
-        });
-      }
-
-      normalizedEmail = verifyUnsubscribeToken(token);
-      if (!normalizedEmail) {
-        return res.status(400).json({
-          success: false,
-          message: 'Unsubscribe link is invalid or has expired. Please contact support.',
-        });
-      }
-    } else if (email) {
-      // --- Direct email flow ---
-      if (typeof email !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'Email must be a string',
-        });
-      }
-      normalizedEmail = normalizeEmail(email);
-    } else {
+    if (!token || typeof token !== 'string') {
       return res.status(400).json({
         success: false,
-        message: 'Either a token or an email address is required',
+        message: 'An unsubscribe token is required',
+      });
+    }
+
+    const normalizedEmail = verifyUnsubscribeToken(token);
+    if (!normalizedEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unsubscribe link is invalid or has expired. Please contact support.',
       });
     }
 
