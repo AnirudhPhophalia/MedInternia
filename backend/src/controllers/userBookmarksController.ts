@@ -5,6 +5,13 @@ import { AuthRequest } from '../middleware/auth';
 
 const getId = (id: string | string[]): string => Array.isArray(id) ? id[0] : id;
 
+// Strip the applicants array (PII) from a job unless the viewer is the poster.
+const stripApplicantsForNonOwner = (jobObj: any, viewerId?: string): any => {
+  const ownerId = jobObj?.postedBy?._id?.toString() ?? jobObj?.postedBy?.toString();
+  if (!viewerId || ownerId !== viewerId) delete jobObj.applicants;
+  return jobObj;
+};
+
 const canAccessSavedItems = (req: AuthRequest, userId: string): boolean => {
   const requesterId = (req.user?._id as any)?.toString();
   return requesterId === userId || req.user?.userType === 'admin';
@@ -86,11 +93,15 @@ export const getSavedItems = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    const viewerId = (req.user?._id as any)?.toString();
+    const savedJobs = (user.savedJobs || []).map((job: any) =>
+      stripApplicantsForNonOwner(job.toObject?.() ?? job, viewerId)
+    );
     res.status(200).json({
       success: true,
       data: {
         savedCases: user.savedCases || [],
-        savedJobs: user.savedJobs || [],
+        savedJobs,
         savedWebinars: user.savedWebinars || []
       }
     });
