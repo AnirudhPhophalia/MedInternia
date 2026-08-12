@@ -15,7 +15,17 @@ import ChatIcon from "@mui/icons-material/Chat";
 import dynamic from "next/dynamic";
 import { Inter } from "next/font/google";
 import "../i18n";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 const Chatbot = dynamic(() => import("../components/Chatbot"), {
   ssr: false,
   loading: () => null,
@@ -109,7 +119,8 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
         <CustomThemeProvider>
           <Head>
             <title>MedInternia</title>
@@ -206,9 +217,11 @@ function MyApp({ Component, pageProps }: AppProps) {
                 <Typography variant="caption">{newToast?.message}</Typography>
               </Alert>
             </Snackbar>
+            <ReactQueryDevtools initialIsOpen={false} />
           </div>
         </CustomThemeProvider>
       </AuthProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

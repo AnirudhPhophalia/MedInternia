@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import Grid from '@mui/material/Grid';
 import {
@@ -46,81 +46,47 @@ interface DashboardData {
 export default function Dashboard() {
   const router = useRouter();
   const { isReady, userId } = useRequireAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['dashboardData', userId],
+    queryFn: async () => {
+      const userRes = await api.get(`/users/${userId}/profile`);
+      const user = userRes.data?.data?.user || userRes.data?.user || userRes.data;
 
-  useEffect(() => {
-    // Wait until AuthContext has confirmed the user is authenticated
-    // before firing off any requests.
-    if (!isReady || !userId) return;
+      const optionalRequest = async <T,>(request: Promise<{ data: T }>, fallback: T) => {
+        try {
+          const response = await request;
+          return response.data;
+        } catch (err: any) {
+          if (err.response?.status === 401) throw err;
+          return fallback;
+        }
+      };
 
-    const fetchDashboardData = async () => {
-      try {
-        const userRes = await api.get(`/users/${userId}/profile`);
-        const user =
-          userRes.data?.data?.user ||
-          userRes.data?.user ||
-          userRes.data;
+      const [casesRes, webinarsRes, notificationsRes, badgesRes] = await Promise.all([
+        user.userType === 'doctor'
+          ? optionalRequest(api.get('/cases/my/cases?limit=5'), { data: { cases: [] } })
+          : Promise.resolve({ data: { cases: [] } }),
+        optionalRequest(api.get('/webinars/my?type=registered'), { data: { webinars: [] } }),
+        optionalRequest(api.get('/notifications'), { notifications: [] }),
+        optionalRequest(api.get(`/badges/user/${userId}`), { data: { badges: [] } })
+      ]);
 
-        const optionalRequest = async <T,>(
-          request: Promise<{ data: T }>,
-          fallback: T
-        ) => {
-          try {
-            const response = await request;
-            return response.data;
-          } catch (err: any) {
-            if (err.response?.status === 401) throw err;
-            return fallback;
-          }
-        };
+      const getList = (payload: any, key: string) => payload?.data?.[key] || payload?.[key] || [];
 
-        const [casesRes, webinarsRes, notificationsRes, badgesRes] =
-          await Promise.all([
-            user.userType === 'doctor'
-              ? optionalRequest(api.get('/cases/my/cases?limit=5'), {
-                  data: { cases: [] }
-                })
-              : Promise.resolve({ data: { cases: [] } }),
-            optionalRequest(api.get('/webinars/my?type=registered'), {
-              data: { webinars: [] }
-            }),
-            optionalRequest(api.get('/notifications'), {
-              notifications: []
-            }),
-            optionalRequest(api.get(`/badges/user/${userId}`), {
-              data: { badges: [] }
-            })
-          ]);
+      return {
+        user,
+        cases: getList(casesRes, 'cases'),
+        webinars: getList(webinarsRes, 'webinars'),
+        notifications: getList(notificationsRes, 'notifications').slice(0, 5),
+        badges: getList(badgesRes, 'badges')
+      };
+    },
+    enabled: isReady && !!userId,
+  });
 
-        const getList = (payload: any, key: string) =>
-          payload?.data?.[key] || payload?.[key] || [];
+  const errorMessage = error ? (error as any).response?.data?.message || 'Failed to load dashboard data' : '';
 
-        setData({
-          user,
-          cases: getList(casesRes, 'cases'),
-          webinars: getList(webinarsRes, 'webinars'),
-          notifications: getList(notificationsRes, 'notifications').slice(0, 5),
-          badges: getList(badgesRes, 'badges')
-        });
-      } catch (err: any) {
-        console.error('Dashboard fetch error:', err);
-        // No manual redirect needed here anymore — the global axios
-        // response interceptor already handles 401s consistently.
-        setError(
-          err.response?.data?.message ||
-            'Failed to load dashboard data'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [isReady, userId]);
-
-  if (!isReady || loading) {
+  if (!isReady || isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
         <CircularProgress size={60} thickness={4.5} />
@@ -128,10 +94,10 @@ export default function Dashboard() {
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error">{errorMessage}</Alert>
       </Container>
     );
   }
