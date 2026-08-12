@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore, getJobOpportunities, getJobOpportunityById } from "../jobController";
+import { applyToJob, checkJobEligibility, updateJobOpportunity, deleteJobOpportunity, calculateMatchScore, getJobOpportunities, getJobOpportunityById, getMyJobApplications } from "../jobController";
 import { AuthRequest } from "../../middleware/auth";
 import JobOpportunity from "../../models/JobOpportunity";
 import User from "../../models/User";
@@ -494,3 +494,92 @@ describe("Job application validation (issue #818)", () => {
         expect(mockedJobOpportunity.findOneAndUpdate).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("getMyJobApplications", () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it("returns job applications for the authenticated user", async () => {
+        const fakeJob = {
+            _id: "job-101",
+            title: "Cardiology Intern",
+            company: "City General",
+            location: { city: "Boston", state: "MA", country: "USA", isRemote: false },
+            isActive: true,
+            applicationDeadline: new Date("2099-01-01"),
+            createdAt: new Date("2026-01-01"),
+            applicants: [
+                { user: "user-1", appliedAt: new Date("2026-01-02") }
+            ]
+        };
+
+        const chainable = {
+            sort: jest.fn().mockResolvedValue([fakeJob])
+        };
+        (mockedJobOpportunity.find as jest.Mock).mockReturnValue(chainable);
+
+        const req = mockRequest("any", "user-1");
+        const res = mockResponse();
+
+        await getMyJobApplications(req, res);
+
+        expect(mockedJobOpportunity.find).toHaveBeenCalledWith({ "applicants.user": "user-1" });
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: {
+                applications: [
+                    expect.objectContaining({
+                        id: "job-101",
+                        jobId: "job-101",
+                        title: "Cardiology Intern",
+                        company: "City General",
+                        location: "Boston, MA, USA",
+                        status: "Applied"
+                    })
+                ],
+                total: 1
+            }
+        });
+    });
+
+    it("marks applications as Closed if job is inactive or deadline passed", async () => {
+        const expiredJob = {
+            _id: "job-102",
+            title: "Neuro Resident",
+            company: "Metro Hospital",
+            location: { isRemote: true },
+            isActive: true,
+            applicationDeadline: new Date("2020-01-01"),
+            createdAt: new Date("2020-01-01"),
+            applicants: [
+                { user: "user-1", appliedAt: new Date("2020-01-01") }
+            ]
+        };
+
+        const chainable = {
+            sort: jest.fn().mockResolvedValue([expiredJob])
+        };
+        (mockedJobOpportunity.find as jest.Mock).mockReturnValue(chainable);
+
+        const req = mockRequest("any", "user-1");
+        const res = mockResponse();
+
+        await getMyJobApplications(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({
+            success: true,
+            data: {
+                applications: [
+                    expect.objectContaining({
+                        id: "job-102",
+                        status: "Closed",
+                        location: "Remote"
+                    })
+                ],
+                total: 1
+            }
+        });
+    });
+});
+

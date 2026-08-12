@@ -187,6 +187,15 @@ export default function Jobs() {
     setAuthChecked(true);
   }, [router, isAuthenticated, isLoading]);
 
+  const fetchApplications = async () => {
+    try {
+      const res = await api.get("/jobs/applications");
+      setApplications(res.data?.data?.applications || []);
+    } catch (e) {
+      console.error("Failed to fetch job applications", e);
+    }
+  };
+
   useEffect(() => {
     if (!authChecked) return;
 
@@ -196,13 +205,7 @@ export default function Jobs() {
       setCurrentUserId(String(user._id || user.id));
     }
 
-    // Load applied jobs from localstorage (bookmarks are now handled server-side)
-    try {
-      const apps = JSON.parse(localStorage.getItem('jobApplications') || '[]');
-      setApplications(apps);
-    } catch (e) {
-      console.error(e);
-    }
+    fetchApplications();
   }, [authChecked]);
 
   useEffect(() => {
@@ -253,25 +256,12 @@ export default function Jobs() {
 }, [currentUserId]);
 
   const handleApply = async (job: any) => {
-    // Add to applications list in localstorage
-    const exists = applications.find(app => app.id === job._id);
+    const exists = applications.some(app => app.id === job._id || (app as any).jobId === job._id);
     if (exists) return;
 
     try {
       await api.post(`/jobs/${job._id}/apply`);
-
-      const newApp: JobApplication = {
-        id: job._id,
-        title: job.title,
-        company: job.company || 'MedInternia Hospital Group',
-        location: formatJobLocation(job.location),
-        status: 'Applied',
-        appliedDate: new Date().toLocaleDateString()
-      };
-
-      const updated = [newApp, ...applications];
-      setApplications(updated);
-      localStorage.setItem('jobApplications', JSON.stringify(updated));
+      await fetchApplications();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to apply for this job');
     }
