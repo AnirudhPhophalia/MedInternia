@@ -8,6 +8,8 @@ import {
   ListItemText,
   IconButton,
   CircularProgress,
+  Button,
+  Stack,
 } from "@mui/material";
 import ThumbUpAltIcon from "@mui/icons-material/ThumbUpAlt";
 import Link from "next/link";
@@ -24,20 +26,47 @@ export default function LikedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchLikedCases = async () => {
-      try {
-        const res = await api.get('/cases/liked');
-        setLikedCases(res.data?.data?.cases || []);
-      } catch (err) {
-        setError("Could not load liked items. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-    fetchLikedCases();
+  const fetchLikedCases = async (pageNum: number, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    
+    try {
+      const res = await api.get(`/cases/liked?page=${pageNum}&limit=10`);
+      const fetchedCases = res.data?.data?.cases || [];
+      const pagination = res.data?.pagination || { page: 1, pages: 1 };
+      
+      if (append) {
+        setLikedCases((prev) => [...prev, ...fetchedCases]);
+      } else {
+        setLikedCases(fetchedCases);
+      }
+      
+      setHasMore(pagination.page < pagination.pages);
+      setError(null);
+    } catch (err) {
+      setError("Could not load liked items. Please try again.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLikedCases(1);
   }, []);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchLikedCases(nextPage, true);
+  };
 
   return (
     <Box maxWidth={600} mx="auto" my={4}>
@@ -65,22 +94,36 @@ export default function LikedPage() {
         )}
 
         {!loading && !error && likedCases.length > 0 && (
-          <List>
-            {likedCases.map((item) => (
-              <ListItem
-                key={item._id}
-                secondaryAction={
-                  <IconButton color="primary" disabled>
-                    <ThumbUpAltIcon />
-                  </IconButton>
-                }
-              >
-                <Link href={`/cases/${item._id}`} passHref style={{ textDecoration: "none", color: "inherit", width: "100%" }}>
-                  <ListItemText primary={item.title} secondary={item.specialization} />
-                </Link>
-              </ListItem>
-            ))}
-          </List>
+          <>
+            <List>
+              {likedCases.map((item) => (
+                <ListItem
+                  key={item._id}
+                  secondaryAction={
+                    <IconButton color="primary" disabled>
+                      <ThumbUpAltIcon />
+                    </IconButton>
+                  }
+                >
+                  <Link href={`/cases/${item._id}`} passHref style={{ textDecoration: "none", color: "inherit", width: "100%" }}>
+                    <ListItemText primary={item.title} secondary={item.specialization} />
+                  </Link>
+                </ListItem>
+              ))}
+            </List>
+            
+            {hasMore && (
+              <Stack direction="row" justifyContent="center" mt={3}>
+                <Button 
+                  variant="outlined" 
+                  onClick={loadMore} 
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? <CircularProgress size={20} /> : "Load More"}
+                </Button>
+              </Stack>
+            )}
+          </>
         )}
       </Card>
     </Box>

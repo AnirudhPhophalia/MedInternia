@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Card,
@@ -13,15 +13,17 @@ import {
   Chip,
   Stack,
   Divider,
-  Avatar,
   CircularProgress,
   Alert,
   Snackbar,
+  Paper,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import ImageIcon from "@mui/icons-material/Image";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import ReceiptIcon from "@mui/icons-material/Receipt";
 import { withAuth } from "../components/withAuth";
 import api from "../utils/api";
 
@@ -31,10 +33,40 @@ const statusColor: Record<string, string> = {
   solved: "#e1f5fe",
 };
 
-function FileIcon({ type }: { type: string }) {
-  if (type === "pdf") return <PictureAsPdfIcon color="error" sx={{ mr: 1 }} />;
-  if (type === "image") return <ImageIcon color="primary" sx={{ mr: 1 }} />;
-  return <InsertDriveFileIcon sx={{ mr: 1 }} />;
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB limit
+const ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".dcm", ".csv", ".json"];
+const ACCEPT_ATTRIBUTE = ALLOWED_EXTENSIONS.join(",");
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
+const validateFile = (file: File): { valid: boolean; error?: string } => {
+  const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return {
+      valid: false,
+      error: `File "${file.name}" has an unsupported extension (${ext}). Allowed formats: ${ALLOWED_EXTENSIONS.join(", ")}`,
+    };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `File "${file.name}" (${formatFileSize(file.size)}) exceeds the maximum allowed size of 15MB.`,
+    };
+  }
+  return { valid: true };
+};
+
+function FileIcon({ name }: { name: string }) {
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  if (ext === "pdf") return <PictureAsPdfIcon color="error" sx={{ mr: 0.5 }} />;
+  if (["png", "jpg", "jpeg"].includes(ext)) return <ImageIcon color="primary" sx={{ mr: 0.5 }} />;
+  return <InsertDriveFileIcon color="action" sx={{ mr: 0.5 }} />;
 }
 
 interface CaseDataType {
@@ -161,6 +193,14 @@ function UploadRawPage() {
   // File state
   const [medicalFiles, setMedicalFiles] = useState<File[]>([]);
   const [bills, setBills] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  // Drag and drop highlights
+  const [isDraggingMedical, setIsDraggingMedical] = useState(false);
+  const [isDraggingBills, setIsDraggingBills] = useState(false);
+
+  const medicalFileInputRef = useRef<HTMLInputElement>(null);
+  const billsFileInputRef = useRef<HTMLInputElement>(null);
 
   // Cases fetched from the API
   const [myCases, setMyCases] = useState<CaseDataType[]>([]);
@@ -192,15 +232,48 @@ function UploadRawPage() {
     }
   };
 
+  const processFiles = (incomingFiles: FileList | File[], type: "medical" | "bills") => {
+    const filesArray = Array.from(incomingFiles);
+    const validFiles: File[] = [];
+    const errorMessages: string[] = [];
+
+    filesArray.forEach((file) => {
+      const { valid, error } = validateFile(file);
+      if (valid) {
+        validFiles.push(file);
+      } else if (error) {
+        errorMessages.push(error);
+      }
+    });
+
+    if (errorMessages.length > 0) {
+      const combinedError = errorMessages.join(" ");
+      setFileError(combinedError);
+      setSnackbar({
+        open: true,
+        message: errorMessages[0],
+        severity: "error",
+      });
+    } else {
+      setFileError(null);
+    }
+
+    if (validFiles.length > 0) {
+      if (type === "medical") {
+        setMedicalFiles((prev) => [...prev, ...validFiles]);
+      } else {
+        setBills((prev) => [...prev, ...validFiles]);
+      }
+    }
+  };
+
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "medical" | "bills"
   ) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      type === "medical"
-        ? setMedicalFiles((prev) => [...prev, ...files])
-        : setBills((prev) => [...prev, ...files]);
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files, type);
+      e.target.value = "";
     }
   };
 
@@ -208,6 +281,35 @@ function UploadRawPage() {
     type === "medical"
       ? setMedicalFiles((prev) => prev.filter((_, i) => i !== index))
       : setBills((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Drag and drop event handlers
+  const handleDragEnter = (e: React.DragEvent, type: "medical" | "bills") => {
+    e.preventDefault();
+    e.stopPropagation();
+    type === "medical" ? setIsDraggingMedical(true) : setIsDraggingBills(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent, type: "medical" | "bills") => {
+    e.preventDefault();
+    e.stopPropagation();
+    type === "medical" ? setIsDraggingMedical(true) : setIsDraggingBills(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent, type: "medical" | "bills") => {
+    e.preventDefault();
+    e.stopPropagation();
+    type === "medical" ? setIsDraggingMedical(false) : setIsDraggingBills(false);
+  };
+
+  const handleDrop = (e: React.DragEvent, type: "medical" | "bills") => {
+    e.preventDefault();
+    e.stopPropagation();
+    type === "medical" ? setIsDraggingMedical(false) : setIsDraggingBills(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files, type);
+    }
   };
 
   const validateForm = () => {
@@ -262,6 +364,7 @@ function UploadRawPage() {
       setMedicalFiles([]);
       setBills([]);
       setErrors({});
+      setFileError(null);
     } catch (err: any) {
       const msg = err.response?.data?.message ?? "Submission failed. Please try again.";
       setSnackbar({ open: true, message: msg, severity: "error" });
@@ -293,6 +396,18 @@ function UploadRawPage() {
           <Typography mb={3} fontSize={14} sx={{ color: "#0072ff", fontWeight: 600, background: "#e0f7fa", borderRadius: 2, px: 2, py: 1, display: "inline-block" }}>
             Your data is hidden and secured. It will not be copied or shared with anyone else.
           </Typography>
+
+          {/* Inline Validation Alert */}
+          {fileError && (
+            <Alert
+              severity="error"
+              onClose={() => setFileError(null)}
+              sx={{ mb: 3, borderRadius: 2, fontWeight: 500 }}
+            >
+              {fileError}
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField label="Person Name" fullWidth variant="outlined" required value={formData.personName}
@@ -308,32 +423,160 @@ function UploadRawPage() {
             </Stack>
             <TextField label="Ayushman Reference ID" fullWidth variant="outlined" required value={formData.ayushmanId}
               onChange={(e) => handleInputChange("ayushmanId", e.target.value)} error={!!errors.ayushmanId} helperText={errors.ayushmanId} sx={{ mt: 2 }} />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mt={3} mb={1}>
-              <Button variant="contained" component="label"
-                sx={{ borderRadius: 2, fontWeight: 700, background: "linear-gradient(90deg, #0072ff 0%, #6dd5ed 100%)", color: "#fff" }}>
-                Upload Medical Files
-                <input type="file" hidden multiple onChange={(e) => handleFileChange(e, "medical")} />
-              </Button>
-              <Button variant="outlined" component="label"
-                sx={{ borderRadius: 2, fontWeight: 600, borderColor: "#0072ff", color: "#0072ff" }}>
-                Upload Bills (Optional)
-                <input type="file" hidden multiple onChange={(e) => handleFileChange(e, "bills")} />
-              </Button>
+
+            {/* Drag & Drop File Upload Dropzones */}
+            <Typography variant="h6" fontWeight={700} fontSize={16} mt={3} mb={1} color="#0056cc">
+              Upload Files & Attachments
+            </Typography>
+
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} mb={2}>
+              {/* Medical Files Dropzone */}
+              <Paper
+                elevation={0}
+                onDragEnter={(e) => handleDragEnter(e, "medical")}
+                onDragOver={(e) => handleDragOver(e, "medical")}
+                onDragLeave={(e) => handleDragLeave(e, "medical")}
+                onDrop={(e) => handleDrop(e, "medical")}
+                onClick={() => medicalFileInputRef.current?.click()}
+                sx={{
+                  flex: 1,
+                  p: 3,
+                  border: isDraggingMedical ? "2px dashed #0056cc" : "2px dashed #0072ff",
+                  borderRadius: 3,
+                  backgroundColor: isDraggingMedical ? "#e0f7fa" : "#f8fafc",
+                  boxShadow: isDraggingMedical ? "0 0 16px rgba(0, 114, 255, 0.3)" : "none",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    backgroundColor: "#e0f7fa",
+                    borderColor: "#0056cc",
+                    transform: "translateY(-1px)",
+                  },
+                }}
+              >
+                <input
+                  ref={medicalFileInputRef}
+                  type="file"
+                  hidden
+                  multiple
+                  accept={ACCEPT_ATTRIBUTE}
+                  onChange={(e) => handleFileChange(e, "medical")}
+                />
+                <CloudUploadIcon
+                  sx={{
+                    fontSize: 40,
+                    color: isDraggingMedical ? "#0056cc" : "#0072ff",
+                    mb: 1,
+                    transform: isDraggingMedical ? "scale(1.15)" : "scale(1)",
+                    transition: "transform 0.2s ease-in-out",
+                  }}
+                />
+                <Typography fontWeight={700} fontSize={15} color="#0056cc" mb={0.5}>
+                  Medical Files
+                </Typography>
+                <Typography fontSize={13} color="text.secondary" mb={1}>
+                  Drag & drop files here or <Box component="span" sx={{ color: "#0072ff", textDecoration: "underline" }}>browse</Box>
+                </Typography>
+                <Typography fontSize={11} color="text.secondary">
+                  Formats: PDF, PNG, JPG, DCM, CSV, JSON (Max 15MB)
+                </Typography>
+              </Paper>
+
+              {/* Bills Dropzone */}
+              <Paper
+                elevation={0}
+                onDragEnter={(e) => handleDragEnter(e, "bills")}
+                onDragOver={(e) => handleDragOver(e, "bills")}
+                onDragLeave={(e) => handleDragLeave(e, "bills")}
+                onDrop={(e) => handleDrop(e, "bills")}
+                onClick={() => billsFileInputRef.current?.click()}
+                sx={{
+                  flex: 1,
+                  p: 3,
+                  border: isDraggingBills ? "2px dashed #e65100" : "2px dashed #ff9800",
+                  borderRadius: 3,
+                  backgroundColor: isDraggingBills ? "#fff3e0" : "#fffde7",
+                  boxShadow: isDraggingBills ? "0 0 16px rgba(255, 152, 0, 0.3)" : "none",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    backgroundColor: "#fff3e0",
+                    borderColor: "#e65100",
+                    transform: "translateY(-1px)",
+                  },
+                }}
+              >
+                <input
+                  ref={billsFileInputRef}
+                  type="file"
+                  hidden
+                  multiple
+                  accept={ACCEPT_ATTRIBUTE}
+                  onChange={(e) => handleFileChange(e, "bills")}
+                />
+                <ReceiptIcon
+                  sx={{
+                    fontSize: 40,
+                    color: isDraggingBills ? "#e65100" : "#ff9800",
+                    mb: 1,
+                    transform: isDraggingBills ? "scale(1.15)" : "scale(1)",
+                    transition: "transform 0.2s ease-in-out",
+                  }}
+                />
+                <Typography fontWeight={700} fontSize={15} color="#e65100" mb={0.5}>
+                  Upload Bills (Optional)
+                </Typography>
+                <Typography fontSize={13} color="text.secondary" mb={1}>
+                  Drag & drop files here or <Box component="span" sx={{ color: "#e65100", textDecoration: "underline" }}>browse</Box>
+                </Typography>
+                <Typography fontSize={11} color="text.secondary">
+                  Formats: PDF, PNG, JPG, DCM, CSV, JSON (Max 15MB)
+                </Typography>
+              </Paper>
             </Stack>
+
+            {/* Selected Medical Files List */}
             {medicalFiles.length > 0 && (
-              <Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {medicalFiles.map((file, i) => (
-                  <Chip key={i} label={file.name} onDelete={() => handleRemoveFile(i, "medical")} sx={{ bgcolor: "#e3f2fd", color: "#0056cc" }} />
-                ))}
+              <Box sx={{ mb: 2 }}>
+                <Typography fontSize={13} fontWeight={700} color="#0056cc" mb={1}>
+                  Selected Medical Files ({medicalFiles.length}):
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {medicalFiles.map((file, i) => (
+                    <Chip
+                      key={i}
+                      icon={<FileIcon name={file.name} />}
+                      label={`${file.name} (${formatFileSize(file.size)})`}
+                      onDelete={() => handleRemoveFile(i, "medical")}
+                      sx={{ bgcolor: "#e3f2fd", color: "#0056cc", fontWeight: 500, py: 0.5 }}
+                    />
+                  ))}
+                </Box>
               </Box>
             )}
+
+            {/* Selected Bills List */}
             {bills.length > 0 && (
-              <Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {bills.map((file, i) => (
-                  <Chip key={i} label={file.name} onDelete={() => handleRemoveFile(i, "bills")} sx={{ bgcolor: "#fff3e0", color: "#e65100" }} />
-                ))}
+              <Box sx={{ mb: 2 }}>
+                <Typography fontSize={13} fontWeight={700} color="#e65100" mb={1}>
+                  Selected Bills ({bills.length}):
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {bills.map((file, i) => (
+                    <Chip
+                      key={i}
+                      icon={<FileIcon name={file.name} />}
+                      label={`${file.name} (${formatFileSize(file.size)})`}
+                      onDelete={() => handleRemoveFile(i, "bills")}
+                      sx={{ bgcolor: "#fff3e0", color: "#e65100", fontWeight: 500, py: 0.5 }}
+                    />
+                  ))}
+                </Box>
               </Box>
             )}
+
             <TextField label="Additional Medical Data" multiline minRows={3} fullWidth variant="outlined" required
               value={formData.additionalMedicalData} onChange={(e) => handleInputChange("additionalMedicalData", e.target.value)}
               error={!!errors.additionalMedicalData}
@@ -410,7 +653,7 @@ function UploadRawPage() {
 
       <CaseDetailsDialog open={openDialog} onClose={() => setOpenDialog(false)} caseData={selectedCase} />
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000}
+      <Snackbar open={snackbar.open} autoHideDuration={5000}
         onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
         <Alert onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
