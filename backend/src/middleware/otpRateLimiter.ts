@@ -1,6 +1,19 @@
 import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
+const redisClient = require('../../config/redis');
+
+const createRedisStore = (prefix: string) => {
+  if (process.env.NODE_ENV === 'test') {
+    return undefined;
+  }
+  return new RedisStore({
+    sendCommand: (...args: string[]) => redisClient.call(...args),
+    prefix: `rl:${prefix}:`,
+  });
+};
 
 export const otpRequestLimiter = rateLimit({
+  store: createRedisStore('otpReq'),
   windowMs: 60 * 60 * 1000,
   max: 3,
   standardHeaders: true,
@@ -10,6 +23,7 @@ export const otpRequestLimiter = rateLimit({
 });
 
 export const otpVerifyLimiter = rateLimit({
+  store: createRedisStore('otpVerify'),
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -19,6 +33,7 @@ export const otpVerifyLimiter = rateLimit({
 });
 
 export const loginLimiter = rateLimit({
+  store: createRedisStore('login'),
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -31,6 +46,7 @@ export const loginLimiter = rateLimit({
 // Keyed by IP (like loginLimiter) so rotation of the refresh token itself
 // cannot bypass the window.
 export const refreshLimiter = rateLimit({
+  store: createRedisStore('refresh'),
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -39,6 +55,7 @@ export const refreshLimiter = rateLimit({
 });
 
 export const registerLimiter = rateLimit({
+  store: createRedisStore('register'),
   windowMs: 60 * 60 * 1000,
   max: 3,
   standardHeaders: true,
@@ -48,6 +65,7 @@ export const registerLimiter = rateLimit({
 });
 
 export const chatbotLimiter = rateLimit({
+  store: createRedisStore('chatbot'),
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -59,6 +77,7 @@ export const chatbotLimiter = rateLimit({
 // webinars, leaderboards, and search. Stricter route-specific limiters for
 // auth and chatbot traffic remain mounted before this generic limiter.
 export const apiLimiter = rateLimit({
+  store: createRedisStore('api'),
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
@@ -71,6 +90,7 @@ export const apiLimiter = rateLimit({
 // Keyed by user ID from the JWT so the window is per-sender, not per-IP
 // (which would be trivially bypassed from the same machine).
 export const messageLimiter = rateLimit({
+  store: createRedisStore('message'),
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -87,6 +107,7 @@ export const messageLimiter = rateLimit({
 // Limits case reposts so a user cannot spam the public feed with an unbounded
 // stream of reposted/duplicate content. Keyed by user ID from the JWT.
 export const repostLimiter = rateLimit({
+  store: createRedisStore('repost'),
   windowMs: 60 * 60 * 1000,
   max: 5,
   standardHeaders: true,
