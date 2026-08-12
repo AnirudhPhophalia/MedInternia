@@ -203,8 +203,23 @@ export const getMyCases = asyncHandler(async (req: AuthRequest, res: Response) =
   if (!user) {
     throw new AppError("User not authenticated", 401);
   }
-  const cases = await Case.find({ doctor: user._id, isActive: { $ne: false } }).sort({ createdAt: -1 });
-  res.json({ success: true, data: { cases } });
+  const { page, limit, skip } = parsePagination(req.query);
+
+  const filter = { doctor: user._id, isActive: { $ne: false } };
+
+  const [cases, total] = await Promise.all([
+    Case.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Case.countDocuments(filter)
+  ]);
+
+  res.json({ 
+    success: true, 
+    data: { cases },
+    pagination: buildPaginationMeta(page, limit, total)
+  });
 });
 
 // Like / Unlike toggle logic
