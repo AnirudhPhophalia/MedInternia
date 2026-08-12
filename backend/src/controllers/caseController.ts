@@ -12,6 +12,7 @@ import {
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
 import { deleteCaseVectors, ingestCase, suggestCases } from "../services/ragService";
+import { generateCasePdfHtml, renderHtmlToPdfBuffer } from "../services/pdfExportService";
 import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
@@ -1086,4 +1087,32 @@ export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Respon
   const similar = await suggestCases(text, 3);
 
   res.json({ success: true, data: { similarCases: similar } });
+});
+
+export const exportCasePdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+  })
+    .populate("doctor", "firstName lastName specialization email institution avatar")
+    .populate("comments.author", USER_PUBLIC_FIELDS);
+
+  if (!caseDoc) {
+    throw new AppError("Case not found", 404);
+  }
+
+  const html = generateCasePdfHtml(caseDoc);
+  const pdfBuffer = await renderHtmlToPdfBuffer(html);
+
+  const safeName = (caseDoc.title || 'case-study')
+    .replace(/[^a-z0-9]/gi, '-')
+    .toLowerCase()
+    .slice(0, 50);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="medinternia-${safeName}.pdf"`
+  );
+  res.status(200).send(pdfBuffer);
 });
