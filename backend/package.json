@@ -36,6 +36,7 @@
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.5",
+    "opossum": "^10.0.0",
     "pdf-parse": "^2.4.5",
     "rate-limit-redis": "^4.3.1",
     "socket.io": "^4.8.3"
@@ -50,6 +51,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.13.1",
     "@types/nodemailer": "^7.0.1",
+    "@types/opossum": "^8.1.9",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "eslint": "^9.32.0",

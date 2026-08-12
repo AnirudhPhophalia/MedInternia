@@ -1,8 +1,4 @@
-/**
- * backend/src/services/ragService.ts
- * ===================================
- * Client that calls the Python RAG microservice.
- */
+import { resilientFetch } from "../utils/resilientHttpClient";
 
 const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL ?? "http://localhost:8000";
 
@@ -13,17 +9,27 @@ export interface SimilarCase {
   text_snippet: string;
 }
 
+const RAG_RESILIENT_OPTIONS = {
+  name: "python-rag-service",
+  timeoutMs: 10000,
+  maxRetries: 3,
+  retryDelayMs: 200,
+};
+
 export async function ingestCase(caseId: string, text: string, metadata: Record<string, any> = {}): Promise<void> {
   try {
-    const res = await fetch(`${RAG_SERVICE_URL}/api/ingest-case`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+    const res = await resilientFetch(
+      `${RAG_SERVICE_URL}/api/ingest-case`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+        },
+        body: JSON.stringify({ case_id: caseId, text, metadata }),
       },
-      body: JSON.stringify({ case_id: caseId, text, metadata }),
-      signal: AbortSignal.timeout(30_000),
-    });
+      RAG_RESILIENT_OPTIONS
+    );
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(no body)");
@@ -36,15 +42,18 @@ export async function ingestCase(caseId: string, text: string, metadata: Record<
 
 export async function deleteCaseVectors(caseId: string): Promise<void> {
   try {
-    const res = await fetch(`${RAG_SERVICE_URL}/api/delete-case`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+    const res = await resilientFetch(
+      `${RAG_SERVICE_URL}/api/delete-case`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+        },
+        body: JSON.stringify({ case_id: caseId }),
       },
-      body: JSON.stringify({ case_id: caseId }),
-      signal: AbortSignal.timeout(30_000),
-    });
+      RAG_RESILIENT_OPTIONS
+    );
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(no body)");
@@ -57,15 +66,18 @@ export async function deleteCaseVectors(caseId: string): Promise<void> {
 
 export async function suggestCases(text: string, k: number = 3): Promise<SimilarCase[]> {
   try {
-    const res = await fetch(`${RAG_SERVICE_URL}/api/suggest-cases`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+    const res = await resilientFetch(
+      `${RAG_SERVICE_URL}/api/suggest-cases`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+        },
+        body: JSON.stringify({ text, k }),
       },
-      body: JSON.stringify({ text, k }),
-      signal: AbortSignal.timeout(30_000),
-    });
+      RAG_RESILIENT_OPTIONS
+    );
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(no body)");
@@ -80,3 +92,4 @@ export async function suggestCases(text: string, k: number = 3): Promise<Similar
     return [];
   }
 }
+
