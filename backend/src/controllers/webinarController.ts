@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Webinar from '../models/Webinar';
-import Notification from '../models/Notification';
-import User from '../models/User';
 import { getSocketIO } from '../utils/socket';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination';
+import { enqueueWebinarNotification } from '../jobs/webinarNotificationJob';
 
 const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) => {
   const durationInMinutes = webinar.duration || 0;
@@ -204,41 +203,8 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
     await webinar.save();
     await webinar.populate('host', 'firstName lastName specialization isVerifiedDoctor');
 
-    // Ensure webinar.host is a populated document
-    const host = webinar.host as any;
-
-    // Respond immediately — notify interns asynchronously using a cursor
-    setImmediate(async () => {
-      try {
-        const batchSize = 500;
-        const cursor = User.find({ userType: 'intern' })
-          .select('_id')
-          .lean()
-          .cursor({ batchSize });
-
-        const batch: Array<{ recipient: any; message: string; type: string; link?: string }> = [];
-
-        await cursor.eachAsync(async (intern: any) => {
-          batch.push({
-            recipient: intern._id,
-            message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
-            type: 'webinar',
-            link: `/webinars/${webinar._id}`
-          });
-
-          if (batch.length >= batchSize) {
-            await Notification.insertMany(batch);
-            batch.length = 0;
-          }
-        });
-
-        if (batch.length > 0) {
-          await Notification.insertMany(batch);
-        }
-      } catch (notifyErr) {
-        console.error('Failed to send webinar notifications:', notifyErr);
-      }
-    });
+    // Dispatch background job to notify interns durably via Agenda queue
+    await enqueueWebinarNotification(String(webinar._id));
 
     res.status(201).json({
       success: true,

@@ -4,6 +4,7 @@ import Case from "../models/Case";
 import User from "../models/User";
 import { checkCompliance } from "../services/nerService";
 import { ingestCase } from "../services/ragService";
+import { registerWebinarNotificationJob } from "./webinarNotificationJob";
 
 export const CASE_MODERATION_JOB = "moderate-case-compliance";
 
@@ -211,6 +212,7 @@ export async function enqueueCaseModeration(caseId: string): Promise<void> {
 export async function startBackgroundJobs(): Promise<void> {
   const scheduler = getAgenda();
   registerCaseModerationJob(scheduler);
+  registerWebinarNotificationJob(scheduler);
   await scheduler.start();
 }
 

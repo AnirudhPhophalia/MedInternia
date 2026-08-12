@@ -3,12 +3,19 @@ import {
   registerForWebinar,
   unregisterFromWebinar,
   getWebinars,
+  createWebinar,
 } from "../webinarController";
 import Webinar from "../../models/Webinar";
 import { AuthRequest } from "../../middleware/auth";
+import { enqueueWebinarNotification } from "../../jobs/webinarNotificationJob";
 
 jest.mock("../../models/Webinar");
+jest.mock("../../jobs/webinarNotificationJob", () => ({
+  enqueueWebinarNotification: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockedWebinar = Webinar as unknown as jest.Mocked<typeof Webinar>;
+const mockedEnqueueWebinarNotification = enqueueWebinarNotification as jest.Mock;
 
 const mockResponse = () => {
   const res: Partial<Response> = {};
@@ -17,9 +24,15 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
+const mockRequest = (
+  userId: string,
+  params: any = {},
+  body: any = {},
+  userType: string = "doctor"
+): AuthRequest => ({
+  user: { _id: userId, userType },
   params,
+  body,
 }) as unknown as AuthRequest;
 
 describe("Webinar Controller", () => {
@@ -262,6 +275,69 @@ describe("Webinar Controller", () => {
       expect(webinar.scheduledAt).toBe(webinarRow.scheduledAt);
       expect(webinar.maxParticipants).toBe(50);
       expect(webinar.host).toEqual(webinarRow.host);
+    });
+  });
+
+  describe("createWebinar", () => {
+    it("dispatches background job to enqueue webinar notifications upon successful creation", async () => {
+      const scheduledAt = new Date(Date.now() + 86400000);
+      const req = mockRequest(
+        "doctor-1",
+        {},
+        {
+          title: "New Cardiology Insights",
+          description: "A deep dive into modern cardiology.",
+          type: "webinar",
+          scheduledAt,
+          duration: 60,
+        },
+        "doctor"
+      );
+      const res = mockResponse();
+
+      const createdWebinar = {
+        _id: "webinar-new-123",
+        title: "New Cardiology Insights",
+        host: "doctor-1",
+        scheduledAt,
+        duration: 60,
+        meetingLink: "https://meet.jit.si/webinar-123",
+        save: jest.fn().mockResolvedValue(undefined),
+        populate: jest.fn().mockResolvedValue({
+          _id: "webinar-new-123",
+          title: "New Cardiology Insights",
+          host: { firstName: "Jane", lastName: "Smith" },
+        }),
+      };
+
+      (mockedWebinar as any).mockImplementation(() => createdWebinar);
+
+      await createWebinar(req, res);
+
+      expect(createdWebinar.save).toHaveBeenCalled();
+      expect(mockedEnqueueWebinarNotification).toHaveBeenCalledWith("webinar-new-123");
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: "Webinar created successfully",
+        })
+      );
+    });
+
+    it("rejects webinar creation if user is not doctor or admin", async () => {
+      const req = mockRequest("intern-1", {}, { title: "Test" }, "intern");
+      const res = mockResponse();
+
+      await createWebinar(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Only doctors or admins can create webinars",
+        })
+      );
+      expect(mockedEnqueueWebinarNotification).not.toHaveBeenCalled();
     });
   });
 });
