@@ -140,7 +140,7 @@ export default function WebinarDetail() {
             
             {webinar.maxParticipants && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Participants: {webinar.participants?.length || 0} / {webinar.maxParticipants}
+                Participants: {webinar.participantCount || webinar.participants?.length || 0} / {webinar.maxParticipants}
               </Typography>
             )}
             
