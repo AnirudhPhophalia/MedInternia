@@ -38,6 +38,7 @@
     "nodemailer": "^7.0.5",
     "opossum": "^10.0.0",
     "pdf-parse": "^2.4.5",
+    "puppeteer": "^25.6.0",
     "rate-limit-redis": "^4.3.1",
     "socket.io": "^4.8.3"
   },

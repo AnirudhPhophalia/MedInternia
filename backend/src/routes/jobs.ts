@@ -9,7 +9,8 @@ import {
   deleteJobOpportunity,
   checkJobEligibility,
   applyToJob,
-  getMyJobOpportunities
+  getMyJobOpportunities,
+  getMyJobApplications
 } from '../controllers/jobController';
 
 const router = Router();
@@ -22,6 +23,9 @@ router.get('/', authenticate, getJobOpportunities);
 
 // Get my job opportunities
 router.get('/my', authenticate, requirePermission('job:manage'), getMyJobOpportunities);
+
+// Get user applications
+router.get('/applications', authenticate, getMyJobApplications);
 
 // Get job opportunity by ID
 router.get('/:id', authenticate, getJobOpportunityById);

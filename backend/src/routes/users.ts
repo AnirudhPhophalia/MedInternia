@@ -1,5 +1,5 @@
 import { Router, Request } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, optionalAuthenticate } from '../middleware/auth';
 import { requirePermission } from '../middleware/permissions';
 import { requireAdmin } from '../middleware/roleVerification';
 import {
@@ -21,7 +21,8 @@ import {
   unfollowUser,
   getConnections,
   parseResume,
-  deleteAccount
+  deleteAccount,
+  exportUserResumePdf
 } from '../controllers/userController';
 import { toggleBookmark, getSavedItems } from '../controllers/userBookmarksController';
 import multer from 'multer';
@@ -48,6 +49,8 @@ router.post('/profile/parse-resume', authenticate, resumeUpload.single('resume')
 router.get('/profile', authenticate, getCurrentUserProfile);
 // Get user profile by ID
 router.get('/:userId/profile', authenticate, getUserProfile);
+// Export user resume as PDF
+router.get('/:userId/export-resume', optionalAuthenticate, exportUserResumePdf);
 
 // Get basic public info of any user
 router.get('/:userId/public', authenticate, getPublicProfile);

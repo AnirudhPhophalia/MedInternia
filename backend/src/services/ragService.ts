@@ -17,6 +17,7 @@ const RAG_RESILIENT_OPTIONS = {
 };
 
 export async function ingestCase(caseId: string, text: string, metadata: Record<string, any> = {}): Promise<void> {
+  let res: Response;
   try {
     const res = await resilientFetch(
       `${RAG_SERVICE_URL}/api/ingest-case`,
@@ -37,6 +38,14 @@ export async function ingestCase(caseId: string, text: string, metadata: Record<
     }
   } catch (err) {
     console.error(`Failed to reach RAG service for ingestion (case ${caseId}):`, err);
+    throw err;
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(no body)");
+    const errorMsg = `RAG ingest failed for case ${caseId} (${res.status}): ${body}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 }
 
