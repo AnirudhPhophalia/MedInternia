@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth";
-import Conversation from "../models/Conversation";
+import Conversation, { IConversation } from "../models/Conversation";
 import Message from "../models/Message";
 import User from "../models/User";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -157,15 +157,42 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
     }
   }
 
-  // Find or create conversation
-  let conversation = await Conversation.findOne({
-    participants: { $all: [senderId, receiverId] }
-  });
+  // Find or create conversation. This must be a single atomic upsert rather than
+  // a separate find + create: if two users send their first message to each other
+  // concurrently, both requests can observe "no conversation exists" and each
+  // create one, permanently splitting the chat history (TOCTOU race).
+  //
+  // Participants are stored in canonical (sorted) order so the unique compound
+  // index on the participant pair covers both orderings of a pair.
+  const participantIds = [senderId, receiverId]
+    .map((id) => id.toString())
+    .sort();
+
+  let conversation: IConversation | null = null;
+  try {
+    conversation = await Conversation.findOneAndUpdate(
+      { participants: { $all: [senderId, receiverId] } },
+      { $setOnInsert: { participants: participantIds } },
+      { upsert: true, new: true, runValidators: true }
+    );
+  } catch (error) {
+    // The unique compound index on participants backs up the upsert: if two
+    // requests race to create the first conversation, exactly one insert wins
+    // and the loser receives a duplicate key error. Re-fetch the winner.
+    if ((error as { code?: number })?.code === 11000) {
+      conversation = await Conversation.findOne({
+        participants: { $all: [senderId, receiverId] }
+      });
+      if (!conversation) {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 
   if (!conversation) {
-    conversation = await Conversation.create({
-      participants: [senderId, receiverId]
-    });
+    throw new AppError("Could not find or create conversation", 500);
   }
 
   const message = await Message.create({

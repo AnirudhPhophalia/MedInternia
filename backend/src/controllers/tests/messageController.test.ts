@@ -124,9 +124,8 @@ describe("Message Controller", () => {
         return { _id: "user-1" } as any;
       });
 
-      mockedConversation.findOne.mockResolvedValue(null);
       const mockSave = jest.fn().mockResolvedValue(undefined);
-      mockedConversation.create.mockResolvedValue({
+      mockedConversation.findOneAndUpdate.mockResolvedValue({
         _id: "conv-1",
         participants: ["user-1", "user-2"],
         save: mockSave
@@ -147,8 +146,87 @@ describe("Message Controller", () => {
 
       await sendMessage(req, res, () => {});
 
-      expect(mockedConversation.create).toHaveBeenCalledWith({
-        participants: ["user-1", "user-2"]
+      expect(mockedConversation.findOneAndUpdate).toHaveBeenCalledWith(
+        { participants: { $all: ["user-1", "user-2"] } },
+        { $setOnInsert: { participants: ["user-1", "user-2"] } },
+        expect.objectContaining({ upsert: true, new: true, runValidators: true })
+      );
+      expect(mockedConversation.create).not.toHaveBeenCalled();
+      expect(mockedMessage.create).toHaveBeenCalledWith({
+        conversationId: "conv-1",
+        sender: "user-1",
+        content: "hello"
+      });
+      expect(mockSave).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it("stores participants in canonical sorted order regardless of sender/receiver order", async () => {
+      const req = mockRequest("user-2", { receiverId: "user-1", content: "hi" });
+      const res = mockResponse();
+
+      (mockedUser.findById as any).mockImplementation(async (id: any) => {
+        return { _id: id, messagePrivacy: "anyone" } as any;
+      });
+
+      mockedConversation.findOneAndUpdate.mockResolvedValue({
+        _id: "conv-1",
+        participants: ["user-1", "user-2"],
+        save: jest.fn().mockResolvedValue(undefined)
+      } as any);
+      mockedMessage.create.mockResolvedValue({
+        _id: "msg-1",
+        conversationId: "conv-1",
+        sender: "user-2",
+        content: "hi",
+        populate: jest.fn().mockResolvedValue({})
+      } as any);
+
+      await sendMessage(req, res, () => {});
+
+      expect(mockedConversation.findOneAndUpdate).toHaveBeenCalledWith(
+        { participants: { $all: ["user-2", "user-1"] } },
+        { $setOnInsert: { participants: ["user-1", "user-2"] } },
+        expect.objectContaining({ upsert: true, new: true, runValidators: true })
+      );
+    });
+
+    it("re-fetches the existing conversation when a concurrent create loses the unique index race", async () => {
+      const req = mockRequest("user-1", { receiverId: "user-2", content: "hello" });
+      const res = mockResponse();
+
+      (mockedUser.findById as any).mockImplementation(async (id: any) => {
+        return { _id: id, messagePrivacy: "anyone" } as any;
+      });
+
+      const duplicateKeyError = new Error("E11000 duplicate key error");
+      (duplicateKeyError as any).code = 11000;
+      mockedConversation.findOneAndUpdate.mockRejectedValue(duplicateKeyError);
+
+      const mockSave = jest.fn().mockResolvedValue(undefined);
+      mockedConversation.findOne.mockResolvedValue({
+        _id: "conv-1",
+        participants: ["user-1", "user-2"],
+        save: mockSave
+      } as any);
+
+      const mockPopulate = jest.fn().mockResolvedValue({
+        _id: "msg-1",
+        sender: { _id: "user-1", firstName: "Sender" },
+        content: "hello"
+      });
+      mockedMessage.create.mockResolvedValue({
+        _id: "msg-1",
+        conversationId: "conv-1",
+        sender: "user-1",
+        content: "hello",
+        populate: mockPopulate
+      } as any);
+
+      await sendMessage(req, res, () => {});
+
+      expect(mockedConversation.findOne).toHaveBeenCalledWith({
+        participants: { $all: ["user-1", "user-2"] }
       });
       expect(mockedMessage.create).toHaveBeenCalledWith({
         conversationId: "conv-1",
