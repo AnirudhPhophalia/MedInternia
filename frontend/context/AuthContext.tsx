@@ -8,21 +8,43 @@ import React, {
 } from "react";
 import api from "../utils/api";
 
-interface AuthContextType {
+export interface AuthContextType {
   userId: string | null;
   user: any | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  token: string | null;
   login: (userId: string, user: any) => void;
   logout: () => Promise<void>;
   refreshUser: () => void;
 }
+
+type AuthChangeListener = (token: string | null) => void;
+const authChangeListeners = new Set<AuthChangeListener>();
+
+export const onAuthChange = (listener: AuthChangeListener) => {
+  authChangeListeners.add(listener);
+  return () => {
+    authChangeListeners.delete(listener);
+  };
+};
+
+export const notifyAuthChange = (token: string | null) => {
+  authChangeListeners.forEach((listener) => {
+    try {
+      listener(token);
+    } catch (e) {
+      console.error("Error in auth change listener:", e);
+    }
+  });
+};
 
 const AuthContext = createContext<AuthContextType>({
   userId: null,
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  token: null,
   login: () => {},
   logout: async () => {},
   refreshUser: () => {},
@@ -56,15 +78,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
+          notifyAuthChange(id);
         } else {
           setUserId(null);
           setUser(null);
+          notifyAuthChange(null);
         }
       })
       .catch(() => {
         // Session was invalid/expired (or missing) — clear in-memory state
         setUserId(null);
         setUser(null);
+        notifyAuthChange(null);
       })
       .finally(() => setIsLoading(false));
   }, []);
@@ -74,6 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Frontend only maintains in-memory state for UI purposes — no token handling here.
     setUserId(newUserId);
     setUser(newUser);
+    notifyAuthChange(newUserId);
   }, []);
 
   const logout = useCallback(async () => {
@@ -87,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     setUserId(null);
     setUser(null);
+    notifyAuthChange(null);
 
     if (typeof window !== "undefined") {
       // Clear non-auth localStorage items only (starred cases, papers, etc)
@@ -112,14 +139,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           const id = String(userData._id || userData.id);
           setUserId(id);
           setUser(userData);
+          notifyAuthChange(id);
         } else {
           setUserId(null);
           setUser(null);
+          notifyAuthChange(null);
         }
       })
       .catch(() => {
         setUserId(null);
         setUser(null);
+        notifyAuthChange(null);
       });
   }, []);
 
@@ -130,6 +160,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         user,
         isAuthenticated: !!userId,
         isLoading,
+        token: userId,
         login,
         logout,
         refreshUser,

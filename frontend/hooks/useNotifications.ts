@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import api, { getSocketUrl } from '../utils/api';
+import api, { getSocketUrl, getAuthToken } from '../utils/api';
+import { useAuth, onAuthChange } from '../context/AuthContext';
 
 export interface Notification {
   _id: string;
@@ -18,6 +19,32 @@ export function useNotifications() {
   const [newToast, setNewToast] = useState<Notification | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
+  const auth = useAuth();
+  const [eventToken, setEventToken] = useState<string | null | undefined>(undefined);
+
+  // Subscribe to auth change events (login / logout)
+  useEffect(() => {
+    return onAuthChange((newToken) => {
+      setEventToken(newToken);
+    });
+  }, []);
+
+  // Determine current auth token/state
+  const getActiveToken = () => {
+    if (eventToken !== undefined) return eventToken;
+    if (auth?.token) return auth.token;
+    if (auth?.userId) return auth.userId;
+    if (auth?.isAuthenticated) return 'authenticated';
+    const cookieToken = typeof getAuthToken === 'function' ? getAuthToken() : null;
+    if (cookieToken) return cookieToken;
+    // If auth context has completed loading and user is explicitly not logged in
+    if (auth && !auth.isLoading && !auth.isAuthenticated) {
+      return null;
+    }
+    return 'authenticated';
+  };
+
+  const activeToken = getActiveToken();
 
   // ── Recalculate unread count whenever notifications change ──
   useEffect(() => {
@@ -28,6 +55,17 @@ export function useNotifications() {
   // ── Connect socket + fetch initial notifications ────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // Disconnect active socket and clear notification state if unauthenticated
+    if (!activeToken) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
 
     // 1. Fetch existing notifications from REST API using api helper
     api.get('/notifications')
@@ -61,8 +99,9 @@ export function useNotifications() {
 
     return () => {
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, []);
+  }, [activeToken]);
 
   // ── Mark single notification as read ────────────────────────
   const markAsRead = useCallback(async (id: string) => {
