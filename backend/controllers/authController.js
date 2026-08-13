@@ -15,12 +15,8 @@ try {
   User = require('../src/models/User');
   if (User && User.default) User = User.default;
 } catch (e) {
-  try {
-    User = require('../models/User');
-    if (User && User.default) User = User.default;
-  } catch (err) {
-    User = null;
-  }
+  User = require('../models/User');
+  if (User && User.default) User = User.default;
 }
 
 /**
@@ -37,26 +33,24 @@ const login = async (req, res) => {
       });
     }
 
-    let user;
-    if (User) {
-      user = await User.findOne({ email }).select('+password');
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials',
-        });
-      }
+    if (!User) {
+      throw new Error('User model is uninitialized');
+    }
 
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials',
-        });
-      }
-    } else {
-      // Fallback object structure when model is uninitialized
-      user = { _id: 'dummy_id', email, userType: 'doctor' };
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
     }
 
     const accessToken = generateAccessToken(user);
