@@ -110,19 +110,7 @@ export async function processCaseModeration(caseId: string): Promise<void> {
       $inc: { points: pointsToAward },
     });
 
-    try {
-      // Use the original (unredacted) text for RAG ingestion on approved cases.
-      await ingestCase(
-        caseId,
-        `${caseDoc.title}\n${caseDoc.description}`,
-        {
-          specialization: caseDoc.specialization,
-          isPatientCase: caseDoc.isPatientCase,
-        }
-      );
-    } catch (error) {
-      console.error(`RAG ingestion failed for moderated case ${caseId}:`, error);
-    }
+    await enqueueRagIngest(caseId);
   }
 }
 

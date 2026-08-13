@@ -6,7 +6,7 @@ import { chatbotLimiter } from '../middleware/otpRateLimiter';
 const router = Router();
 
 router.post('/', optionalAuthenticate, chatbotLimiter, async (req: Request, res: Response) => {
-  const { message } = req.body;
+  const { message, history } = req.body;
 
   if (!message || typeof message !== 'string' || message.trim() === '') {
     return res.status(400).json({ error: 'Message is required.' });
@@ -16,8 +16,12 @@ router.post('/', optionalAuthenticate, chatbotLimiter, async (req: Request, res:
     return res.status(400).json({ error: 'Message is too long. Maximum 500 characters allowed.' });
   }
 
+  if (history !== undefined && !Array.isArray(history)) {
+    return res.status(400).json({ error: 'History must be an array.' });
+  }
+
   try {
-    const reply = await getChatbotResponse(message.trim());
+    const reply = await getChatbotResponse(message.trim(), history);
     return res.status(200).json({ reply });
   } catch (err) {
     console.error('Chatbot error:', err);
