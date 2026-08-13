@@ -6,6 +6,20 @@ import PeerReview from '../models/PeerReview';
 import User from '../models/User';
 import Case from '../models/Case';
 
+const MAX_TRANSACTION_RETRIES = 3;
+
+// MongoDB does not transparently retry transactions that abort with a
+// TransientTransactionError (e.g. WriteConflict). Concurrent peer reviews for
+// the same reviewee read overlapping snapshots, compute conflicting averages,
+// and one commit is aborted. Retrying the whole transaction re-reads a fresh
+// snapshot so the stored averageRating never drifts.
+const isTransientTransactionError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'hasErrorLabel' in error &&
+  typeof (error as any).hasErrorLabel === 'function' &&
+  (error as any).hasErrorLabel('TransientTransactionError');
+
 // Submit peer review
 export const submitPeerReview = async (req: AuthRequest, res: Response) => {
   try {
@@ -72,36 +86,57 @@ export const submitPeerReview = async (req: AuthRequest, res: Response) => {
     let committed = false;
     let peerReview: any;
     try {
-      session.startTransaction();
+      for (let attempt = 0; attempt < MAX_TRANSACTION_RETRIES; attempt++) {
+        try {
+          session.startTransaction();
 
-      [peerReview] = await PeerReview.create([{
-        reviewer: reviewerId,
-        reviewee: revieweeId,
-        caseId,
-        commentId,
-        rating,
-        feedback,
-        comments,
-        tags
-      }], { session });
+          [peerReview] = await PeerReview.create([{
+            reviewer: reviewerId,
+            reviewee: revieweeId,
+            caseId,
+            commentId,
+            rating,
+            feedback,
+            comments,
+            tags
+          }], { session });
 
-      // Update reviewer's peer review count
-      await User.findByIdAndUpdate(reviewerId, {
-        $inc: { peerReviewsGiven: 1 }
-      }, { session });
+          // Update reviewer's peer review count
+          await User.findByIdAndUpdate(reviewerId, {
+            $inc: { peerReviewsGiven: 1 }
+          }, { session });
 
-      // Update reviewee's peer review count and calculate new average
-      const revieweeReviews = await PeerReview.find({ reviewee: revieweeId }).session(session);
-      const totalRating = revieweeReviews.reduce((sum, review) => sum + review.rating, 0);
-      const averageRating = totalRating / revieweeReviews.length;
+          // Compute the reviewee's average rating inside the transaction via
+          // an aggregation pipeline instead of loading every review into
+          // memory and reducing in JS. Reads use the transaction snapshot.
+          const [ratingStats] = await PeerReview.aggregate([
+            { $match: { reviewee: revieweeId } },
+            { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
+          ]).session(session);
 
-      await User.findByIdAndUpdate(revieweeId, {
-        $inc: { peerReviewsReceived: 1 },
-        $set: { averageRating: Math.round(averageRating * 10) / 10 }
-      }, { session });
+          // Update reviewee's peer review count and new average
+          await User.findByIdAndUpdate(revieweeId, {
+            $inc: { peerReviewsReceived: 1 },
+            $set: {
+              averageRating: ratingStats ? Math.round(ratingStats.avg * 10) / 10 : 0
+            }
+          }, { session });
 
-      await session.commitTransaction();
-      committed = true;
+          await session.commitTransaction();
+          committed = true;
+          break;
+        } catch (txError) {
+          try {
+            await session.abortTransaction();
+          } catch {
+            // Best-effort abort; the transaction may already have rolled back.
+          }
+          if (attempt < MAX_TRANSACTION_RETRIES - 1 && isTransientTransactionError(txError)) {
+            continue;
+          }
+          throw txError;
+        }
+      }
 
       await peerReview.populate([
         { path: 'reviewer', select: 'firstName lastName userType' },

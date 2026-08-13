@@ -130,10 +130,10 @@ describe("Peer Review Controller", () => {
       const newReview = { _id: "review-1", rating: 4, populate: jest.fn().mockResolvedValue(true) };
       mockedPeerReview.create.mockResolvedValue([newReview] as any);
 
-      // Mock the reviewee's existing reviews for the aggregation calculation
-      // Current review (rating 4) + old review (rating 5) = average 4.5
-      mockedPeerReview.find.mockReturnValue({
-        session: jest.fn().mockResolvedValue([{ rating: 4 }, { rating: 5 }])
+      // Mock the aggregation pipeline result: current review (rating 4) +
+      // old review (rating 5) = average 4.5
+      mockedPeerReview.aggregate.mockReturnValue({
+        session: jest.fn().mockResolvedValue([{ _id: null, avg: 4.5, count: 2 }])
       } as any);
 
       await submitPeerReview(req as any, res as any);
@@ -169,6 +169,83 @@ describe("Peer Review Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("retries the transaction when a transient transaction error occurs and recomputes the average on a fresh snapshot", async () => {
+      const revieweeId = "507f1f77bcf86cd799439011";
+      const req = mockRequest("intern-1", "intern", {
+        revieweeId,
+        caseId: "case-1",
+        commentId: "comment-1",
+        rating: 4,
+      });
+      const res = mockResponse();
+
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        comments: [{ _id: "comment-1", author: { toString: () => revieweeId } }]
+      } as any);
+
+      mockedPeerReview.findOne.mockResolvedValue(null);
+
+      const newReview = { _id: "review-1", rating: 4, populate: jest.fn().mockResolvedValue(true) };
+      mockedPeerReview.create.mockResolvedValue([newReview] as any);
+
+      // First commit conflicts with a concurrent review (TransientTransactionError),
+      // the retry re-reads the snapshot and commits successfully.
+      mockSession.commitTransaction
+        .mockRejectedValueOnce({ hasErrorLabel: (label: string) => label === "TransientTransactionError" })
+        .mockResolvedValueOnce(undefined);
+
+      // Attempt 1 only sees the new review; attempt 2 (after retry) sees both.
+      mockedPeerReview.aggregate
+        .mockReturnValueOnce({ session: jest.fn().mockResolvedValue([{ _id: null, avg: 4, count: 1 }]) } as any)
+        .mockReturnValueOnce({ session: jest.fn().mockResolvedValue([{ _id: null, avg: 4.5, count: 2 }]) } as any);
+
+      await submitPeerReview(req as any, res as any);
+
+      expect(mockSession.commitTransaction).toHaveBeenCalledTimes(2);
+      expect(mockedPeerReview.aggregate).toHaveBeenCalledTimes(2);
+      // Final average must come from the up-to-date snapshot.
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenLastCalledWith(revieweeId, {
+        $inc: { peerReviewsReceived: 1 },
+        $set: { averageRating: 4.5 }
+      }, { session: mockSession });
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("does not retry and returns 500 when a non-transient error occurs", async () => {
+      const revieweeId = "507f1f77bcf86cd799439011";
+      const req = mockRequest("intern-1", "intern", {
+        revieweeId,
+        caseId: "case-1",
+        commentId: "comment-1",
+        rating: 4,
+      });
+      const res = mockResponse();
+
+      mockedCase.findById.mockResolvedValue({
+        _id: "case-1",
+        comments: [{ _id: "comment-1", author: { toString: () => revieweeId } }]
+      } as any);
+
+      mockedPeerReview.findOne.mockResolvedValue(null);
+
+      const newReview = { _id: "review-1", rating: 4, populate: jest.fn().mockResolvedValue(true) };
+      mockedPeerReview.create.mockResolvedValue([newReview] as any);
+
+      mockedPeerReview.aggregate.mockReturnValue({
+        session: jest.fn().mockResolvedValue([{ _id: null, avg: 4, count: 1 }])
+      } as any);
+
+      mockSession.commitTransaction.mockRejectedValue(new Error("boom"));
+
+      await submitPeerReview(req as any, res as any);
+
+      expect(mockSession.commitTransaction).toHaveBeenCalledTimes(1);
+      expect(mockedPeerReview.aggregate).toHaveBeenCalledTimes(1);
+      expect(res.status).toHaveBeenCalledWith(500);
     });
   });
 
