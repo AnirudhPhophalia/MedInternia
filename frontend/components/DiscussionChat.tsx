@@ -31,8 +31,13 @@ const DiscussionChat = () => {
     setInput("");
     setLoading(true);
 
+    const history = messages.map((m) => ({
+      role: m.user === "You" ? "user" : "assistant",
+      content: m.text,
+    }));
+
     try {
-      const { data } = await api.post('/chatbot', { message: userMessage });
+      const { data } = await api.post('/chatbot', { message: userMessage, history });
 
       setMessages((prev) => [
         ...prev,
