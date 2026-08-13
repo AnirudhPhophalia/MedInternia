@@ -9,6 +9,7 @@ import {
   verifyDoctor,
   getPublicProfile,
   awardPointsToIntern,
+  exportUserResumePdf,
 } from "../userController";
 import User from "../../models/User";
 import Case from "../../models/Case";
@@ -800,5 +801,53 @@ describe("User Controller", () => {
         expect.objectContaining({ success: true, points: 150 })
       );
     });
+  });
+
+  describe("exportUserResumePdf", () => {
+    it("returns 404 when user is not found", async () => {
+      const req = { params: { userId: "user-none" } } as any;
+      const res = mockResponse();
+
+      mockedUser.findById.mockResolvedValue(null as any);
+
+      await exportUserResumePdf(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, message: "User not found" })
+      );
+    });
+
+    it("returns 200 with PDF headers and buffer on success", async () => {
+      const req = { params: { userId: "user-123" } } as any;
+      const res = {
+        setHeader: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn(),
+      } as any;
+
+      mockedUser.findById.mockResolvedValue({
+        _id: "user-123",
+        firstName: "Jane",
+        lastName: "Doe",
+        userType: "doctor",
+        specialization: "Pediatrics",
+        email: "jane.doe@example.com",
+      } as any);
+
+      (UserBadge.find as jest.Mock).mockReturnValue({
+        populate: jest.fn().mockResolvedValue([]),
+      });
+
+      await exportUserResumePdf(req, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "application/pdf");
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Content-Disposition",
+        expect.stringContaining("Jane_Doe_MedInternia_CV.pdf")
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalled();
+    }, 30000);
   });
 });

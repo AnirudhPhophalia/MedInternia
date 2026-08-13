@@ -13,6 +13,7 @@ import {
   addFollowUp,
   reviewAICasePost,
   publishDueAICasePosts,
+  exportCasePdf,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
@@ -903,5 +904,59 @@ describe("Case Controller", () => {
         expect.objectContaining({ success: true, data: expect.objectContaining({ count: 1 }) })
       );
     });
+  });
+
+  describe("exportCasePdf", () => {
+    it("should return 404 if case is not found", async () => {
+      mockedCase.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(null),
+        }),
+      } as any);
+
+      const req = { params: { id: "nonexistent-id" } } as any;
+      const res = {
+        setHeader: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn(),
+      } as any;
+
+      await expect(exportCasePdf(req, res, jest.fn())).rejects.toThrow("Case not found");
+    });
+
+    it("should set PDF headers and send PDF buffer on success", async () => {
+      const mockCaseData = {
+        _id: "case-123",
+        title: "Test Medical Case",
+        category: "Neurology",
+        difficulty: "Medium",
+        doctor: { firstName: "Dr. Alice", lastName: "Smith" },
+        description: "Test description",
+        comments: [],
+      };
+
+      mockedCase.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockCaseData),
+        }),
+      } as any);
+
+      const req = { params: { id: "case-123" } } as any;
+      const res = {
+        setHeader: jest.fn(),
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn(),
+      } as any;
+
+      await exportCasePdf(req, res, jest.fn());
+
+      expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "application/pdf");
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Content-Disposition",
+        expect.stringContaining("medinternia-test-medical-case.pdf")
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalled();
+    }, 30000);
   });
 });
