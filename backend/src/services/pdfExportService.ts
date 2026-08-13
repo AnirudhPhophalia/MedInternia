@@ -541,32 +541,158 @@ startxref
   return Buffer.from(content, 'utf-8');
 }
 
+const PUPPETEER_LAUNCH_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--no-first-run',
+  '--no-zygote'
+];
+
+function readPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const MAX_CONCURRENT_RENDERS = readPositiveIntEnv('PDF_MAX_CONCURRENT_RENDERS', 3);
+const LAUNCH_RETRY_DELAY_MS = readPositiveIntEnv('PDF_BROWSER_LAUNCH_RETRY_DELAY_MS', 10000);
+
+let puppeteerModulePromise: Promise<any> | null = null;
+
 /**
- * Renders an HTML string into a PDF Buffer using Puppeteer.
+ * Loads the Puppeteer module once and caches the resolved reference so the
+ * (potentially expensive) dynamic import only happens a single time.
+ */
+function loadPuppeteer(): Promise<any> {
+  if (!puppeteerModulePromise) {
+    puppeteerModulePromise = (async () => {
+      try {
+        const puppeteerModule = await import('puppeteer');
+        return puppeteerModule.default || puppeteerModule;
+      } catch (e) {
+        return eval("require('puppeteer')");
+      }
+    })();
+  }
+  return puppeteerModulePromise;
+}
+
+let sharedBrowser: any = null;
+let sharedBrowserPromise: Promise<any> | null = null;
+let lastLaunchAttempt = 0;
+
+/**
+ * Lazily launches (and then reuses) a single headless Chrome instance for all
+ * PDF exports. Previously renderHtmlToPdfBuffer called puppeteer.launch() for
+ * every request, spinning up a brand new browser process each time - extremely
+ * CPU and memory intensive under concurrent load. Now one Chrome instance stays
+ * alive and every request simply opens a new tab on it.
+ */
+async function getSharedBrowser(): Promise<any> {
+  if (sharedBrowser && sharedBrowser.connected) {
+    return sharedBrowser;
+  }
+  if (sharedBrowserPromise) {
+    return sharedBrowserPromise;
+  }
+  const now = Date.now();
+  if (now - lastLaunchAttempt < LAUNCH_RETRY_DELAY_MS) {
+    throw new Error('Puppeteer browser is unavailable (recent launch failed, retrying later)');
+  }
+  lastLaunchAttempt = now;
+  sharedBrowserPromise = (async () => {
+    const puppeteer = await loadPuppeteer();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: PUPPETEER_LAUNCH_ARGS
+    });
+    sharedBrowser = browser;
+    browser.on('disconnected', () => {
+      sharedBrowser = null;
+    });
+    return browser;
+  })();
+  try {
+    return await sharedBrowserPromise;
+  } finally {
+    sharedBrowserPromise = null;
+  }
+}
+
+let activeRenders = 0;
+const renderWaitQueue: Array<() => void> = [];
+
+/**
+ * Bounds how many PDFs can render concurrently so that a burst of exports can
+ * not exhaust server memory even though they share a single browser instance.
+ */
+async function acquireRenderSlot(): Promise<void> {
+  if (activeRenders < MAX_CONCURRENT_RENDERS) {
+    activeRenders++;
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    renderWaitQueue.push(() => {
+      activeRenders++;
+      resolve();
+    });
+  });
+}
+
+function releaseRenderSlot(): void {
+  const next = renderWaitQueue.shift();
+  if (next) {
+    next();
+  } else {
+    activeRenders--;
+  }
+}
+
+/**
+ * Closes the shared browser so the server can shut down without leaving
+ * orphaned headless Chrome processes behind.
+ */
+export async function closePdfBrowserPool(): Promise<void> {
+  const browser = sharedBrowser;
+  sharedBrowser = null;
+  if (browser) {
+    try {
+      await browser.close();
+    } catch (closeErr) {
+      // ignore close error
+    }
+  }
+}
+
+let shutdownHooksRegistered = false;
+
+function registerPdfShutdownHooks(): void {
+  if (shutdownHooksRegistered || typeof process === 'undefined' || !process.on) return;
+  shutdownHooksRegistered = true;
+  const shutdown = (): void => {
+    closePdfBrowserPool().catch((err) => {
+      console.error('Error while closing PDF browser pool:', err);
+    });
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}
+
+/**
+ * Renders an HTML string into a PDF Buffer using a shared Puppeteer browser.
+ * The browser stays alive between calls and only a new tab is opened per
+ * request, so concurrent PDF exports no longer spawn one Chrome process each.
  */
 export async function renderHtmlToPdfBuffer(html: string): Promise<Buffer> {
-  let browser: any = null;
+  registerPdfShutdownHooks();
+  await acquireRenderSlot();
+  let page: any = null;
   try {
-    let puppeteer: any;
-    try {
-      const puppeteerModule = await import('puppeteer');
-      puppeteer = puppeteerModule.default || puppeteerModule;
-    } catch (e) {
-      puppeteer = eval("require('puppeteer')");
-    }
-
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote'
-      ]
-    });
-    const page = await browser.newPage();
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
     const pdfUint8Array = await page.pdf({
       format: 'A4',
@@ -583,12 +709,13 @@ export async function renderHtmlToPdfBuffer(html: string): Promise<Buffer> {
     console.error('Puppeteer rendering encountered an issue, falling back to minimal PDF buffer:', error);
     return createFallbackPdfBuffer('MedInternia Export Document');
   } finally {
-    if (browser) {
+    if (page) {
       try {
-        await browser.close();
+        await page.close();
       } catch (closeErr) {
-        // ignore close error
+        // ignore page close error
       }
     }
+    releaseRenderSlot();
   }
 }

@@ -1,6 +1,10 @@
-import { generateCasePdfHtml, generateResumePdfHtml, renderHtmlToPdfBuffer } from '../pdfExportService';
+import { generateCasePdfHtml, generateResumePdfHtml, renderHtmlToPdfBuffer, closePdfBrowserPool } from '../pdfExportService';
 
 describe('pdfExportService', () => {
+  afterAll(async () => {
+    await closePdfBrowserPool();
+  });
+
   describe('generateCasePdfHtml', () => {
     it('should generate valid HTML containing case details', () => {
       const mockCase = {
