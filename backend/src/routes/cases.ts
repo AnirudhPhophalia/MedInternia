@@ -41,10 +41,23 @@ import { requirePermission } from '../middleware/permissions';
 import { repostLimiter } from '../middleware/otpRateLimiter';
 import { checkPlagiarismAndAI } from '../middleware/plagiarismDetection';
 import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { randomUUID } from 'crypto';
 import { isAllowedCaseAttachment } from '../utils/uploadValidation';
 
+const uploadsDir = path.join(os.tmpdir(), 'medinternia-case-attachments');
+
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      fs.mkdir(uploadsDir, { recursive: true }, (err) => cb(err, uploadsDir));
+    },
+    filename: (_req, file, cb) => {
+      cb(null, `${randomUUID()}${path.extname(file.originalname)}`);
+    }
+  }),
   limits: {
     fileSize: 50 * 1024 * 1024 // 50MB limit
   },
