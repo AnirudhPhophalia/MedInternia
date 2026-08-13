@@ -3,7 +3,7 @@ import { createAgenda } from "../config/agenda";
 import Case from "../models/Case";
 import User from "../models/User";
 import { checkCompliance } from "../services/nerService";
-import { ingestCase } from "../services/ragService";
+import { enqueueRagIngest, registerRagIngestJob } from "./ragIngestJob";
 
 export const CASE_MODERATION_JOB = "moderate-case-compliance";
 
@@ -109,19 +109,7 @@ export async function processCaseModeration(caseId: string): Promise<void> {
       $inc: { points: pointsToAward },
     });
 
-    try {
-      // Use the original (unredacted) text for RAG ingestion on approved cases.
-      await ingestCase(
-        caseId,
-        `${caseDoc.title}\n${caseDoc.description}`,
-        {
-          specialization: caseDoc.specialization,
-          isPatientCase: caseDoc.isPatientCase,
-        }
-      );
-    } catch (error) {
-      console.error(`RAG ingestion failed for moderated case ${caseId}:`, error);
-    }
+    await enqueueRagIngest(caseId);
   }
 }
 
@@ -211,6 +199,7 @@ export async function enqueueCaseModeration(caseId: string): Promise<void> {
 export async function startBackgroundJobs(): Promise<void> {
   const scheduler = getAgenda();
   registerCaseModerationJob(scheduler);
+  registerRagIngestJob(scheduler);
   await scheduler.start();
 }
 
