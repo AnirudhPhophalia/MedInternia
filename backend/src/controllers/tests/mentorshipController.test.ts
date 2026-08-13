@@ -1,4 +1,5 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import {
   requestMentorship,
   updateMentorshipStatus,
@@ -30,8 +31,20 @@ const mockRequest = (userId: string, userType: string, body: any = {}, params: a
 });
 
 describe("Mentorship Controller", () => {
+  const mockSession = {
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    abortTransaction: jest.fn(),
+    endSession: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(mongoose, "startSession").mockResolvedValue(mockSession as any);
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
   });
 
   describe("requestMentorship", () => {
@@ -158,10 +171,12 @@ describe("Mentorship Controller", () => {
 
       await updateMentorshipStatus(req as any, res as any);
 
-      expect(mockSave).toHaveBeenCalled();
+      expect(mockSave).toHaveBeenCalledWith({ session: mockSession });
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(menteeId, {
         mentorDoctor: expect.objectContaining({ toString: expect.any(Function) })
-      });
+      }, { session: mockSession });
+      expect(mockSession.commitTransaction).toHaveBeenCalled();
+      expect(mockSession.endSession).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
@@ -185,7 +200,9 @@ describe("Mentorship Controller", () => {
 
       expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(menteeId, {
         $unset: { mentorDoctor: 1 }
-      });
+      }, { session: mockSession });
+      expect(mockSession.commitTransaction).toHaveBeenCalled();
+      expect(mockSession.endSession).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
