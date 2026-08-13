@@ -44,43 +44,47 @@ const consumeOtp = async (
   purpose: 'signup' | 'reset',
   submittedOtp: string
 ): Promise<{ valid: boolean; message?: string }> => {
-  const record = await Otp.findOne({ email, purpose });
+  // Atomically find and delete the OTP document to prevent TOCTOU race conditions
+  const record = await Otp.findOneAndDelete({
+    email,
+    purpose,
+    expiresAt: { $gt: new Date() },
+    attempts: { $lt: OTP_MAX_ATTEMPTS }
+  });
 
   if (!record) {
+    // Check if the record exists at all to give a better error message if possible
+    const existing = await Otp.findOne({ email, purpose });
+    if (existing && existing.attempts >= OTP_MAX_ATTEMPTS) {
+      return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
+    }
+    if (existing && existing.expiresAt.getTime() < Date.now()) {
+      await Otp.deleteOne({ _id: existing._id });
+      return { valid: false, message: 'OTP has expired. Please request a new one.' };
+    }
     return { valid: false, message: 'OTP not found or already used. Please request a new one.' };
-  }
-
-  if (record.expiresAt.getTime() < Date.now()) {
-    await Otp.deleteOne({ _id: record._id });
-    return { valid: false, message: 'OTP has expired. Please request a new one.' };
-  }
-
-  if (record.attempts >= OTP_MAX_ATTEMPTS) {
-    await Otp.deleteOne({ _id: record._id });
-    return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
   }
 
   const isMatch = await bcrypt.compare(submittedOtp, record.otpHash);
 
   if (!isMatch) {
-    // Atomic increment to avoid race conditions with concurrent verification attempts
-    const updated = await Otp.findOneAndUpdate(
-      { _id: record._id, attempts: { $lt: OTP_MAX_ATTEMPTS } },
-      { $inc: { attempts: 1 } },
-      { new: true }
-    );
-
-    const attemptsNow = updated ? updated.attempts : OTP_MAX_ATTEMPTS;
-
-    if (attemptsNow >= OTP_MAX_ATTEMPTS) {
-      await Otp.deleteOne({ _id: record._id });
+    const newAttempts = record.attempts + 1;
+    if (newAttempts >= OTP_MAX_ATTEMPTS) {
       return { valid: false, message: 'Too many incorrect attempts. Please request a new OTP.' };
     }
+
+    // Re-create the document with incremented attempts
+    await Otp.create({
+      email: record.email,
+      purpose: record.purpose,
+      otpHash: record.otpHash,
+      expiresAt: record.expiresAt,
+      attempts: newAttempts
+    });
 
     return { valid: false, message: 'Invalid OTP' };
   }
 
-  await Otp.deleteOne({ _id: record._id });
   return { valid: true };
 };
 
