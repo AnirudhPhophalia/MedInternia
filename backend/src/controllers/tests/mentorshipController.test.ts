@@ -229,17 +229,27 @@ describe("Mentorship Controller", () => {
       const req = mockRequest("intern-1", "intern", { title: "Study ECG", description: "Learn 12-lead ECG" }, { id: "mentorship-1" });
       const res = mockResponse();
 
-      const mockSave = jest.fn();
       mockedMentorship.findById.mockResolvedValue({
         _id: "mentorship-1",
         mentee: { toString: () => "intern-1" },
         goals: [],
-        save: mockSave,
+      } as any);
+      mockedMentorship.findByIdAndUpdate.mockResolvedValue({
+        _id: "mentorship-1",
+        goals: [{ title: "Study ECG", description: "Learn 12-lead ECG", isCompleted: false }],
       } as any);
 
       await addGoal(req as any, res as any);
 
-      expect(mockSave).toHaveBeenCalled();
+      expect(mockedMentorship.findByIdAndUpdate).toHaveBeenCalledWith(
+        "mentorship-1",
+        expect.objectContaining({
+          $push: expect.objectContaining({
+            goals: expect.objectContaining({ title: "Study ECG", isCompleted: false }),
+          }),
+        }),
+        { new: true }
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
@@ -297,17 +307,27 @@ describe("Mentorship Controller", () => {
       const req = mockRequest("doctor-1", "doctor", { scheduledAt: "2026-07-13T22:00:00Z", topic: "Clinical audit", link: "zoom.us", notes: "preparation" }, { id: "mentorship-1" });
       const res = mockResponse();
 
-      const mockSave = jest.fn();
       mockedMentorship.findById.mockResolvedValue({
         _id: "mentorship-1",
         mentor: { toString: () => "doctor-1" },
         meetings: [],
-        save: mockSave,
+      } as any);
+      mockedMentorship.findByIdAndUpdate.mockResolvedValue({
+        _id: "mentorship-1",
+        meetings: [{ scheduledAt: new Date("2026-07-13T22:00:00Z"), topic: "Clinical audit", link: "zoom.us", notes: "preparation" }],
       } as any);
 
       await addMeeting(req as any, res as any);
 
-      expect(mockSave).toHaveBeenCalled();
+      expect(mockedMentorship.findByIdAndUpdate).toHaveBeenCalledWith(
+        "mentorship-1",
+        expect.objectContaining({
+          $push: expect.objectContaining({
+            meetings: expect.objectContaining({ topic: "Clinical audit", link: "zoom.us" }),
+          }),
+        }),
+        { new: true }
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });

@@ -189,10 +189,21 @@ export const addGoal = async (req: Request, res: Response): Promise<any> => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    mentorship.goals.push({ title, description, isCompleted: false } as any);
-    await mentorship.save();
+    // Use an atomic $push so concurrent adds never overwrite each other.
+    const updatedMentorship = await Mentorship.findByIdAndUpdate(
+      req.params.id,
+      { $push: { goals: { title, description, isCompleted: false } } },
+      { new: true }
+    );
 
-    res.status(200).json({ success: true, data: mentorship });
+    if (!updatedMentorship) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
+    }
+
+    res.status(200).json({ success: true, data: updatedMentorship });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -240,10 +251,21 @@ export const addMeeting = async (req: Request, res: Response): Promise<any> => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    mentorship.meetings.push({ scheduledAt: new Date(scheduledAt), topic, link, notes } as any);
-    await mentorship.save();
+    // Use an atomic $push so concurrent adds never overwrite each other.
+    const updatedMentorship = await Mentorship.findByIdAndUpdate(
+      req.params.id,
+      { $push: { meetings: { scheduledAt: new Date(scheduledAt), topic, link, notes } } },
+      { new: true }
+    );
 
-    res.status(200).json({ success: true, data: mentorship });
+    if (!updatedMentorship) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentorship not found",
+      });
+    }
+
+    res.status(200).json({ success: true, data: updatedMentorship });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
