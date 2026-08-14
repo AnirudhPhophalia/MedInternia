@@ -19,6 +19,30 @@ jest.mock("../../models/Message");
 jest.mock("../../models/User");
 jest.mock("../../utils/socket");
 
+jest.mock("mongoose", () => {
+  const actualMongoose = jest.requireActual("mongoose");
+  return {
+    ...actualMongoose,
+    startSession: jest.fn().mockResolvedValue({
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      abortTransaction: jest.fn().mockResolvedValue(undefined),
+      endSession: jest.fn(),
+    }),
+  };
+});
+
+jest.mock("../../../config/redis", () => ({
+  on: jest.fn(),
+  get: jest.fn(),
+  set: jest.fn(),
+  setex: jest.fn(),
+  del: jest.fn(),
+  publish: jest.fn(),
+  subscribe: jest.fn(),
+  quit: jest.fn(),
+}));
+
 const mockedConversation = Conversation as unknown as jest.Mocked<typeof Conversation>;
 const mockedMessage = Message as unknown as jest.Mocked<typeof Message>;
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
@@ -112,52 +136,67 @@ describe("Message Controller", () => {
     });
   });
 
-  describe("sendMessage", () => {
+describe("sendMessage", () => {
     it("creates message, updates lastMessage, and emits to user if privacy settings allow", async () => {
       const req = mockRequest("user-1", { receiverId: "user-2", content: "hello" });
       const res = mockResponse();
 
-      (mockedUser.findById as any).mockImplementation(async (id: any) => {
-        if (id === "user-2") {
-          return { _id: "user-2", messagePrivacy: "anyone" } as any;
-        }
-        return { _id: "user-1" } as any;
+      // Mock User.findById to support both direct await AND .session() chaining
+      (mockedUser.findById as any).mockImplementation((id: any) => {
+        const result = id === "user-2"
+          ? { _id: "user-2", messagePrivacy: "anyone" }
+          : { _id: "user-1" };
+
+        return {
+          session: jest.fn().mockResolvedValue(result),
+          then: (resolve: any) => resolve(result),
+        };
       });
 
-      mockedConversation.findOne.mockResolvedValue(null);
-      const mockSave = jest.fn().mockResolvedValue(undefined);
-      mockedConversation.create.mockResolvedValue({
+      // Mock Conversation.findOneAndUpdate (upsert logic)
+      mockedConversation.findOneAndUpdate.mockResolvedValue({
         _id: "conv-1",
-        participants: ["user-1", "user-2"],
-        save: mockSave
+        participants: ["user-1", "user-2"]
       } as any);
 
+      // Mock Conversation.findByIdAndUpdate (lastMessage update)
+      mockedConversation.findByIdAndUpdate.mockResolvedValue({
+        _id: "conv-1",
+        participants: ["user-1", "user-2"],
+        lastMessage: "hello"
+      } as any);
+
+      // Mock Message.create — MUST return an array (mongoose transaction behavior)
       const mockPopulate = jest.fn().mockResolvedValue({
         _id: "msg-1",
         sender: { _id: "user-1", firstName: "Sender" },
         content: "hello"
       });
-      mockedMessage.create.mockResolvedValue({
-        _id: "msg-1",
-        conversationId: "conv-1",
-        sender: "user-1",
-        content: "hello",
-        populate: mockPopulate
-      } as any);
+
+      mockedMessage.create.mockResolvedValue([
+        {
+          _id: "msg-1",
+          conversationId: "conv-1",
+          sender: "user-1",
+          content: "hello",
+          populate: mockPopulate
+        }
+      ] as any);
 
       await sendMessage(req, res, () => {});
 
-      expect(mockedConversation.create).toHaveBeenCalledWith({
-        participants: ["user-1", "user-2"]
-      });
-      expect(mockedMessage.create).toHaveBeenCalledWith({
-        conversationId: "conv-1",
-        sender: "user-1",
-        content: "hello"
-      });
+      expect(mockedConversation.findOneAndUpdate).toHaveBeenCalled();
+      expect(mockedMessage.create).toHaveBeenCalledWith(
+        [{
+          conversationId: "conv-1",
+          sender: "user-1",
+          content: "hello"
+        }],
+        expect.objectContaining({ session: expect.anything() })
+      );
       expect(res.status).toHaveBeenCalledWith(201);
     });
-  });
+});
 
   describe("markAsRead", () => {
     it("marks unread messages as read and emits socket notification to recipient", async () => {

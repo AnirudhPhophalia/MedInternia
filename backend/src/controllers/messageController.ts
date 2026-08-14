@@ -6,6 +6,7 @@ import User from "../models/User";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
 import { emitToUser } from "../utils/socket";
+import mongoose from "mongoose";
 
 // Get all conversations for a user
 export const getConversations = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -113,7 +114,7 @@ export const markAsRead = asyncHandler(async (req: AuthRequest, res: Response) =
   });
 });
 
-// Send a message
+// Send a message - FIXED VERSION with transaction and race condition prevention
 export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { receiverId, content } = req.body;
   const senderId = req.user?._id;
@@ -127,9 +128,7 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
     throw new AppError("Message content is required", 400);
   }
 
-  // Validate content length BEFORE hitting the DB to fail fast and avoid
-  // wasted round trips for oversized payloads. The Message schema enforces
-  // maxlength: 2000 on save, but checking here returns a clearer error.
+  // Validate content length BEFORE hitting the DB
   if (trimmedContent.length > 2000) {
     throw new AppError("Message content must not exceed 2000 characters", 400);
   }
@@ -138,67 +137,116 @@ export const sendMessage = asyncHandler(async (req: AuthRequest, res: Response) 
     throw new AppError("You cannot message yourself", 400);
   }
 
-  const receiver = await User.findById(receiverId);
-  if (!receiver) {
+  // FIX #1: Check if receiver exists first (basic validation)
+  const receiverExists = await User.findById(receiverId);
+  if (!receiverExists) {
     throw new AppError("Recipient not found", 404);
   }
 
-  const sender = await User.findById(senderId);
-
-  // Check privacy settings
-  if (receiver.messagePrivacy === 'none') {
-    throw new AppError("This user is not accepting direct messages", 403);
+  // FIX #2: Check if sender exists (null check)
+  const senderExists = await User.findById(senderId);
+  if (!senderExists) {
+    throw new AppError("Sender user not found", 404);
   }
-  if (receiver.messagePrivacy === 'verified_only') {
-    // Both isVerified (general) or isVerifiedDoctor can be checked. 
-    // Let's assume isVerifiedDoctor or isVerified.
-    if (!sender?.isVerifiedDoctor && !sender?.isVerified) {
-      throw new AppError("This user only accepts messages from verified users", 403);
+
+  // START TRANSACTION - All operations must be atomic
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // FIX #3: Re-fetch receiver WITHIN transaction to get latest data
+    const receiver = await User.findById(receiverId).session(session);
+
+    if (!receiver) {
+      throw new AppError("Recipient not found", 404);
     }
-  }
 
-  // Find or create conversation
-  let conversation = await Conversation.findOne({
-    participants: { $all: [senderId, receiverId] }
-  });
+    // FIX #4: Privacy check happens WITHIN transaction
+    if (receiver.messagePrivacy === 'none') {
+      throw new AppError("This user is not accepting direct messages", 403);
+    }
 
-  if (!conversation) {
-    conversation = await Conversation.create({
-      participants: [senderId, receiverId]
-    });
-  }
+    if (receiver.messagePrivacy === 'verified_only') {
+      if (!senderExists.isVerifiedDoctor && !senderExists.isVerified) {
+        throw new AppError("This user only accepts messages from verified users", 403);
+      }
+    }
 
-  const message = await Message.create({
-    conversationId: conversation._id,
-    sender: senderId,
-    content: trimmedContent
-  });
+    // FIX #5: Use upsert to prevent duplicate conversations
+    let conversation = await Conversation.findOneAndUpdate(
+      {
+        participants: { $all: [senderId, receiverId] }
+      },
+      {
+        $setOnInsert: {
+          participants: [senderId, receiverId]
+        }
+      },
+      {
+        upsert: true,
+        new: true,
+        session // Include session in transaction
+      }
+    );
 
-  // Store a truncated preview for the conversation list rather than the full
-  // message body. This prevents transferring up to 2000 characters per
-  // conversation on every getConversations() call.
-  const PREVIEW_MAX_LENGTH = 100;
-  const preview = trimmedContent.length > PREVIEW_MAX_LENGTH
-    ? trimmedContent.substring(0, PREVIEW_MAX_LENGTH) + '...'
-    : trimmedContent;
+    if (!conversation) {
+      throw new AppError("Failed to create/find conversation", 500);
+    }
 
-  conversation.lastMessage = preview;
-  conversation.updatedAt = new Date();
-  await conversation.save();
+    // FIX #6: Create message WITHIN same transaction
+    const message = await Message.create(
+      [{
+        conversationId: conversation._id,
+        sender: senderId,
+        content: trimmedContent
+      }],
+      { session } // Message creation is part of transaction
+    );
 
-  await message.populate('sender', 'firstName lastName profilePicture');
+    if (!message || message.length === 0) {
+      throw new AppError("Failed to create message", 500);
+    }
 
-  // Emit to receiver
-  emitToUser(receiverId.toString(), 'new_message', {
-    message,
-    conversationId: conversation._id
-  });
+    // FIX #7: Update conversation within transaction
+    const PREVIEW_MAX_LENGTH = 100;
+    const preview = trimmedContent.length > PREVIEW_MAX_LENGTH
+      ? trimmedContent.substring(0, PREVIEW_MAX_LENGTH) + '...'
+      : trimmedContent;
 
-  res.status(201).json({
-    success: true,
-    data: {
-      message,
+    await Conversation.findByIdAndUpdate(
+      conversation._id,
+      {
+        lastMessage: preview,
+        updatedAt: new Date()
+      },
+      { session }
+    );
+
+    // COMMIT TRANSACTION - all operations succeed or all fail
+    await session.commitTransaction();
+
+    // Populate sender details for response
+    await message[0].populate('sender', 'firstName lastName profilePicture');
+
+    // Emit to receiver (outside transaction)
+    emitToUser(receiverId.toString(), 'new_message', {
+      message: message[0],
       conversationId: conversation._id
-    }
-  });
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        message: message[0],
+        conversationId: conversation._id
+      }
+    });
+
+  } catch (error) {
+    // ROLLBACK on any error
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 });
