@@ -7,17 +7,20 @@ import {
   TextField,
   Button,
   Box,
+  CircularProgress,
 } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 
-import { responses, quickActions } from "./chatbotData";
+import api from "../utils/api";
+import { quickActions } from "./chatbotData";
 
 const Chatbot = ({ initialOpen = false }: { initialOpen?: boolean }) => {
   const router = useRouter();
 
   const [open, setOpen] = useState(initialOpen);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [messages, setMessages] = useState<
   { sender: string; text: string }[]
@@ -28,23 +31,38 @@ const Chatbot = ({ initialOpen = false }: { initialOpen?: boolean }) => {
     },
   ]);
 
-  const sendMessage = () => {
-  if (!input.trim()) return;
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
 
-  const userMessage = input.toLowerCase().trim();
+    const userMessage = input.trim();
 
-  const reply =
-    responses[userMessage] ||
-    "Sorry, I don't understand that. Try Jobs, Webinars, FAQ, Contact or Leaderboard.";
+    setMessages((prev) => [
+      ...prev,
+      { sender: "user", text: userMessage },
+    ]);
 
-  setMessages((prev) => [
-    ...prev,
-    { sender: "user", text: input },
-    { sender: "bot", text: reply },
-  ]);
+    setInput("");
+    setLoading(true);
 
-  setInput("");
-};
+    try {
+      const { data } = await api.post("/chatbot", { message: userMessage });
+
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: data.reply || "No response received." },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: "Sorry, I couldn't reach the AI service right now. Please try again later.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -88,12 +106,29 @@ const Chatbot = ({ initialOpen = false }: { initialOpen?: boolean }) => {
             MedInternia Assistant
           </Typography>
 
-          <Box sx={{ flex: 1, overflowY: "auto", mt: 2 }}>
+          <Box
+            sx={{ flex: 1, overflowY: "auto", mt: 2 }}
+            aria-live="polite"
+            aria-busy={loading}
+          >
             {messages.map((msg, index) => (
-              <Typography key={index} sx={{ mb: 1 }}>
+              <Typography
+                key={index}
+                sx={{
+                  mb: 1,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
                 <strong>{msg.sender}:</strong> {msg.text}
               </Typography>
             ))}
+            {loading && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <CircularProgress size={14} aria-label="AI is typing" />
+                <Typography variant="caption">AI Assistant is typing...</Typography>
+              </Box>
+            )}
           </Box>
 
           <Box sx={{ mt: 2 }}>
@@ -122,8 +157,9 @@ const Chatbot = ({ initialOpen = false }: { initialOpen?: boolean }) => {
               }}
               placeholder="Ask something..."
               inputProps={{ "aria-label": "Ask the MedInternia assistant" }}
+              disabled={loading}
             />
-            <Button variant="contained" onClick={sendMessage}>
+            <Button variant="contained" onClick={sendMessage} disabled={loading}>
               Send
             </Button>
           </Box>
