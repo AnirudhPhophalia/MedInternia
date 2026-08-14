@@ -92,7 +92,7 @@ describe("Auth Controller", () => {
 
       const save = jest.fn().mockResolvedValue(undefined);
       const toObject = jest.fn().mockReturnValue({ email: "new@test.com" });
-      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "new-user-id" }) as any);
+      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "507f1f77bcf86cd799439012" }) as any);
 
       await register(req as any, res as any, next);
 
@@ -107,7 +107,7 @@ describe("Auth Controller", () => {
 
       const save = jest.fn().mockRejectedValue({ code: 11000, keyPattern: { email: 1 } });
       const toObject = jest.fn().mockReturnValue({ email: "new@test.com" });
-      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "new-user-id" }) as any);
+      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "507f1f77bcf86cd799439012" }) as any);
 
       const req = mockRequest({
         email: "new@test.com",
@@ -126,7 +126,7 @@ describe("Auth Controller", () => {
 
       const save = jest.fn().mockRejectedValue({ code: 11000, keyPattern: { licenseNumber: 1 } });
       const toObject = jest.fn().mockReturnValue({ email: "doc@test.com" });
-      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "new-user-id" }) as any);
+      (mockedUser as unknown as jest.Mock).mockImplementation(() => ({ save, toObject, _id: "507f1f77bcf86cd799439012" }) as any);
 
       const req = mockRequest({
         email: "doc@test.com",
@@ -149,7 +149,7 @@ describe("Auth Controller", () => {
   describe("login", () => {
     it("rejects login with wrong password and increments attempts", async () => {
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         email: "test@test.com",
         isActive: true,
         loginAttempts: 2,
@@ -165,14 +165,14 @@ describe("Auth Controller", () => {
       const next = jest.fn();
 
       await expect(login(req as any, res as any, next)).rejects.toThrow("Invalid email or password");
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", expect.objectContaining({
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("507f1f77bcf86cd799439011", expect.objectContaining({
         $inc: { loginAttempts: 1 }
       }));
     });
 
     it("triggers lockout when attempts exceed 5", async () => {
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         email: "test@test.com",
         isActive: true,
         loginAttempts: 4, // it increments to 5 inside the block and sets lockout
@@ -187,7 +187,7 @@ describe("Auth Controller", () => {
       const next = jest.fn();
 
       await expect(login(req as any, res as any, next)).rejects.toThrow("Invalid email or password");
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", expect.objectContaining({
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("507f1f77bcf86cd799439011", expect.objectContaining({
         $set: expect.objectContaining({ lockoutUntil: expect.any(Date) })
       }));
     });
@@ -195,7 +195,7 @@ describe("Auth Controller", () => {
     it("rejects login if user is locked out", async () => {
       const futureDate = new Date(Date.now() + 10000);
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         isActive: true,
         lockoutUntil: futureDate
       };
@@ -212,7 +212,7 @@ describe("Auth Controller", () => {
 
     it("successfully logs in and resets attempts", async () => {
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         email: "test@test.com",
         isActive: true,
         comparePassword: jest.fn().mockResolvedValue(true),
@@ -228,7 +228,7 @@ describe("Auth Controller", () => {
 
       await login(req as any, res as any, next);
       
-      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("user-1", {
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("507f1f77bcf86cd799439011", {
         $set: { loginAttempts: 0, lockoutUntil: null }
       });
       expect(res.cookie).toHaveBeenCalledWith("token", "mock-token", expect.any(Object));
@@ -312,7 +312,7 @@ describe("Auth Controller", () => {
       mockedOtp.deleteOne.mockResolvedValue({} as any);
 
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         save: jest.fn().mockResolvedValue(undefined)
       };
       mockedUser.findOne.mockResolvedValue(userMock as any);
@@ -332,14 +332,14 @@ describe("Auth Controller", () => {
   describe("changePassword", () => {
     it("rejects change if current password is wrong", async () => {
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         comparePassword: jest.fn().mockResolvedValue(false)
       };
       mockedUser.findById.mockReturnValue({
         select: jest.fn().mockResolvedValue(userMock)
       } as any);
 
-      const req = mockRequest({ currentPassword: "wrong", newPassword: "Test@1234" }, { _id: "user-1" });
+      const req = mockRequest({ currentPassword: "wrong", newPassword: "Test@1234" }, { _id: "507f1f77bcf86cd799439011" });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -348,7 +348,7 @@ describe("Auth Controller", () => {
 
     it("successfully changes password", async () => {
       const userMock = {
-        _id: "user-1",
+        _id: "507f1f77bcf86cd799439011",
         comparePassword: jest.fn().mockResolvedValue(true),
         save: jest.fn().mockResolvedValue(undefined)
       };
@@ -356,7 +356,7 @@ describe("Auth Controller", () => {
         select: jest.fn().mockResolvedValue(userMock)
       } as any);
 
-      const req = mockRequest({ currentPassword: "correct", newPassword: "Test@1234" }, { _id: "user-1" });
+      const req = mockRequest({ currentPassword: "correct", newPassword: "Test@1234" }, { _id: "507f1f77bcf86cd799439011" });
       const res = mockResponse();
       const next = jest.fn();
 
@@ -391,7 +391,7 @@ describe("Auth Controller", () => {
 
     it("rejects a refresh token that has already been revoked", async () => {
       (verifyRefreshToken as jest.Mock).mockReturnValue({
-        userId: "user-1",
+        userId: "507f1f77bcf86cd799439011",
         email: "test@test.com",
         userType: "patient",
         exp: Math.floor(Date.now() / 1000) + 3600,
@@ -409,14 +409,14 @@ describe("Auth Controller", () => {
 
     it("rotates the refresh token by blacklisting the consumed token", async () => {
       (verifyRefreshToken as jest.Mock).mockReturnValue({
-        userId: "user-1",
+        userId: "507f1f77bcf86cd799439011",
         email: "test@test.com",
         userType: "patient",
         exp: Math.floor(Date.now() / 1000) + 3600,
       });
       (isTokenBlacklisted as jest.Mock).mockResolvedValue(false);
 
-      const userMock = { _id: "user-1", email: "test@test.com", isActive: true, userType: "patient" };
+      const userMock = { _id: "507f1f77bcf86cd799439011", email: "test@test.com", isActive: true, userType: "patient" };
       mockedUser.findById.mockReturnValue({
         select: jest.fn().mockResolvedValue(userMock)
       } as any);
@@ -434,14 +434,14 @@ describe("Auth Controller", () => {
 
     it("reads the refresh token from the HTTP-only cookie when the body is empty", async () => {
       (verifyRefreshToken as jest.Mock).mockReturnValue({
-        userId: "user-1",
+        userId: "507f1f77bcf86cd799439011",
         email: "test@test.com",
         userType: "patient",
         exp: Math.floor(Date.now() / 1000) + 3600,
       });
       (isTokenBlacklisted as jest.Mock).mockResolvedValue(false);
 
-      const userMock = { _id: "user-1", email: "test@test.com", isActive: true, userType: "patient" };
+      const userMock = { _id: "507f1f77bcf86cd799439011", email: "test@test.com", isActive: true, userType: "patient" };
       mockedUser.findById.mockReturnValue({
         select: jest.fn().mockResolvedValue(userMock)
       } as any);
