@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import transporter from "../../utils/mailer";
 import { generateToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { AuthRequest, blacklistToken, isTokenBlacklisted } from "../../middleware/auth";
+import RefreshToken from "../../models/RefreshToken";
 
 jest.mock("../../utils/asyncHandler", () => ({
   asyncHandler: (fn: any) => fn,
@@ -22,6 +23,7 @@ jest.mock("../../utils/asyncHandler", () => ({
 
 jest.mock("../../models/User");
 jest.mock("../../models/Otp");
+jest.mock("../../models/RefreshToken");
 jest.mock("bcryptjs");
 jest.mock("jsonwebtoken", () => ({
   verify: jest.fn().mockImplementation((token: string) => ({ email: token, purpose: 'signup' }))
@@ -42,6 +44,7 @@ jest.mock("../../middleware/auth", () => ({
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
 const mockedOtp = Otp as unknown as jest.Mocked<typeof Otp>;
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
+const mockedRefreshToken = RefreshToken as unknown as jest.Mocked<typeof RefreshToken>;
 
 const mockResponse = () => {
   const res: Partial<Response> = {};
@@ -61,6 +64,21 @@ const mockRequest = (body: any = {}, user: any = null): AuthRequest =>
 describe("Auth Controller", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedRefreshToken.create.mockResolvedValue({
+      token: "mock-refresh-token",
+      userId: "new-user-id",
+      expiresAt: expect.any(Date),
+      isRevoked: false,
+    } as any);
+    mockedRefreshToken.findOne.mockResolvedValue({
+      token: "mock-refresh-token",
+      userId: "user-1",
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      save: jest.fn().mockResolvedValue(undefined),
+    } as any);
+    mockedRefreshToken.findOneAndUpdate.mockResolvedValue({} as any);
+    mockedRefreshToken.updateMany.mockResolvedValue({} as any);
   });
 
   describe("register", () => {
