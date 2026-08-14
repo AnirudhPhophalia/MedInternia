@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import fs from "fs";
 import { createAndEmitNotification } from "./notificationController";
 import { Response } from "express";
 import Case from "../models/Case";
@@ -996,24 +997,30 @@ export const uploadAttachment = asyncHandler(
     if (!user) throw new AppError("User not authenticated", 401);
     if (!req.file) throw new AppError("No file uploaded", 400);
 
-    const uploadResult = await uploadCaseAttachment(req.file, String(user._id));
-    let type = 'image';
-    if (uploadResult.resource_type === 'video') {
-      type = req.file.mimetype.startsWith('audio/') ? 'audio' : 'video';
-    }
-
-    // Generate a signed URL for authenticated access (15-minute expiry)
-    const signedUrl = generateSignedUrl(uploadResult.public_id, 900);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        signedUrl,
-        publicId: uploadResult.public_id,
-        type,
-        expiresIn: 900
+    try {
+      const uploadResult = await uploadCaseAttachment(req.file, String(user._id));
+      let type = 'image';
+      if (uploadResult.resource_type === 'video') {
+        type = req.file.mimetype.startsWith('audio/') ? 'audio' : 'video';
       }
-    });
+
+      // Generate a signed URL for authenticated access (15-minute expiry)
+      const signedUrl = generateSignedUrl(uploadResult.public_id, 900);
+
+      res.status(201).json({
+        success: true,
+        data: {
+          signedUrl,
+          publicId: uploadResult.public_id,
+          type,
+          expiresIn: 900
+        }
+      });
+    } finally {
+      if (req.file.path) {
+        fs.unlink(req.file.path, () => {});
+      }
+    }
   }
 );
 

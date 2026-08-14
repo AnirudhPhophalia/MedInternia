@@ -1,4 +1,5 @@
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import fs from 'fs';
 
 let configured = false;
 
@@ -111,6 +112,14 @@ export const uploadCaseAttachment = async (
       }
     );
 
-    stream.end(file.buffer);
+    stream.on('error', reject);
+
+    if (file.path) {
+      fs.createReadStream(file.path)
+        .on('error', reject)
+        .pipe(stream);
+    } else {
+      stream.end(file.buffer);
+    }
   });
 };
