@@ -187,7 +187,7 @@ export default function JoinWebinar() {
 
         <Grid container spacing={3}>
           {/* Video / Stream Area */}
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Card sx={{ height: '600px', display: 'flex', flexDirection: 'column', bgcolor: '#000', borderRadius: 2, overflow: 'hidden' }}>
               {webinar.meetingLink ? (
                 <iframe
@@ -205,7 +205,7 @@ export default function JoinWebinar() {
           </Grid>
 
           {/* Interactive Sidebar (Polls & Q&A) */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '600px', gap: 2 }}>
               {/* Polls Section */}
               <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -227,55 +227,120 @@ export default function JoinWebinar() {
                       <Button size="small" onClick={() => setNewPollOptions([...newPollOptions, ''])}>+ Add Option</Button>
                       <Button variant="contained" size="small" fullWidth sx={{ mt: 1 }} onClick={handleCreatePoll}>Launch Poll</Button>
                     </Box>
-            </Box>
-            <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              
-              <Box sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
-                {webinar.qna && webinar.qna.length > 0 ? [...webinar.qna]
-                  .sort((a, b) => (b.upvotes?.length || 0) - (a.upvotes?.length || 0))
-                  .map((q: any) => {
-                    const hasUpvoted = q.upvotes?.includes(currentUserId);
-                    const authorName = q.author?.firstName ? `${q.author.firstName} ${q.author.lastName}` : 'Attendee';
+                  )}
+
+                  {webinar.polls && webinar.polls.length > 0 ? webinar.polls.map((poll: any) => {
+                    const totalVotes = Object.keys(poll.votes || {}).length;
+                    const userVoted = (poll.votes && typeof poll.votes === 'object' && currentUserId in poll.votes) || poll._id in userVotes;
+                    const selectedOption = poll._id in userVotes ? userVotes[poll._id] : (userVoted ? poll.votes[currentUserId] : null);
 
                     return (
-                      <Box key={q._id} sx={{ mb: 2, display: 'flex', gap: 1 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <IconButton size="small" onClick={() => handleUpvoteQuestion(q._id)} color={hasUpvoted ? "primary" : "default"}>
-                            <ArrowUpwardIcon fontSize="small" />
-                          </IconButton>
-                          <Typography variant="caption" fontWeight={700}>{q.upvotes?.length || 0}</Typography>
+                      <Box key={poll._id} sx={{ mb: 3, p: 2, bgcolor: poll.active ? '#fff' : '#f9f9f9', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="subtitle2" fontWeight={600}>{poll.question}</Typography>
+                          {!poll.active && <Chip label="Closed" size="small" color="default" />}
+                          {poll.active && <Chip label="Active" size="small" color="success" />}
                         </Box>
-                        <Box sx={{ flex: 1, bgcolor: q.isAnswered ? '#f0fdf4' : '#fff', p: 1.5, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight={600}>{authorName}</Typography>
-                            {q.isAnswered && <Chip size="small" icon={<CheckCircleIcon />} label="Answered" color="success" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 1, fontSize: '0.65rem' } }} />}
+
+                        {poll.active && !userVoted && !isHost ? (
+                          <FormControl component="fieldset">
+                            <RadioGroup onChange={(e) => handleVotePoll(poll._id, Number(e.target.value))}>
+                              {poll.options.map((opt: string, i: number) => (
+                                <FormControlLabel key={i} value={i} control={<Radio />} label={opt} />
+                              ))}
+                            </RadioGroup>
+                          </FormControl>
+                        ) : (
+                          <Box sx={{ mt: 1 }}>
+                            {poll.options.map((opt: string, i: number) => {
+                              let votesForOpt = 0;
+                              if (poll.votes) {
+                                Object.values(poll.votes).forEach(val => {
+                                  if (val === i) votesForOpt++;
+                                });
+                              }
+                              const percentage = totalVotes > 0 ? Math.round((votesForOpt / totalVotes) * 100) : 0;
+                              return (
+                                <Box key={i} sx={{ mb: 1 }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: selectedOption === i ? 700 : 400 }}>{opt}</Typography>
+                                    <Typography variant="body2">{percentage}%</Typography>
+                                  </Box>
+                                  <Box sx={{ width: '100%', height: 6, bgcolor: '#e0e0e0', borderRadius: 3, mt: 0.5, overflow: 'hidden' }}>
+                                    <Box sx={{ width: `${percentage}%`, height: '100%', bgcolor: 'primary.main' }} />
+                                  </Box>
+                                </Box>
+                              );
+                            })}
+                            <Typography variant="caption" color="text.secondary">{totalVotes} votes</Typography>
                           </Box>
-                          <Typography variant="body2">{q.question}</Typography>
-                          
-                          {isHost && !q.isAnswered && (
-                            <Button size="small" color="success" sx={{ mt: 1, p: 0, fontSize: '0.75rem' }} onClick={() => handleMarkAnswered(q._id)}>Mark Answered</Button>
-                          )}
-                        </Box>
+                        )}
+
+                        {isHost && poll.active && (
+                          <Button size="small" color="error" sx={{ mt: 2 }} onClick={() => handleClosePoll(poll._id)}>Close Poll</Button>
+                        )}
                       </Box>
                     );
-                }) : <Typography variant="body2" color="text.secondary">No questions yet.</Typography>}
-              </Box>
+                  }).reverse() : <Typography variant="body2" color="text.secondary">No polls yet.</Typography>}
+                </CardContent>
+              </Card>
 
-              <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
-                <TextField 
-                  fullWidth 
-                  size="small" 
-                  placeholder="Ask a question..." 
-                  value={newQuestion} 
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAskQuestion()}
-                />
-                <Button variant="contained" onClick={handleAskQuestion}>Ask</Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      </Box>
+              {/* Q&A Section */}
+              <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Box sx={{ p: 2, bgcolor: '#f0f4f8', borderBottom: '1px solid #e0e0e0' }}>
+                  <Typography variant="subtitle1" fontWeight={700} color="primary">Q&A</Typography>
+                </Box>
+                <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                  
+                  <Box sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
+                    {webinar.qna && webinar.qna.length > 0 ? [...webinar.qna]
+                      .sort((a, b) => (b.upvotes?.length || 0) - (a.upvotes?.length || 0))
+                      .map((q: any) => {
+                        const hasUpvoted = q.upvotes?.includes(currentUserId);
+                        const authorName = q.author?.firstName ? `${q.author.firstName} ${q.author.lastName}` : 'Attendee';
+
+                        return (
+                          <Box key={q._id} sx={{ mb: 2, display: 'flex', gap: 1 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <IconButton size="small" onClick={() => handleUpvoteQuestion(q._id)} color={hasUpvoted ? "primary" : "default"}>
+                                <ArrowUpwardIcon fontSize="small" />
+                              </IconButton>
+                              <Typography variant="caption" fontWeight={700}>{q.upvotes?.length || 0}</Typography>
+                            </Box>
+                            <Box sx={{ flex: 1, bgcolor: q.isAnswered ? '#f0fdf4' : '#fff', p: 1.5, borderRadius: 2, border: '1px solid #e0e0e0' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600}>{authorName}</Typography>
+                                {q.isAnswered && <Chip size="small" icon={<CheckCircleIcon />} label="Answered" color="success" variant="outlined" sx={{ height: 20, '& .MuiChip-label': { px: 1, fontSize: '0.65rem' } }} />}
+                              </Box>
+                              <Typography variant="body2">{q.question}</Typography>
+                              
+                              {isHost && !q.isAnswered && (
+                                <Button size="small" color="success" sx={{ mt: 1, p: 0, fontSize: '0.75rem' }} onClick={() => handleMarkAnswered(q._id)}>Mark Answered</Button>
+                              )}
+                            </Box>
+                          </Box>
+                        );
+                    }) : <Typography variant="body2" color="text.secondary">No questions yet.</Typography>}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                    <TextField 
+                      fullWidth 
+                      size="small" 
+                      placeholder="Ask a question..." 
+                      value={newQuestion} 
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAskQuestion()}
+                    />
+                    <Button variant="contained" onClick={handleAskQuestion}>Ask</Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          </Grid>
+        </Grid>
+      </Container>
     </Box>
   );
 }
+
