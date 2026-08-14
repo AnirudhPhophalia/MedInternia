@@ -35,6 +35,7 @@ jest.mock("../utils/api", () => ({
         patch: jest.fn(),
     },
     getSocketUrl: jest.fn(() => "http://localhost:3000"),
+    getAuthToken: jest.fn(() => "authenticated"),
 }));
 
 jest.mock("socket.io-client", () => ({
@@ -404,6 +405,46 @@ describe("useNotifications", () => {
         });
 
         expect(requestPermission).not.toHaveBeenCalled();
+    });
+
+    it("disconnects socket and resets state when user logs out", async () => {
+        const { notifyAuthChange } = await import("../context/AuthContext");
+
+        const { result } = renderHook(() => useNotifications());
+
+        await waitFor(() => {
+            expect(result.current.notifications).toEqual(notifications);
+        });
+
+        act(() => {
+            notifyAuthChange(null);
+        });
+
+        await waitFor(() => {
+            expect(socket.disconnect).toHaveBeenCalled();
+            expect(result.current.notifications).toEqual([]);
+            expect(result.current.unreadCount).toBe(0);
+        });
+    });
+
+    it("re-initializes socket and fetches notifications when user logs in", async () => {
+        const { notifyAuthChange } = await import("../context/AuthContext");
+
+        const { result } = renderHook(() => useNotifications());
+
+        await waitFor(() => {
+            expect(result.current.notifications).toEqual(notifications);
+        });
+
+        const initialSocketCount = mockIo.mock.calls.length;
+
+        act(() => {
+            notifyAuthChange("user-123");
+        });
+
+        await waitFor(() => {
+            expect(mockIo).toHaveBeenCalledTimes(initialSocketCount + 1);
+        });
     });
 
 });

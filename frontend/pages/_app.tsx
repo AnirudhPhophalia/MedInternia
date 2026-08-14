@@ -93,9 +93,44 @@ function AuthGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function MyApp({ Component, pageProps }: AppProps) {
+function NotificationSnackbar() {
   const router = useRouter();
   const { newToast, clearToast } = useNotifications();
+
+  return (
+    <Snackbar
+      open={!!newToast}
+      autoHideDuration={4000}
+      onClose={clearToast}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+    >
+      <Alert
+        onClose={clearToast}
+        severity="info"
+        variant="filled"
+        onClick={() => {
+          if (newToast?.link) router.push(newToast.link);
+          clearToast();
+        }}
+        sx={{
+          cursor: newToast?.link ? "pointer" : "default",
+          background: (theme: any) => theme.custom.navbarGradient,
+          color: "white",
+          minWidth: 280,
+          "& .MuiAlert-icon": { color: "white" },
+        }}
+      >
+        <Typography variant="body2" fontWeight={600}>
+          New Notification
+        </Typography>
+        <Typography variant="caption">{newToast?.message}</Typography>
+      </Alert>
+    </Snackbar>
+  );
+}
+
+function MyApp({ Component, pageProps }: AppProps) {
+  const router = useRouter();
   const [chatbotLoaded, setChatbotLoaded] = useState(false);
   const [initialOpenPending, setInitialOpenPending] = useState(false);
 
@@ -189,34 +224,7 @@ function MyApp({ Component, pageProps }: AppProps) {
               <Chatbot initialOpen={initialOpenPending} />
             )}
 
-            <Snackbar
-              open={!!newToast}
-              autoHideDuration={4000}
-              onClose={clearToast}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-            >
-              <Alert
-                onClose={clearToast}
-                severity="info"
-                variant="filled"
-                onClick={() => {
-                  if (newToast?.link) router.push(newToast.link);
-                  clearToast();
-                }}
-                sx={{
-                  cursor: newToast?.link ? "pointer" : "default",
-                  background: (theme: any) => theme.custom.navbarGradient,
-                  color: "white",
-                  minWidth: 280,
-                  "& .MuiAlert-icon": { color: "white" },
-                }}
-              >
-                <Typography variant="body2" fontWeight={600}>
-                  New Notification
-                </Typography>
-                <Typography variant="caption">{newToast?.message}</Typography>
-              </Alert>
-            </Snackbar>
+            <NotificationSnackbar />
             <ReactQueryDevtools initialIsOpen={false} />
           </div>
         </CustomThemeProvider>
