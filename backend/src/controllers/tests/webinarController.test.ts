@@ -8,6 +8,13 @@ import Webinar from "../../models/Webinar";
 import { AuthRequest } from "../../middleware/auth";
 
 jest.mock("../../models/Webinar");
+jest.mock("../../utils/socket", () => {
+  const original = jest.requireActual("../../utils/socket");
+  return {
+    ...original,
+    getSocketIO: jest.fn(),
+  };
+});
 const mockedWebinar = Webinar as unknown as jest.Mocked<typeof Webinar>;
 
 const mockResponse = () => {
@@ -262,6 +269,61 @@ describe("Webinar Controller", () => {
       expect(webinar.scheduledAt).toBe(webinarRow.scheduledAt);
       expect(webinar.maxParticipants).toBe(50);
       expect(webinar.host).toEqual(webinarRow.host);
+    });
+  });
+
+  describe("Polling socket emits", () => {
+    it("emits sanitized webinar update without raw votes map over socket on votePoll", async () => {
+      const { votePoll } = require("../webinarController");
+      const { getSocketIO } = require("../../utils/socket");
+      
+      const mockEmit = jest.fn();
+      const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
+      (getSocketIO as jest.Mock).mockReturnValue({ to: mockTo });
+
+      const votesMap = new Map();
+      votesMap.set("user-1", 0);
+
+      const webinarMock = {
+        _id: "webinar-1",
+        status: "live",
+        scheduledAt: new Date(Date.now() - 10000),
+        duration: 60,
+        host: "host-1",
+        participants: [{ user: "user-1" }],
+        meetingLink: "https://secret.meet/link",
+        polls: [
+          {
+            _id: "poll-1",
+            question: "Sample Question?",
+            options: ["Option 1", "Option 2"],
+            active: true,
+            votes: votesMap,
+          },
+        ],
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+
+      mockedWebinar.findById.mockResolvedValue(webinarMock as any);
+
+      const req = {
+        user: { _id: "user-1", userType: "doctor" },
+        params: { id: "webinar-1", pollId: "poll-1" },
+        body: { optionIndex: 1 },
+      } as unknown as AuthRequest;
+      const res = mockResponse();
+
+      await votePoll(req, res);
+
+      expect(mockTo).toHaveBeenCalledWith("webinar:webinar-1");
+      expect(mockEmit).toHaveBeenCalledWith("webinar_update", expect.any(Object));
+
+      const emittedPayload = mockEmit.mock.calls[0][1];
+      expect(emittedPayload).not.toHaveProperty("meetingLink");
+      expect(emittedPayload).not.toHaveProperty("participants");
+      expect(emittedPayload.polls[0]).not.toHaveProperty("votes");
+      expect(emittedPayload.polls[0].voteCounts).toEqual([0, 1]);
+      expect(emittedPayload.polls[0].totalVotes).toBe(1);
     });
   });
 });

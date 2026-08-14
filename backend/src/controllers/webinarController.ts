@@ -3,7 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import Webinar from '../models/Webinar';
 import Notification from '../models/Notification';
 import User from '../models/User';
-import { getSocketIO } from '../utils/socket';
+import { getSocketIO, sanitizeWebinarForSocket } from '../utils/socket';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 
 const getWebinarEndTime = (webinar: { scheduledAt: Date; duration?: number }) => {
@@ -878,7 +878,7 @@ export const createPoll = async (req: AuthRequest, res: Response) => {
     await webinar.save();
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit('webinar_update', sanitizeWebinarForSocket(webinar));
 
     res.status(201).json({ success: true, data: webinar });
   } catch (error: any) {
@@ -915,7 +915,7 @@ export const votePoll = async (req: AuthRequest, res: Response) => {
     await webinar.save();
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit('webinar_update', sanitizeWebinarForSocket(webinar));
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
@@ -940,7 +940,7 @@ export const closePoll = async (req: AuthRequest, res: Response) => {
     await webinar.save();
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit('webinar_update', sanitizeWebinarForSocket(webinar));
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
@@ -983,7 +983,7 @@ export const askQuestion = async (req: AuthRequest, res: Response) => {
     await webinar.populate('qna.author', 'firstName lastName profilePicture');
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit('webinar_update', sanitizeWebinarForSocket(webinar));
 
     res.status(201).json({ success: true, data: webinar });
   } catch (error: any) {
@@ -1019,7 +1019,7 @@ export const upvoteQuestion = async (req: AuthRequest, res: Response) => {
     await webinar.populate('qna.author', 'firstName lastName profilePicture');
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit('webinar_update', sanitizeWebinarForSocket(webinar));
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {
@@ -1045,7 +1045,7 @@ export const markQuestionAnswered = async (req: AuthRequest, res: Response) => {
     await webinar.populate('qna.author', 'firstName lastName profilePicture');
 
     const io = getSocketIO();
-    if (io) io.to(`webinar:${id}`).emit('webinar_update', webinar);
+    if (io) io.to(`webinar:${id}`).emit('webinar_update', sanitizeWebinarForSocket(webinar));
 
     res.json({ success: true, data: webinar });
   } catch (error: any) {

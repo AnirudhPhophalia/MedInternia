@@ -16,6 +16,8 @@ export default function JoinWebinar() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   
+  const [userVotes, setUserVotes] = useState<Record<string, number>>({});
+  
   // Q&A State
   const [newQuestion, setNewQuestion] = useState('');
 
@@ -33,8 +35,22 @@ export default function JoinWebinar() {
           api.get('/auth/profile')
         ]);
         
-        setWebinar(webinarRes.data.data.webinar);
+        const webinarData = webinarRes.data.data.webinar;
+        setWebinar(webinarData);
         setCurrentUserId(userRes.data?.data?.user?._id);
+
+        // Pre-populate userVotes if poll.votes exists from REST response
+        if (webinarData?.polls && userRes.data?.data?.user?._id) {
+          const uId = userRes.data.data.user._id;
+          const initialVotes: Record<string, number> = {};
+          webinarData.polls.forEach((p: any) => {
+            if (p.votes && typeof p.votes === 'object' && uId in p.votes) {
+              initialVotes[p._id] = p.votes[uId];
+            }
+          });
+          setUserVotes(initialVotes);
+        }
+        
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch webinar details');
@@ -87,6 +103,7 @@ export default function JoinWebinar() {
 
   const handleVotePoll = async (pollId: string, optionIndex: number) => {
     try {
+      setUserVotes(prev => ({ ...prev, [pollId]: optionIndex }));
       await api.post(`/webinars/${id}/polls/${pollId}/vote`, { optionIndex });
     } catch (err) {
       console.error(err);
@@ -116,7 +133,7 @@ export default function JoinWebinar() {
 
   const handleUpvoteQuestion = async (qnaId: string) => {
     try {
-      await api.post(`/webinars/${id}/qna/${qnaId}/upvote`);
+      await api.patch(`/webinars/${id}/qna/${qnaId}/upvote`);
     } catch (err) {
       console.error(err);
     }
@@ -130,127 +147,86 @@ export default function JoinWebinar() {
     }
   };
 
-  if (loading) return <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>;
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!webinar) return null;
+  if (loading) {
+    return (
+      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  if (error || !webinar) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Alert severity="error">{error || 'Webinar not found'}</Alert>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/webinars')} sx={{ mt: 2 }}>
+          Back to Webinars
+        </Button>
+      </Container>
+    );
+  }
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f4f6f8' }}>
-      {/* Header */}
-      <Box sx={{ p: 2, bgcolor: 'white', borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center' }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => router.push(`/webinars/${id}`)} sx={{ mr: 2 }}>Back</Button>
-        <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>{webinar.title}</Typography>
-        <Chip label={webinar.status.toUpperCase()} color={webinar.status === 'live' ? 'error' : 'default'} />
-      </Box>
-
-      {/* Main Content */}
-      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
-        
-        {/* Left Side: Video iframe */}
-        <Box sx={{ height: '100%', p: 2, width: { xs: '100%', md: '66.666%' } }}>
-          <Box sx={{ width: '100%', height: '100%', borderRadius: 2, overflow: 'hidden', bgcolor: 'black', boxShadow: 3 }}>
-            {webinar.meetingLink ? (
-              <iframe
-                src={webinar.meetingLink}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                allow="camera; microphone; fullscreen; display-capture; autoplay"
-                title="Webinar Live Stream"
-              />
-            ) : (
-              <Box sx={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                <Typography>Meeting link not available.</Typography>
-              </Box>
-            )}
+    <Box sx={{ bgcolor: '#f4f6f8', minHeight: '100vh', py: 3 }}>
+      <Container maxWidth="xl">
+        {/* Header */}
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Button startIcon={<ArrowBackIcon />} onClick={() => router.push('/webinars')} sx={{ mb: 1 }}>
+              Back
+            </Button>
+            <Typography variant="h4" fontWeight={700}>{webinar.title}</Typography>
+            <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
+              <Chip label={webinar.status?.toUpperCase()} color={webinar.status === 'live' ? 'error' : 'primary'} size="small" />
+              <Typography variant="body2" color="text.secondary">
+                Host: {webinar.host?.firstName} {webinar.host?.lastName}
+              </Typography>
+            </Box>
           </Box>
         </Box>
 
-        {/* Right Side: Interactive Panel (Polls & Q&A) */}
-        <Box sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column', gap: 2, width: { xs: '100%', md: '33.333%' } }}>
-          
-          {/* Polls Section */}
-          <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <Box sx={{ p: 2, bgcolor: '#f0f4f8', borderBottom: '1px solid #e0e0e0' }}>
-              <Typography variant="subtitle1" fontWeight={700} color="primary">Live Polls</Typography>
-            </Box>
-            <CardContent sx={{ flex: 1, overflowY: 'auto' }}>
-              {isHost && (
-                <Box sx={{ mb: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>Create New Poll</Typography>
-                  <TextField fullWidth size="small" placeholder="Poll Question" value={newPollQuestion} onChange={e => setNewPollQuestion(e.target.value)} sx={{ mb: 1 }} />
-                  {newPollOptions.map((opt, i) => (
-                    <TextField key={i} fullWidth size="small" placeholder={`Option ${i + 1}`} value={opt} onChange={e => {
-                      const opts = [...newPollOptions];
-                      opts[i] = e.target.value;
-                      setNewPollOptions(opts);
-                    }} sx={{ mb: 1 }} />
-                  ))}
-                  <Button size="small" onClick={() => setNewPollOptions([...newPollOptions, ''])}>+ Add Option</Button>
-                  <Button variant="contained" size="small" fullWidth sx={{ mt: 1 }} onClick={handleCreatePoll}>Launch Poll</Button>
+        <Grid container spacing={3}>
+          {/* Video / Stream Area */}
+          <Grid item xs={12} md={8}>
+            <Card sx={{ height: '600px', display: 'flex', flexDirection: 'column', bgcolor: '#000', borderRadius: 2, overflow: 'hidden' }}>
+              {webinar.meetingLink ? (
+                <iframe
+                  src={webinar.meetingLink}
+                  style={{ width: '100%', height: '100%', border: 0 }}
+                  allow="camera; microphone; display-capture; autoplay"
+                />
+              ) : (
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#fff' }}>
+                  <Typography variant="h6">Live Stream Not Started</Typography>
+                  <Typography variant="body2" color="gray">The host has not launched the meeting link yet.</Typography>
                 </Box>
               )}
+            </Card>
+          </Grid>
 
-              {webinar.polls && webinar.polls.length > 0 ? webinar.polls.map((poll: any) => {
-                const totalVotes = Object.keys(poll.votes || {}).length;
-                const userVoted = poll.votes && typeof poll.votes === 'object' && currentUserId in poll.votes;
-                const selectedOption = userVoted ? poll.votes[currentUserId] : null;
-
-                return (
-                  <Box key={poll._id} sx={{ mb: 3, p: 2, bgcolor: poll.active ? '#fff' : '#f9f9f9', border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="subtitle2" fontWeight={600}>{poll.question}</Typography>
-                      {!poll.active && <Chip label="Closed" size="small" color="default" />}
-                      {poll.active && <Chip label="Active" size="small" color="success" />}
+          {/* Interactive Sidebar (Polls & Q&A) */}
+          <Grid item xs={12} md={4}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '600px', gap: 2 }}>
+              {/* Polls Section */}
+              <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Box sx={{ p: 2, bgcolor: '#f0f4f8', borderBottom: '1px solid #e0e0e0' }}>
+                  <Typography variant="subtitle1" fontWeight={700} color="primary">Polls</Typography>
+                </Box>
+                <CardContent sx={{ flex: 1, overflowY: 'auto' }}>
+                  {isHost && (
+                    <Box sx={{ mb: 2, p: 2, bgcolor: '#f9f9f9', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                      <Typography variant="subtitle2" gutterBottom>Create New Poll</Typography>
+                      <TextField fullWidth size="small" placeholder="Poll Question" value={newPollQuestion} onChange={e => setNewPollQuestion(e.target.value)} sx={{ mb: 1 }} />
+                      {newPollOptions.map((opt, i) => (
+                        <TextField key={i} fullWidth size="small" placeholder={`Option ${i + 1}`} value={opt} onChange={e => {
+                          const opts = [...newPollOptions];
+                          opts[i] = e.target.value;
+                          setNewPollOptions(opts);
+                        }} sx={{ mb: 1 }} />
+                      ))}
+                      <Button size="small" onClick={() => setNewPollOptions([...newPollOptions, ''])}>+ Add Option</Button>
+                      <Button variant="contained" size="small" fullWidth sx={{ mt: 1 }} onClick={handleCreatePoll}>Launch Poll</Button>
                     </Box>
-
-                    {poll.active && !userVoted && !isHost ? (
-                      <FormControl component="fieldset">
-                        <RadioGroup onChange={(e) => handleVotePoll(poll._id, Number(e.target.value))}>
-                          {poll.options.map((opt: string, i: number) => (
-                            <FormControlLabel key={i} value={i} control={<Radio />} label={opt} />
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                    ) : (
-                      <Box sx={{ mt: 1 }}>
-                        {poll.options.map((opt: string, i: number) => {
-                          let votesForOpt = 0;
-                          if (poll.votes) {
-                            Object.values(poll.votes).forEach(val => {
-                              if (val === i) votesForOpt++;
-                            });
-                          }
-                          const percentage = totalVotes > 0 ? Math.round((votesForOpt / totalVotes) * 100) : 0;
-                          return (
-                            <Box key={i} sx={{ mb: 1 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" sx={{ fontWeight: selectedOption === i ? 700 : 400 }}>{opt}</Typography>
-                                <Typography variant="body2">{percentage}%</Typography>
-                              </Box>
-                              <Box sx={{ width: '100%', height: 6, bgcolor: '#e0e0e0', borderRadius: 3, mt: 0.5, overflow: 'hidden' }}>
-                                <Box sx={{ width: `${percentage}%`, height: '100%', bgcolor: 'primary.main' }} />
-                              </Box>
-                            </Box>
-                          );
-                        })}
-                        <Typography variant="caption" color="text.secondary">{totalVotes} votes</Typography>
-                      </Box>
-                    )}
-
-                    {isHost && poll.active && (
-                      <Button size="small" color="error" sx={{ mt: 2 }} onClick={() => handleClosePoll(poll._id)}>Close Poll</Button>
-                    )}
-                  </Box>
-                )
-              }).reverse() : <Typography variant="body2" color="text.secondary">No polls yet.</Typography>}
-            </CardContent>
-          </Card>
-
-          {/* Q&A Section */}
-          <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <Box sx={{ p: 2, bgcolor: '#f0f4f8', borderBottom: '1px solid #e0e0e0' }}>
-              <Typography variant="subtitle1" fontWeight={700} color="primary">Q&A</Typography>
             </Box>
             <CardContent sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               
