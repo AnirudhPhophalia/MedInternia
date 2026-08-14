@@ -9,8 +9,11 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  Button,
+  Stack,
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
+import api from "../../utils/api";
 
 interface CaseItem {
   _id: string; 
@@ -21,35 +24,56 @@ export default function StarredPage() {
   const [starredCases, setStarredCases] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Fetch the user's real starred cases on page load
+  const loadStarred = async (pageNum: number, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    
+    try {
+      const res = await api.get(`/cases/starred?page=${pageNum}&limit=10`);
+      const fetchedCases = res.data?.data?.cases || [];
+      const pagination = res.data?.pagination || { page: 1, pages: 1 };
+      
+      if (append) {
+        setStarredCases((prev) => [...prev, ...fetchedCases]);
+      } else {
+        setStarredCases(fetchedCases);
+      }
+      
+      setHasMore(pagination.page < pagination.pages);
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || "Failed to load your starred cases.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
-    fetch("/api/cases/starred") 
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load your starred cases.");
-        return res.json();
-      })
-      .then((data) => {
-        setStarredCases(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
+    loadStarred(1);
   }, []);
 
-  // Communicate the toggle back to the server and update local UI
   const handleUnstar = async (caseId: string) => {
     try {
-      const res = await fetch(`/api/cases/${caseId}/star`, { method: "POST" });
-      if (res.ok) {
-        // Optimistically slice it out of the UI list immediately
-        setStarredCases((prev) => prev.filter((item) => item._id !== caseId));
-      }
+      await api.post(`/cases/${caseId}/star`);
+      setStarredCases((prev) => prev.filter((item) => item._id !== caseId));
     } catch (err) {
       console.error("Failed to update star status:", err);
     }
+  };
+  
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    loadStarred(nextPage, true);
   };
 
   return (
@@ -73,23 +97,39 @@ export default function StarredPage() {
 
         {!loading && !error && starredCases.length === 0 ? (
           <Typography color="text.secondary" align="center" py={4}>
-            You haven't starred any cases yet.
+            You haven&apos;t starred any cases yet.
           </Typography>
         ) : (
-          <List>
-            {starredCases.map((item) => (
-              <ListItem
-                key={item._id}
-                secondaryAction={
-                  <IconButton color="warning" onClick={() => handleUnstar(item._id)}>
-                    <StarIcon />
-                  </IconButton>
-                }
-              >
-                <ListItemText primary={item.title} />
-              </ListItem>
-            ))}
-          </List>
+          !loading && !error && (
+            <>
+              <List>
+                {starredCases.map((item) => (
+                  <ListItem
+                    key={item._id}
+                    secondaryAction={
+                      <IconButton color="warning" onClick={() => handleUnstar(item._id)}>
+                        <StarIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemText primary={item.title} />
+                  </ListItem>
+                ))}
+              </List>
+              
+              {hasMore && (
+                <Stack direction="row" justifyContent="center" mt={3}>
+                  <Button 
+                    variant="outlined" 
+                    onClick={loadMore} 
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? <CircularProgress size={20} /> : "Load More"}
+                  </Button>
+                </Stack>
+              )}
+            </>
+          )
         )}
       </Card>
     </Box>

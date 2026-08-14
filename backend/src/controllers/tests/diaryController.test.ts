@@ -39,7 +39,10 @@ describe("Diary Controller", () => {
 
       await getDiaries(req as any, res as any);
 
-      expect(mockedDiary.find).toHaveBeenCalledWith({ user: "user-1" });
+      expect(mockedDiary.find).toHaveBeenCalledWith(
+        { user: "user-1" },
+        { entries: { $slice: -20 } }
+      );
       expect(mockedDiary.countDocuments).toHaveBeenCalledWith({ user: "user-1" });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
@@ -51,7 +54,32 @@ describe("Diary Controller", () => {
             limit: 10,
             total: 1,
             totalPages: 1,
+            entryLimit: 20,
           }),
+        })
+      );
+    });
+
+    it("caps requested embedded diary entries per parent document", async () => {
+      const req = mockRequest("user-1");
+      (req as any).query = { entryLimit: "1000" };
+      const res = mockResponse();
+
+      const limitMock = jest.fn().mockResolvedValue([]);
+      const skipMock = jest.fn().mockReturnValue({ limit: limitMock });
+      const sortMock = jest.fn().mockReturnValue({ skip: skipMock });
+      mockedDiary.find.mockReturnValue({ sort: sortMock } as any);
+      mockedDiary.countDocuments.mockResolvedValue(0);
+
+      await getDiaries(req as any, res as any);
+
+      expect(mockedDiary.find).toHaveBeenCalledWith(
+        { user: "user-1" },
+        { entries: { $slice: -100 } }
+      );
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          meta: expect.objectContaining({ entryLimit: 100 }),
         })
       );
     });

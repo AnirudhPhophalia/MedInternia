@@ -22,6 +22,7 @@ import RoleUpgradeRequest from '../models/RoleUpgradeRequest';
 import { checkAndAwardAutoBadges } from './badgeController';
 import { createAndEmitNotification } from './notificationController';
 import { extractTextFromBuffer, parseResumeText } from '../services/resumeParserService';
+import { generateResumePdfHtml, renderHtmlToPdfBuffer } from '../services/pdfExportService';
 import { resolveProfilePictureUrl, resolveProfilePictureUrls } from '../utils/signedUrlResolver';
 import jwt from 'jsonwebtoken';
 
@@ -742,7 +743,13 @@ export const requestRoleUpgrade = async (req: AuthRequest, res: Response) => {
       message: 'Role upgrade request submitted. An admin will review your request.',
       data: { requestId: upgradeRequest._id, status: upgradeRequest.status },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'You already have a pending role upgrade request. Please wait for admin review.',
+      });
+    }
     console.error('requestRoleUpgrade error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
@@ -1362,6 +1369,41 @@ export const parseResume = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Internal server error during resume parsing'
+    });
+  }
+};
+
+export const exportUserResumePdf = async (req: AuthRequest, res: Response) => {
+  try {
+    const userIdParam = req.params.userId;
+    const targetUserId = userIdParam === 'me' && req.user
+      ? req.user._id
+      : userIdParam;
+
+    const user = await User.findById(targetUserId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userBadges = await UserBadge.find({ user: user._id }).populate('badge');
+    const html = generateResumePdfHtml(user, userBadges);
+    const pdfBuffer = await renderHtmlToPdfBuffer(html);
+
+    const firstName = (user.firstName || 'User').replace(/\s+/g, '_');
+    const lastName = (user.lastName || '').replace(/\s+/g, '_');
+    const filename = `${firstName}_${lastName}_MedInternia_CV.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Export resume PDF error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error generating resume PDF'
     });
   }
 };

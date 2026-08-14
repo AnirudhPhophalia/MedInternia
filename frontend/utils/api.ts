@@ -64,27 +64,54 @@ api.interceptors.request.use(
 );
 
 let isRedirectingToLogin = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+const redirectToLogin = () => {
+  if (typeof window === 'undefined') return;
+  const alreadyOnLoginPage = window.location.pathname.startsWith('/auth/login');
+  if (!isRedirectingToLogin && !alreadyOnLoginPage) {
+    isRedirectingToLogin = true;
+    const redirectPath = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `/auth/login?redirect=${encodeURIComponent(redirectPath)}`;
+  }
+};
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post('/auth/refresh')
+      .then(() => true)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status;
-    const requestUrl: string = error.config?.url || '';
+    const originalRequest = error.config || {};
+    const requestUrl: string = originalRequest.url || '';
 
     const isSessionBootstrapCheck = requestUrl.includes('/auth/validate-token');
+    const isRefreshCall = requestUrl.includes('/auth/refresh');
 
     if (
       status === 401 &&
       !isSessionBootstrapCheck &&
+      !isRefreshCall &&
+      !originalRequest._retry &&
       typeof window !== 'undefined'
     ) {
-
-      const alreadyOnLoginPage = window.location.pathname.startsWith('/auth/login');
-      if (!isRedirectingToLogin && !alreadyOnLoginPage) {
-        isRedirectingToLogin = true;
-        const redirectPath = `${window.location.pathname}${window.location.search}`;
-        window.location.href = `/auth/login?redirect=${encodeURIComponent(redirectPath)}`;
+      originalRequest._retry = true;
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return api(originalRequest);
       }
+      redirectToLogin();
     }
 
     return Promise.reject(error);
@@ -106,7 +133,7 @@ export const getInternCredits = async () => {
 // Fetch all diaries for the intern
 export const getDiaries = async () => {
   const res = await api.get('/diaries');
-  return res.data.data;
+  return res.data.data?.diaries || [];
 };
 
 // Create a new diary

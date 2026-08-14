@@ -665,6 +665,19 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
     await blacklistToken(token, new Date(Date.now() + remainingMs));
   }
 
+  // Also revoke the refresh token so a stolen cookie cannot mint new access tokens.
+  const refreshToken: string | undefined =
+    req.cookies?.refresh_token || req.body?.refreshToken || req.body?.refresh_token;
+  if (refreshToken) {
+    const refreshDecoded = jwt.decode(refreshToken) as { exp?: number } | null;
+    const refreshRemainingMs = refreshDecoded?.exp
+      ? refreshDecoded.exp * 1000 - Date.now()
+      : 7 * 24 * 60 * 60 * 1000;
+    if (refreshRemainingMs > 0) {
+      await blacklistToken(refreshToken, new Date(Date.now() + refreshRemainingMs));
+    }
+  }
+
   res.clearCookie('token');
   res.clearCookie('auth_status');
   res.clearCookie('refresh_token');

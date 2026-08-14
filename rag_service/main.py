@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 from typing import Dict, Any, List
 
 from services.rag_service import MedicalRAGService
@@ -73,6 +74,10 @@ class CaseIngestRequest(BaseModel):
     metadata: Dict[str, Any] = {}
 
 
+class CaseDeleteRequest(BaseModel):
+    case_id: str = Field(min_length=1, max_length=100)
+
+
 class CaseSuggestRequest(BaseModel):
     text: str = Field(min_length=1, max_length=10_000)
     # ge/le prevent a single request from saturating memory with k=100000
@@ -87,7 +92,8 @@ async def ingest_case(request: CaseIngestRequest):
     if rag_service is None:
         raise HTTPException(status_code=503, detail="RAG service unavailable")
     try:
-        rag_service.ingest_case(
+        await run_in_threadpool(
+            rag_service.ingest_case,
             case_id=request.case_id,
             text=request.text,
             metadata=request.metadata,
@@ -99,12 +105,25 @@ async def ingest_case(request: CaseIngestRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.post("/api/delete-case", dependencies=[Depends(verify_internal_token)])
+async def delete_case(request: CaseDeleteRequest):
+    if rag_service is None:
+        raise HTTPException(status_code=503, detail="RAG service unavailable")
+    try:
+        rag_service.delete_case(case_id=request.case_id)
+        return {"status": "success", "message": f"Case {request.case_id} vectors deleted successfully."}
+    except Exception as e:
+        logger.error("delete_case error for case %s: %s", request.case_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.post("/api/suggest-cases", dependencies=[Depends(verify_internal_token)])
 async def suggest_cases(request: CaseSuggestRequest):
     if rag_service is None:
         raise HTTPException(status_code=503, detail="RAG service unavailable")
     try:
-        similar_cases = rag_service.get_similar_cases(
+        similar_cases = await run_in_threadpool(
+            rag_service.get_similar_cases,
             query_text=request.text,
             k=request.k,
         )

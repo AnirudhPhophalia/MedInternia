@@ -4,7 +4,6 @@ import { Response } from "express";
 import Case from "../models/Case";
 import User from "../models/User";
 import Rating from "../models/Rating";
-import Notification from "../models/Notification";
 import AICasePostSchedule from "../models/AICasePostSchedule";
 import { AuthRequest } from "../middleware/auth";
 import {
@@ -12,7 +11,8 @@ import {
   getNextAICasePostDate,
 } from "../services/aiCasePostingService";
 import { analyzeCase } from "../services/aiTaggerService";
-import { suggestCases } from "../services/ragService";
+import { deleteCaseVectors, ingestCase, suggestCases } from "../services/ragService";
+import { generateCasePdfHtml, renderHtmlToPdfBuffer } from "../services/pdfExportService";
 import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
 import { AppError } from "../utils/AppError";
@@ -132,11 +132,49 @@ export const updateCase = asyncHandler(async (req: AuthRequest, res: Response) =
     }
   }
 
+  // Sensitive content changes require a fresh moderation pass before public/RAG exposure.
+  const SENSITIVE_CASE_FIELDS = new Set([
+    "title",
+    "description",
+    "symptoms",
+    "patientInfo",
+    "diagnosis",
+    "treatment",
+    "images",
+    "attachments",
+    "tags",
+  ]);
+  const touchesSensitiveContent = Object.keys(updates).some((field) =>
+    SENSITIVE_CASE_FIELDS.has(field)
+  );
+  const wasApproved = (caseDoc as any).moderationStatus === "approved";
+
+  if (touchesSensitiveContent && wasApproved) {
+    updates.moderationStatus = "pending";
+    updates.reviewedBy = null;
+    updates.reviewedAt = null;
+    updates.moderationReason = undefined;
+  }
+
   const updatedCase = await Case.findByIdAndUpdate(
     getId(req.params.id),
     updates,
     { new: true, runValidators: true }
   ).populate("doctor", "firstName lastName specialization");
+
+  if (updatedCase && touchesSensitiveContent && wasApproved) {
+    await enqueueCaseModeration(String((updatedCase as any)._id));
+    await deleteCaseVectors(String((updatedCase as any)._id));
+  } else if (updatedCase && (updatedCase as any).moderationStatus === "approved") {
+    await ingestCase(
+      String((updatedCase as any)._id),
+      `${(updatedCase as any).title}\n${(updatedCase as any).description}`,
+      {
+        specialization: (updatedCase as any).specialization,
+        isPatientCase: (updatedCase as any).isPatientCase,
+      }
+    );
+  }
 
   res.json({ success: true, message: "Case updated successfully", data: { case: updatedCase } });
 });
@@ -156,6 +194,7 @@ export const deleteCase = asyncHandler(async (req: AuthRequest, res: Response) =
   }
 
   await Case.findByIdAndUpdate(getId(req.params.id), { isActive: false });
+  await deleteCaseVectors(getId(req.params.id));
   res.json({ success: true, message: "Case deleted successfully" });
 });
 
@@ -165,8 +204,23 @@ export const getMyCases = asyncHandler(async (req: AuthRequest, res: Response) =
   if (!user) {
     throw new AppError("User not authenticated", 401);
   }
-  const cases = await Case.find({ doctor: user._id, isActive: { $ne: false } }).sort({ createdAt: -1 });
-  res.json({ success: true, data: { cases } });
+  const { page, limit, skip } = parsePagination(req.query);
+
+  const filter = { doctor: user._id, isActive: { $ne: false } };
+
+  const [cases, total] = await Promise.all([
+    Case.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Case.countDocuments(filter)
+  ]);
+
+  res.json({ 
+    success: true, 
+    data: { cases },
+    pagination: buildPaginationMeta(page, limit, total)
+  });
 });
 
 // Like / Unlike toggle logic
@@ -390,7 +444,14 @@ export const unpinComment = asyncHandler(async (req: AuthRequest, res: Response)
 });
 
 export const getPinnedComments = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.caseId));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.caseId),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) throw new AppError("Case not found", 404);
   const pinned = caseDoc.comments.filter((c: any) => c.isPinned === true);
   res.json({ success: true, data: { comments: pinned } });
@@ -457,13 +518,22 @@ export const solveCase = asyncHandler(async (req: AuthRequest, res: Response) =>
     throw new AppError("Only the case author can solve this case", 403);
   }
 
-  await Case.findByIdAndUpdate(caseDoc._id, {
-    $set: {
-      status: "solved",
-      resolution: { finalDiagnosis, notes, resolvedAt: new Date() }
-    }
+  const resolvedCase = await Case.findByIdAndUpdate(
+    caseDoc._id,
+    {
+      $set: {
+        status: "solved",
+        resolution: { finalDiagnosis, notes, resolvedAt: new Date() }
+      }
+    },
+    { new: true, runValidators: true }
+  );
+
+  res.json({
+    success: true,
+    message: "Case resolved successfully",
+    data: { case: resolvedCase },
   });
-  res.json({ success: true, message: "Case resolved successfully" });
 });
 
 export const getRecommendedCases = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -535,6 +605,20 @@ export const moderateCase = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError("Access denied", 403);
   }
   const { status, reason } = req.body;
+  const allowedStatuses = ["approved", "rejected", "changes_requested"];
+  if (!allowedStatuses.includes(status)) {
+    throw new AppError(`Invalid status. Allowed: ${allowedStatuses.join(", ")}`, 400);
+  }
+  const existingCase = await Case.findById(getId(req.params.id));
+  if (!existingCase) {
+    throw new AppError("Case not found", 404);
+  }
+  if (existingCase.moderationStatus !== "pending") {
+    throw new AppError("Only pending cases can be moderated", 400);
+  }
+  if (existingCase.doctor.toString() === user?._id?.toString()) {
+    throw new AppError("You cannot moderate your own case", 403);
+  }
   const updated = await Case.findByIdAndUpdate(
     getId(req.params.id),
     {
@@ -565,7 +649,14 @@ export const generateAISuggestions = asyncHandler(async (req: AuthRequest, res: 
 });
 
 export const getCaseAISuggestions = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) throw new AppError("Case not found", 404);
   res.json({ success: true, data: { aiAnalysis: (caseDoc as any).aiAnalysis || null } });
 });
@@ -614,7 +705,14 @@ export const addFollowUp = asyncHandler(async (req: AuthRequest, res: Response) 
 });
 
 export const getCaseFollowUps = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) throw new AppError("Case not found", 404);
   res.json({ success: true, data: { followUps: (caseDoc as any).followUps || [] } });
 });
@@ -672,6 +770,15 @@ export const reviewAICasePost = asyncHandler(
     if (!["approved", "changes_requested", "rejected"].includes(reviewStatus as string)) {
       throw new AppError("reviewStatus mismatch error", 400);
     }
+    const existingSchedule = await AICasePostSchedule.findById(scheduleId);
+    if (!existingSchedule) {
+      throw new AppError("AI case schedule not found", 404);
+    }
+    // Only the owning doctor (or an admin) may review the schedule; otherwise a
+    // doctor could approve/reject another doctor's draft and force it published.
+    if (user.userType !== 'admin' && existingSchedule.author.toString() !== user._id!.toString()) {
+      throw new AppError("You can only review your own AI case schedules", 403);
+    }
     const schedule = await AICasePostSchedule.findByIdAndUpdate(
       scheduleId,
       {
@@ -682,20 +789,35 @@ export const reviewAICasePost = asyncHandler(
       },
       { new: true, runValidators: true }
     );
-    if (!schedule) {
-      throw new AppError("AI case schedule not found", 404);
-    }
     return res.json({ success: true, data: { schedule } });
   }
 );
 
 export const publishDueAICasePosts = asyncHandler(
   async (req: AuthRequest, res: Response) => {
-    const dueSchedules = await AICasePostSchedule.find({
+    const user = req.user;
+    if (!user) {
+      throw new AppError("User not authenticated", 401);
+    }
+    const isAdmin = user.userType === 'admin';
+
+    // Non-admins may only publish their own schedules or schedules explicitly
+    // admin-approved (reviewedBy is an admin). Otherwise any doctor could force
+    // another doctor's drafted schedule onto the public feed. Admins may publish
+    // any approved due schedule.
+    const query: mongoose.FilterQuery<InstanceType<typeof AICasePostSchedule>> = {
       isActive: true,
       reviewStatus: "approved",
       nextRunAt: { $lte: new Date() },
-    }).limit(10);
+    };
+    if (!isAdmin) {
+      const adminUserIds = await User.find({ userType: 'admin' }).select('_id');
+      query.$or = [
+        { author: user._id },
+        { reviewedBy: { $in: adminUserIds.map(admin => admin._id) } },
+      ];
+    }
+    const dueSchedules = await AICasePostSchedule.find(query).limit(10);
     const published: any[] = [];
     for (const schedule of dueSchedules) {
       const generatedCase = schedule.generatedCase;
@@ -762,10 +884,10 @@ export const replyToComment = asyncHandler(
     await caseDoc.save();
 
     if (parentComment.author.toString() !== user._id!.toString()) {
-      await Notification.create({
-        recipient: parentComment.author,
+      await createAndEmitNotification({
+        recipientId: parentComment.author.toString(),
+        type: "comment",
         message: `Someone replied to your comment`,
-        type: "reply",
         link: `/cases/${caseId}`,
       });
     }
@@ -919,11 +1041,10 @@ export const createCase = asyncHandler(
         isPatientCase: true,
         specialization: spec,
         moderationStatus: "pending",
-        pointsAwarded: 5,
+        pointsAwarded: 0,
       });
       await newCase.save();
       await enqueueCaseModeration(String(newCase._id));
-      await User.findByIdAndUpdate(user._id, { $inc: { points: 5 } });
 
       return res.status(201).json({ success: true, data: { case: newCase } });
     }
@@ -939,19 +1060,25 @@ export const createCase = asyncHandler(
       isPatientCase: false,
       specialization: spec,
       moderationStatus: "pending",
-      pointsAwarded: 10,
+      pointsAwarded: 0,
     });
 
     await newCase.save();
     await enqueueCaseModeration(String(newCase._id));
-    await User.findByIdAndUpdate(user._id, { $inc: { points: 10 } });
 
     res.status(201).json({ success: true, data: { case: newCase } });
   }
 );
 
 export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const caseDoc = await Case.findById(getId(req.params.id));
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  });
   if (!caseDoc) {
     throw new AppError("Case not found", 404);
   }
@@ -960,4 +1087,32 @@ export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Respon
   const similar = await suggestCases(text, 3);
 
   res.json({ success: true, data: { similarCases: similar } });
+});
+
+export const exportCasePdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const caseDoc = await Case.findOne({
+    _id: getId(req.params.id),
+    isActive: { $ne: false },
+  })
+    .populate("doctor", "firstName lastName specialization email institution avatar")
+    .populate("comments.author", USER_PUBLIC_FIELDS);
+
+  if (!caseDoc) {
+    throw new AppError("Case not found", 404);
+  }
+
+  const html = generateCasePdfHtml(caseDoc);
+  const pdfBuffer = await renderHtmlToPdfBuffer(html);
+
+  const safeName = (caseDoc.title || 'case-study')
+    .replace(/[^a-z0-9]/gi, '-')
+    .toLowerCase()
+    .slice(0, 50);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="medinternia-${safeName}.pdf"`
+  );
+  res.status(200).send(pdfBuffer);
 });

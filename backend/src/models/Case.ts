@@ -45,6 +45,12 @@ export interface ICase extends Document {
   isActive: boolean;
   isRareDisease?: boolean;
   isPatientCase: boolean; // True if posted by patient
+  status: 'open' | 'solved';
+  resolution?: {
+    finalDiagnosis?: string;
+    notes?: string;
+    resolvedAt: Date;
+  };
   moderationStatus: 'pending' | 'approved' | 'rejected' | 'changes_requested' | 'failed';
   moderationReason?: string;
   reviewedBy?: mongoose.Types.ObjectId;
@@ -231,6 +237,26 @@ const CaseSchema = new Schema<ICase>({
   isPatientCase: {
     type: Boolean,
     default: false
+  },
+  status: {
+    type: String,
+    enum: ['open', 'solved'],
+    default: 'open'
+  },
+  resolution: {
+    finalDiagnosis: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Final diagnosis cannot be more than 500 characters']
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: [2000, 'Resolution notes cannot be more than 2000 characters']
+    },
+    resolvedAt: {
+      type: Date
+    }
   },
   moderationStatus: {
     type: String,

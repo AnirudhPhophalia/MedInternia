@@ -249,11 +249,12 @@ function Doctors() {
 
   const handleApplyMentorship = async (doctorId: string) => {
     try {
-      await api.put(`/users/${currentUserId}/profile`, {
-        mentorDoctor: doctorId
+      await api.post('/mentorship', {
+        mentorId: doctorId,
+        specialtyRequested: undefined,
+        initialMessage: 'I would like to request your mentorship.',
       });
-      setCurrentMentorId(doctorId);
-      alert('Selected doctor as your mentor successfully!');
+      alert('Mentorship request sent. Waiting for the doctor to accept.');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to apply for mentorship.';
       alert(msg);

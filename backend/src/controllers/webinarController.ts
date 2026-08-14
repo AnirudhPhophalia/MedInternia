@@ -223,7 +223,7 @@ export const createWebinar = async (req: AuthRequest, res: Response) => {
             recipient: intern._id,
             message: `New webinar scheduled: ${webinar.title} by ${host.firstName} ${host.lastName}`,
             type: 'webinar',
-            link: webinar.meetingLink
+            link: `/webinars/${webinar._id}`
           });
 
           if (batch.length >= batchSize) {
@@ -368,7 +368,6 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
     const userId = req.user?._id?.toString();
     const isHostOrAdmin = !!userId && (
       req.user!.userType === 'admin' ||
-      req.user!.userType === 'moderator' ||
       webinar.host._id?.toString() === userId ||
       webinar.host.toString() === userId
     );
@@ -617,11 +616,25 @@ export const markAttendance = async (req: AuthRequest, res: Response) => {
     const { userId, attended } = req.body;
     const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findById(id);
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized to mark attendance'
+        message: 'Webinar not found'
+      });
+    }
+
+    if (webinar.host.toString() !== hostId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the host can mark attendance'
+      });
+    }
+
+    if (webinar.status !== 'live' && webinar.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance can only be marked for a live or completed webinar'
       });
     }
 
@@ -721,7 +734,7 @@ export const getUserWebinars = async (req: AuthRequest, res: Response) => {
     if (type === 'hosted') {
       query = { host: userId };
     } else if (type === 'attended') {
-      query = { 'participants.user': userId, 'participants.attended': true };
+      query = { participants: { $elemMatch: { user: userId, attended: true } } };
     } else if (type === 'registered') {
       query = { 'participants.user': userId };
     } else {
@@ -768,11 +781,18 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const hostId = (req.user!._id as any).toString();
 
-    const webinar = await Webinar.findOne({ _id: id, host: hostId });
+    const webinar = await Webinar.findById(id);
     if (!webinar) {
       return res.status(404).json({
         success: false,
-        message: 'Webinar not found or you are not authorized'
+        message: 'Webinar not found'
+      });
+    }
+
+    if (webinar.host.toString() !== hostId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the host can generate a meeting link'
       });
     }
 
@@ -780,6 +800,13 @@ export const generateMeetingLink = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Cannot generate a meeting link for an expired webinar'
+      });
+    }
+
+    if (new Date() < new Date(webinar.scheduledAt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Webinar has not started yet'
       });
     }
 

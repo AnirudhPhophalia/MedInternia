@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import {
   Container,
   Typography,
@@ -51,22 +52,11 @@ const SPECIALTIES = [
 const DIFFICULTIES = ["beginner", "intermediate", "advanced"];
 
 export default function Cases() {
-  const [cases, setCases] = useState<any[]>([]);
-  const [recommendedCases, setRecommendedCases] = useState<any[]>([]);
-  const [recMessage, setRecMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
   // Filters State
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [isRareDisease, setIsRareDisease] = useState(false);
-
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [openDiscussionId, setOpenDiscussionId] = useState<string | null>(null);
@@ -75,76 +65,58 @@ export default function Cases() {
   const router = useRouter();
   const canCreateCases = canUser(userRole, "case:create");
   const { isAuthenticated } = useAuth();
+  const isLoggedIn = isAuthenticated;
 
-  // Check login state and permissions
-  useEffect(() => {
-    if (isAuthenticated) {
-      setIsLoggedIn(true);
-
-      // Fetch recommended cases
-      api
-        .get("/cases/recommended")
-        .then((res) => {
-          setRecommendedCases(res.data?.data?.cases || []);
-          setRecMessage(res.data?.message || "");
-        })
-        .catch((err) => {
-          console.warn("Failed to fetch recommended cases", err);
-        });
-    }
-    // Remove the standalone fetch here so we don't double fetch, fetchCases handles it
-  }, [isAuthenticated]);
+  // Fetch recommended cases
+  const { data: recData } = useQuery({
+    queryKey: ['recommendedCases'],
+    queryFn: async () => {
+      const res = await api.get("/cases/recommended");
+      return res.data;
+    },
+    enabled: isLoggedIn,
+  });
+  const recommendedCases: any[] = recData?.data?.cases || [];
+  const recMessage = recData?.message || "";
 
   // Fetch Cases with Filters
-  const fetchCases = (pageNum = 1, append = false) => {
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
+  const {
+    data: casesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
+    queryKey: ['cases', { search, specialty, difficulty, isRareDisease }],
+    queryFn: async ({ pageParam = 1 }) => {
+      const params: any = {
+        page: pageParam,
+        limit: 10
+      };
+      if (search) params.search = search;
+      if (specialty) params.specialization = specialty;
+      if (difficulty) params.difficulty = difficulty;
+      if (isRareDisease) params.isRareDisease = true;
 
-    const params: any = {
-      page: pageNum,
-      limit: 10
-    };
-    if (search) params.search = search;
-    if (specialty) params.specialization = specialty;
-    if (difficulty) params.difficulty = difficulty;
-    if (isRareDisease) params.isRareDisease = true;
+      const res = await api.get("/cases", { params });
+      return res.data.data;
+    },
+    getNextPageParam: (lastPage) => {
+      const pagination = lastPage.pagination || { page: 1, pages: 1 };
+      return pagination.page < pagination.pages ? pagination.page + 1 : undefined;
+    },
+    initialPageParam: 1,
+  });
 
-    api
-      .get("/cases", { params })
-      .then((res) => {
-        const fetchedCases = res.data.data.cases || [];
-        const pagination = res.data.data.pagination || { page: 1, pages: 1 };
-        
-        if (append) {
-          setCases((prev) => [...prev, ...fetchedCases]);
-        } else {
-          setCases(fetchedCases);
-        }
-        
-        setHasMore(pagination.page < pagination.pages);
-        setError("");
-        setLoading(false);
-        setLoadingMore(false);
-      })
-      .catch((err) => {
-        setError("Failed to fetch cases");
-        setLoading(false);
-        setLoadingMore(false);
-      });
-  };
-
-  useEffect(() => {
-    setPage(1);
-    fetchCases(1, false);
-  }, [search, specialty, difficulty, isRareDisease]);
+  const cases = casesData?.pages.flatMap(page => page.cases || []) || [];
+  const loading = isLoading;
+  const error = isError ? "Failed to fetch cases" : "";
+  const hasMore = hasNextPage;
+  const loadingMore = isFetchingNextPage;
 
   const loadMoreCases = () => {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchCases(nextPage, true);
+    fetchNextPage();
   };
 
   const handleResetFilters = () => {

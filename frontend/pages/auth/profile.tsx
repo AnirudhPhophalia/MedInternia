@@ -1,28 +1,18 @@
-import { useEffect, useState } from 'react';
 import { Container, Typography, Box, CircularProgress, Alert } from '@mui/material';
 import api from '../../utils/api';
-import { useRouter } from 'next/router';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Profile() {
-  const [profile, setProfile] = useState<any>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    api.get('/auth/profile')
-      .then(res => {
-        setProfile(res.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError('Failed to fetch profile');
-        setLoading(false);
-      });
-  }, [router]);
+  const { data: profile, isLoading: loading, isError } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      const res = await api.get('/auth/profile');
+      return res.data;
+    }
+  });
 
   if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (isError) return <Alert severity="error">Failed to fetch profile</Alert>;
 
   return (
     <Container maxWidth="sm">

@@ -108,12 +108,20 @@ export const enrollInPath = asyncHandler(async (req: AuthRequest, res: Response)
     throw new AppError('Already enrolled in this learning path', 400);
   }
 
-  const userPath = await UserLearningPath.create({
-    user: req.user._id,
-    learningPath: id,
-    completedSteps: [],
-    isCompleted: false
-  });
+  let userPath;
+  try {
+    userPath = await UserLearningPath.create({
+      user: req.user._id,
+      learningPath: id,
+      completedSteps: [],
+      isCompleted: false
+    });
+  } catch (err: any) {
+    if (err?.code === 11000) {
+      throw new AppError('Already enrolled in this learning path', 409);
+    }
+    throw err;
+  }
 
   res.status(201).json({
     success: true,
@@ -198,9 +206,8 @@ export const completeStep = asyncHandler(async (req: AuthRequest, res: Response)
           verifiedBy: req.user._id // self verified by system
         });
         
-        // Also update User badges array and points
+        // Update User points (badge award is tracked via UserBadge collection)
         await User.findByIdAndUpdate(req.user._id, {
-          $addToSet: { badges: path.badge },
           $inc: { points: 50 } // Give 50 points for completing a path
         });
 

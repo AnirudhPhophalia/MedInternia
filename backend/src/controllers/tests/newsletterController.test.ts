@@ -69,7 +69,7 @@ describe('subscribeNewsletter', () => {
     );
   });
 
-  it('rejects an already active subscription', async () => {
+  it('returns 200 for an already active subscription (prevents enumeration)', async () => {
     const req = { body: { email: 'doc@example.com' } } as Request;
     const res = mockResponse();
 
@@ -80,7 +80,7 @@ describe('subscribeNewsletter', () => {
 
     await subscribeNewsletter(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.status).toHaveBeenCalledWith(200);
     expect(mockedNewsletter.create).not.toHaveBeenCalled();
   });
 
@@ -142,7 +142,7 @@ describe('unsubscribeNewsletter', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: false }),
+      expect.objectContaining({ success: false, message: 'An unsubscribe token is required' }),
     );
   });
 
@@ -201,40 +201,15 @@ describe('unsubscribeNewsletter', () => {
     );
   });
 
-  it('unsubscribes via direct email', async () => {
-    const req = { body: { email: '  Doc@Example.com  ' } } as Request;
+  it('rejects a request with only an email (no token)', async () => {
+    const req = { body: { email: 'doc@example.com' } } as Request;
     const res = mockResponse();
-
-    mockedNewsletter.findOneAndUpdate.mockResolvedValue({
-      email: 'doc@example.com',
-      status: 'unsubscribed',
-    } as any);
 
     await unsubscribeNewsletter(req, res);
 
-    expect(mockedNewsletter.findOneAndUpdate).toHaveBeenCalledWith(
-      { email: 'doc@example.com' },
-      { $set: { status: 'unsubscribed' } },
-      { new: true },
-    );
-    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
-    );
-  });
-
-  it('returns 200 even when email is not found (prevents enumeration)', async () => {
-    const req = { body: { email: 'unknown@example.com' } } as Request;
-    const res = mockResponse();
-
-    // Simulate email not found in DB
-    mockedNewsletter.findOneAndUpdate.mockResolvedValue(null as any);
-
-    await unsubscribeNewsletter(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
+      expect.objectContaining({ success: false, message: 'An unsubscribe token is required' }),
     );
   });
 });

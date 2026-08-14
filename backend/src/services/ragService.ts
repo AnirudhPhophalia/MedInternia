@@ -14,8 +14,9 @@ export interface SimilarCase {
 }
 
 export async function ingestCase(caseId: string, text: string, metadata: Record<string, any> = {}): Promise<void> {
+  let res: Response;
   try {
-    const res = await fetch(`${RAG_SERVICE_URL}/api/ingest-case`, {
+    res = await fetch(`${RAG_SERVICE_URL}/api/ingest-case`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -24,13 +25,37 @@ export async function ingestCase(caseId: string, text: string, metadata: Record<
       body: JSON.stringify({ case_id: caseId, text, metadata }),
       signal: AbortSignal.timeout(30_000),
     });
+  } catch (err) {
+    console.error(`Failed to reach RAG service for ingestion (case ${caseId}):`, err);
+    throw err;
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "(no body)");
+    const errorMsg = `RAG ingest failed for case ${caseId} (${res.status}): ${body}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
+export async function deleteCaseVectors(caseId: string): Promise<void> {
+  try {
+    const res = await fetch(`${RAG_SERVICE_URL}/api/delete-case`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Token": process.env.RAG_INTERNAL_SECRET ?? "",
+      },
+      body: JSON.stringify({ case_id: caseId }),
+      signal: AbortSignal.timeout(30_000),
+    });
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(no body)");
-      console.error(`RAG ingest failed for case ${caseId} (${res.status}): ${body}`);
+      console.error(`RAG delete failed for case ${caseId} (${res.status}): ${body}`);
     }
   } catch (err) {
-    console.error(`Failed to reach RAG service for ingestion (case ${caseId}):`, err);
+    console.error(`Failed to reach RAG service for deletion (case ${caseId}):`, err);
   }
 }
 

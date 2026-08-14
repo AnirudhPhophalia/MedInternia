@@ -1,7 +1,8 @@
 import { Agenda } from "agenda";
 import Case from "../../models/Case";
+import User from "../../models/User";
 import { checkCompliance } from "../../services/nerService";
-import { ingestCase } from "../../services/ragService";
+import { enqueueRagIngest } from "../ragIngestJob";
 import {
   CASE_MODERATION_JOB,
   processCaseModeration,
@@ -10,14 +11,17 @@ import {
 } from "../caseModerationJob";
 
 jest.mock("../../models/Case");
+jest.mock("../../models/User");
 jest.mock("../../services/nerService");
-jest.mock("../../services/ragService", () => ({
-  ingestCase: jest.fn().mockResolvedValue(undefined),
+jest.mock("../ragIngestJob", () => ({
+  enqueueRagIngest: jest.fn().mockResolvedValue(undefined),
+  registerRagIngestJob: jest.fn(),
 }));
 
 const mockedCase = Case as jest.Mocked<typeof Case>;
+const mockedUser = User as jest.Mocked<typeof User>;
 const mockedCheckCompliance = checkCompliance as jest.Mock;
-const mockedIngestCase = ingestCase as jest.Mock;
+const mockedEnqueueRagIngest = enqueueRagIngest as jest.Mock;
 
 const complianceResult = (
   redactedText: string,
@@ -35,13 +39,14 @@ describe("case moderation job", () => {
     jest.clearAllMocks();
   });
 
-  it("approves a clean pending case and ingests original content into RAG", async () => {
+  it("approves a clean pending case and enqueues RAG ingestion job", async () => {
     mockedCase.findOne.mockResolvedValue({
       title: "Original title",
       description: "Original description",
       patientInfo: { age: 28 },
       specialization: "Cardiology",
       isPatientCase: false,
+      doctor: "doctor-1",
       get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance
@@ -61,6 +66,7 @@ describe("case moderation job", () => {
       expect.objectContaining({
         $set: expect.objectContaining({
           moderationStatus: "approved",
+          pointsAwarded: 10,
         }),
         $push: {
           moderationAuditTrail: expect.objectContaining({ status: "approved" }),
@@ -71,22 +77,22 @@ describe("case moderation job", () => {
     const callArgs = mockedCase.findOneAndUpdate.mock.calls[0][1] as any;
     expect(callArgs.$set).not.toHaveProperty("title");
     expect(callArgs.$set).not.toHaveProperty("description");
+    expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith("doctor-1", {
+      $inc: { points: 10 },
+    });
 
-    // RAG ingestion uses the ORIGINAL text, not the compliance service output.
-    expect(mockedIngestCase).toHaveBeenCalledWith(
-      "case-1",
-      "Original title\nOriginal description",
-      { specialization: "Cardiology", isPatientCase: false }
-    );
+    // Decoupled RAG ingestion enqueues a separate job (#1273)
+    expect(mockedEnqueueRagIngest).toHaveBeenCalledWith("case-1");
   });
 
-  it("requests changes for flagged content, stores originals, and does not index it", async () => {
+  it("requests changes for flagged content, stores originals, and does not enqueue RAG ingest", async () => {
     mockedCase.findOne.mockResolvedValue({
       title: "Patient name",
       description: "Clinical note",
       patientInfo: {},
       specialization: "General Medicine",
       isPatientCase: true,
+      doctor: "patient-1",
       get: jest.fn().mockReturnValue(undefined), // no originalTitle/Description yet
     } as any);
     mockedCheckCompliance
@@ -115,7 +121,8 @@ describe("case moderation job", () => {
         }),
       })
     );
-    expect(mockedIngestCase).not.toHaveBeenCalled();
+    expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
+    expect(mockedEnqueueRagIngest).not.toHaveBeenCalled();
   });
 
   it("is idempotent when the case is no longer pending", async () => {
@@ -127,13 +134,14 @@ describe("case moderation job", () => {
     expect(mockedCase.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
-  it("does not index a case changed by another moderator", async () => {
+  it("does not enqueue RAG ingestion for a case changed by another moderator", async () => {
     mockedCase.findOne.mockResolvedValue({
       title: "Original title",
       description: "Original description",
       patientInfo: {},
       specialization: "Cardiology",
       isPatientCase: false,
+      doctor: "doctor-1",
       get: jest.fn().mockReturnValue(undefined),
     } as any);
     mockedCheckCompliance
@@ -143,7 +151,8 @@ describe("case moderation job", () => {
 
     await processCaseModeration("case-race");
 
-    expect(mockedIngestCase).not.toHaveBeenCalled();
+    expect(mockedEnqueueRagIngest).not.toHaveBeenCalled();
+    expect(mockedUser.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
   it("persists a failed terminal state after retries are exhausted", async () => {

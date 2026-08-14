@@ -169,13 +169,20 @@ export const awardBadge = async (req: AuthRequest, res: Response) => {
 };
 
 // Get user badges
-export const getUserBadges = async (req: Request, res: Response) => {
+export const getUserBadges = async (req: AuthRequest, res: Response) => {
   try {
     const { userId } = req.params;
     const { isVisible } = req.query;
 
+    const isOwner = req.user?._id?.toString() === userId;
+    const isAdmin = req.user?.userType === 'admin';
+
     const filter: any = { user: userId };
-    if (isVisible !== undefined) filter.isVisible = isVisible === 'true';
+    if (isVisible !== undefined) {
+      filter.isVisible = isVisible === 'true';
+    } else if (!isOwner && !isAdmin) {
+      filter.isVisible = true;
+    }
 
     const userBadges = await UserBadge.find(filter)
       .populate('badge')

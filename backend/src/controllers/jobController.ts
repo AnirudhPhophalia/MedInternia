@@ -159,7 +159,7 @@ export const getJobOpportunities = async (req: Request, res: Response) => {
       sortOrder = 'desc'
     } = req.query;
 
-    const filter: any = {};
+    const filter: any = { isActive: true };
     const filterConditions: any[] = [];
     const searchQuery = normalizeJobSearchTerm(search || q);
     const locationQuery = normalizeJobSearchTerm(location);
@@ -265,7 +265,7 @@ export const getJobOpportunityById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const jobOpportunity = await JobOpportunity.findById(id)
+    const jobOpportunity = await JobOpportunity.findOne({ _id: id, isActive: true })
       .populate('postedBy', 'firstName lastName specialization isVerifiedDoctor profilePicture')
       .populate('requirements.requiredBadges', 'name description icon color');
 
@@ -600,3 +600,60 @@ export const getMyJobOpportunities = async (req: AuthRequest, res: Response) => 
     });
   }
 };
+
+// Get applications submitted by current user
+export const getMyJobApplications = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = (req.user!._id as any).toString();
+
+    const jobOpportunities = await JobOpportunity.find({
+      'applicants.user': userId
+    }).sort({ createdAt: -1 });
+
+    const formatJobLocation = (location: any): string => {
+      if (!location || typeof location !== 'object') {
+        return typeof location === 'string' ? location : 'Location not specified';
+      }
+      if (location.isRemote) return 'Remote';
+      const parts = [location.city, location.state, location.country]
+        .filter((p) => typeof p === 'string' && p.trim().length > 0);
+      return parts.length > 0 ? parts.join(', ') : 'Location not specified';
+    };
+
+    const applications = jobOpportunities.map((job) => {
+      const applicantRecord = job.applicants?.find(
+        (a: any) => (a.user?._id || a.user)?.toString() === userId
+      );
+      const isExpired = job.applicationDeadline && new Date(job.applicationDeadline) < new Date();
+      const status = !job.isActive || isExpired ? 'Closed' : 'Applied';
+
+      return {
+        id: (job._id as any).toString(),
+        jobId: (job._id as any).toString(),
+        title: job.title,
+        company: job.company || 'MedInternia Hospital Group',
+        location: formatJobLocation(job.location),
+        status,
+        appliedDate: applicantRecord?.appliedAt
+          ? new Date(applicantRecord.appliedAt).toLocaleDateString()
+          : new Date(job.createdAt).toLocaleDateString(),
+        appliedAt: applicantRecord?.appliedAt || job.createdAt
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        applications,
+        total: applications.length
+      }
+    });
+  } catch (error) {
+    console.error('Get my job applications error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
