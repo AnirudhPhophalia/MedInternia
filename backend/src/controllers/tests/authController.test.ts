@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import transporter from "../../utils/mailer";
 import { generateToken, generateRefreshToken, verifyRefreshToken } from "../../utils/jwt";
 import { AuthRequest, blacklistToken, isTokenBlacklisted } from "../../middleware/auth";
+import RefreshToken from "../../models/RefreshToken";
 
 jest.mock("../../utils/asyncHandler", () => ({
   asyncHandler: (fn: any) => fn,
@@ -22,6 +23,7 @@ jest.mock("../../utils/asyncHandler", () => ({
 
 jest.mock("../../models/User");
 jest.mock("../../models/Otp");
+jest.mock("../../models/RefreshToken");
 jest.mock("bcryptjs");
 jest.mock("jsonwebtoken", () => ({
   verify: jest.fn().mockImplementation((token: string) => ({ email: token, purpose: 'signup' }))
@@ -42,6 +44,7 @@ jest.mock("../../middleware/auth", () => ({
 const mockedUser = User as unknown as jest.Mocked<typeof User>;
 const mockedOtp = Otp as unknown as jest.Mocked<typeof Otp>;
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
+const mockedRefreshToken = RefreshToken as unknown as jest.Mocked<typeof RefreshToken>;
 
 const mockResponse = () => {
   const res: Partial<Response> = {};
@@ -61,6 +64,22 @@ const mockRequest = (body: any = {}, user: any = null): AuthRequest =>
 describe("Auth Controller", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedUser.findByIdAndUpdate.mockResolvedValue({} as any);
+    mockedRefreshToken.create.mockResolvedValue({
+      token: "mock-refresh-token",
+      userId: "507f1f77bcf86cd799439012",
+      expiresAt: expect.any(Date),
+      isRevoked: false,
+    } as any);
+    mockedRefreshToken.findOne.mockResolvedValue({
+      token: "mock-refresh-token",
+      userId: "507f1f77bcf86cd799439011",
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      save: jest.fn().mockResolvedValue(undefined),
+    } as any);
+    mockedRefreshToken.findOneAndUpdate.mockResolvedValue({} as any);
+    mockedRefreshToken.updateMany.mockResolvedValue({} as any);
   });
 
   describe("register", () => {
@@ -238,56 +257,51 @@ describe("Auth Controller", () => {
 
   describe("verifyOtp & resetPassword", () => {
     it("rejects OTP if not found or expired", async () => {
+      mockedOtp.findOneAndDelete.mockResolvedValue(null);
       mockedOtp.findOne.mockResolvedValue(null);
 
       const req = mockRequest({ email: "test@test.com", otp: "123456" });
       const res = mockResponse();
       const next = jest.fn();
 
-      await expect(verifyOtp(req as any, res as any, next)).rejects.toThrow("OTP not found");
+      await expect(verifyOtp(req as any, res as any, next)).rejects.toThrow("OTP not found or already used. Please request a new one.");
     });
 
     it("rejects OTP on mismatch and increments attempts", async () => {
       const otpMock = {
         _id: "otp-1",
+        email: "test@test.com",
+        purpose: "reset",
         expiresAt: new Date(Date.now() + 10000),
         attempts: 1,
         otpHash: "hash",
-        save: jest.fn()
       };
-      mockedOtp.findOne.mockResolvedValue(otpMock as any);
+      mockedOtp.findOneAndDelete.mockResolvedValue(otpMock as any);
       (mockedBcrypt.compare as jest.Mock).mockResolvedValue(false);
-      (mockedOtp.findOneAndUpdate as jest.Mock).mockResolvedValue({
-        ...otpMock,
-        attempts: 2,
-      });
+      mockedOtp.create.mockResolvedValue({} as any);
 
       const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "Test@1234" });
       const res = mockResponse();
       const next = jest.fn();
 
       await expect(resetPassword(req as any, res as any, next)).rejects.toThrow("Invalid OTP");
-      expect(mockedOtp.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: "otp-1", attempts: { $lt: 5 } },
-        { $inc: { attempts: 1 } },
-        { new: true }
-      );
+      expect(mockedOtp.findOneAndDelete).toHaveBeenCalled();
+      expect(mockedOtp.create).toHaveBeenCalledWith(expect.objectContaining({
+        attempts: 2
+      }));
     });
 
     it("locks out after the OTP attempts cap is reached", async () => {
       const otpMock = {
         _id: "otp-1",
+        email: "test@test.com",
+        purpose: "reset",
         expiresAt: new Date(Date.now() + 10000),
         attempts: 4,
         otpHash: "hash",
       };
-      mockedOtp.findOne.mockResolvedValue(otpMock as any);
+      mockedOtp.findOneAndDelete.mockResolvedValue(otpMock as any);
       (mockedBcrypt.compare as jest.Mock).mockResolvedValue(false);
-      (mockedOtp.findOneAndUpdate as jest.Mock).mockResolvedValue({
-        ...otpMock,
-        attempts: 5,
-      });
-      mockedOtp.deleteOne.mockResolvedValue({} as any);
 
       const req = mockRequest({ email: "test@test.com", otp: "wrong", newPassword: "Test@1234" });
       const res = mockResponse();
@@ -296,20 +310,21 @@ describe("Auth Controller", () => {
       await expect(resetPassword(req as any, res as any, next)).rejects.toThrow(
         "Too many incorrect attempts"
       );
-      expect(mockedOtp.deleteOne).toHaveBeenCalledWith({ _id: "otp-1" });
+      expect(mockedOtp.findOneAndDelete).toHaveBeenCalled();
     });
 
 
     it("resets password successfully on valid OTP", async () => {
       const otpMock = {
         _id: "otp-1",
+        email: "test@test.com",
+        purpose: "reset",
         expiresAt: new Date(Date.now() + 10000),
         attempts: 0,
         otpHash: "hash",
       };
-      mockedOtp.findOne.mockResolvedValue(otpMock as any);
+      mockedOtp.findOneAndDelete.mockResolvedValue(otpMock as any);
       (mockedBcrypt.compare as jest.Mock).mockResolvedValue(true);
-      mockedOtp.deleteOne.mockResolvedValue({} as any);
 
       const userMock = {
         _id: "507f1f77bcf86cd799439011",
@@ -324,7 +339,7 @@ describe("Auth Controller", () => {
       await resetPassword(req as any, res as any, next);
 
       expect(userMock.save).toHaveBeenCalled();
-      expect(mockedOtp.deleteOne).toHaveBeenCalledWith({ _id: "otp-1" });
+      expect(mockedOtp.findOneAndDelete).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
   });
