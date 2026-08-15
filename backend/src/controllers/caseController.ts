@@ -217,8 +217,8 @@ export const getMyCases = asyncHandler(async (req: AuthRequest, res: Response) =
     Case.countDocuments(filter)
   ]);
 
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     data: { cases },
     pagination: buildPaginationMeta(page, limit, total)
   });
@@ -1097,15 +1097,28 @@ export const getSimilarCases = asyncHandler(async (req: AuthRequest, res: Respon
 });
 
 export const exportCasePdf = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = req.user;
+  if (!user) {
+    throw new AppError("User not authenticated", 401);
+  }
+
+  const baseFilter = {
+    isActive: { $ne: false },
+    $or: [
+      { moderationStatus: "approved" },
+      { moderationStatus: { $exists: false } },
+    ],
+  };
+
   const caseDoc = await Case.findOne({
     _id: getId(req.params.id),
-    isActive: { $ne: false },
+    ...baseFilter,
   })
     .populate("doctor", "firstName lastName specialization email institution avatar")
     .populate("comments.author", USER_PUBLIC_FIELDS);
 
   if (!caseDoc) {
-    throw new AppError("Case not found", 404);
+    throw new AppError("Case not found or not approved", 404);
   }
 
   const html = generateCasePdfHtml(caseDoc);
