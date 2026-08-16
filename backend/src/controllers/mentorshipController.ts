@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Mentorship from '../models/Mentorship';
 import User from '../models/User';
 
@@ -155,17 +156,32 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
       return;
     }
 
-    mentorship.status = status;
-    await mentorship.save();
+    // Update the Mentorship status and the mentee's User profile atomically.
+    // A crash between the two writes used to leave a "active" mentorship with
+    // no mentorDoctor reference, silently breaking permission checks.
+    const session = await mongoose.startSession();
+    let committed = false;
+    try {
+      session.startTransaction();
 
-    if (status === 'active') {
-      await User.findByIdAndUpdate(mentorship.mentee, {
-        mentorDoctor: mentorship.mentor
-      });
-    } else if (status === 'rejected' || status === 'completed') {
-      await User.findByIdAndUpdate(mentorship.mentee, {
-        $unset: { mentorDoctor: 1 }
-      });
+      mentorship.status = status;
+      await mentorship.save({ session });
+
+      if (status === 'active') {
+        await User.findByIdAndUpdate(mentorship.mentee, {
+          mentorDoctor: mentorship.mentor
+        }, { session });
+      } else if (status === 'rejected' || status === 'completed') {
+        await User.findByIdAndUpdate(mentorship.mentee, {
+          $unset: { mentorDoctor: 1 }
+        }, { session });
+      }
+
+      await session.commitTransaction();
+      committed = true;
+    } finally {
+      if (!committed) await session.abortTransaction();
+      session.endSession();
     }
 
     res.status(200).json({ success: true, data: mentorship });
