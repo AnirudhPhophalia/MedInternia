@@ -470,7 +470,8 @@ export const registerForWebinar = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if webinar is full
+    // Fast-path pre-checks for friendly errors. These alone are racy, so the
+    // atomic query guard below re-validates capacity and uniqueness on write.
     if (webinar.maxParticipants && webinar.participants.length >= webinar.maxParticipants) {
       return res.status(400).json({
         success: false,
@@ -478,7 +479,6 @@ export const registerForWebinar = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if user is already registered
     const isAlreadyRegistered = webinar.participants.some(
       p => (p.user as any).toString() === (userId as any).toString()
     );
@@ -490,18 +490,67 @@ export const registerForWebinar = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    webinar.participants.push({
-      user: userId as any,
-      registeredAt: new Date(),
-      attended: false
-    });
+    // Atomic registration. The query guard rejects documents where the user is
+    // already registered and (when a limit is set) where the roster is already
+    // at capacity, so concurrent requests can never oversubscribe or silently
+    // overwrite each other's registration (TOCTOU-safe).
+    const registrationFilter: any = {
+      _id: id,
+      'participants.user': { $ne: userId }
+    };
 
-    await webinar.save();
+    if (webinar.maxParticipants) {
+      registrationFilter.$expr = {
+        $lt: [{ $size: { $ifNull: ['$participants', []] } }, webinar.maxParticipants]
+      };
+    }
+
+    const updatedWebinar = await Webinar.findOneAndUpdate(
+      registrationFilter,
+      {
+        $push: {
+          participants: {
+            user: userId as any,
+            registeredAt: new Date(),
+            attended: false
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedWebinar) {
+      // The pre-check passed but the atomic guard won the race — report the
+      // actual reason to the client.
+      const latest = await Webinar.findById(id);
+      const isAlreadyRegistered = latest?.participants.some(
+        p => (p.user as any).toString() === (userId as any).toString()
+      );
+
+      if (isAlreadyRegistered) {
+        return res.status(400).json({
+          success: false,
+          message: 'You are already registered for this webinar'
+        });
+      }
+
+      if (latest?.maxParticipants && latest.participants.length >= latest.maxParticipants) {
+        return res.status(400).json({
+          success: false,
+          message: 'Webinar is full'
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to register for this webinar'
+      });
+    }
 
     res.json({
       success: true,
       message: 'Successfully registered for webinar',
-      data: { webinar }
+      data: { webinar: updatedWebinar }
     });
   } catch (error: any) {
     console.error('Register for webinar error:', error);

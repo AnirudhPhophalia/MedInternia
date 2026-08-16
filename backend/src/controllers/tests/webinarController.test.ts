@@ -92,26 +92,120 @@ describe("Webinar Controller", () => {
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Registration deadline has passed" }));
     });
 
-    it("successfully registers user", async () => {
+    it("successfully registers user via an atomic $push", async () => {
       const webinarMock = {
         _id: "webinar-1",
         status: "scheduled",
         scheduledAt: new Date(Date.now() + 100000),
         maxParticipants: 5,
         participants: [],
-        save: jest.fn().mockResolvedValue(undefined),
+      };
+      const updatedWebinarMock = {
+        ...webinarMock,
+        participants: [{ user: "user-1", registeredAt: new Date(), attended: false }],
       };
       mockedWebinar.findById.mockResolvedValue(webinarMock as any);
+      mockedWebinar.findOneAndUpdate.mockResolvedValue(updatedWebinarMock as any);
 
       const req = mockRequest("user-1", { id: "webinar-1" });
       const res = mockResponse();
 
       await registerForWebinar(req as any, res as any);
 
-      expect(webinarMock.participants).toHaveLength(1);
-      expect((webinarMock.participants as any[])[0].user).toBe("user-1");
-      expect(webinarMock.save).toHaveBeenCalled();
+      expect(mockedWebinar.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          _id: "webinar-1",
+          "participants.user": { $ne: "user-1" },
+          $expr: { $lt: [{ $size: { $ifNull: ["$participants", []] } }, 5] },
+        }),
+        expect.objectContaining({
+          $push: expect.objectContaining({
+            participants: expect.objectContaining({ user: "user-1", attended: false }),
+          }),
+        }),
+        { new: true }
+      );
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("omits the capacity guard for webinars without a participant limit", async () => {
+      const webinarMock = {
+        _id: "webinar-1",
+        status: "scheduled",
+        scheduledAt: new Date(Date.now() + 100000),
+        maxParticipants: undefined,
+        participants: [],
+      };
+      mockedWebinar.findById.mockResolvedValue(webinarMock as any);
+      mockedWebinar.findOneAndUpdate.mockResolvedValue({
+        ...webinarMock,
+        participants: [{ user: "user-1", registeredAt: new Date(), attended: false }],
+      } as any);
+
+      const req = mockRequest("user-1", { id: "webinar-1" });
+      const res = mockResponse();
+
+      await registerForWebinar(req as any, res as any);
+
+      const updateFilter = (mockedWebinar.findOneAndUpdate as jest.Mock).mock.calls[0][0];
+      expect(updateFilter).not.toHaveProperty("$expr");
+      expect(updateFilter["participants.user"]).toEqual({ $ne: "user-1" });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it("reports already-registered when a concurrent request wins the atomic update", async () => {
+      const webinarMock = {
+        _id: "webinar-1",
+        status: "scheduled",
+        scheduledAt: new Date(Date.now() + 100000),
+        maxParticipants: 5,
+        participants: [],
+      };
+      const latestWebinar = {
+        ...webinarMock,
+        participants: [{ user: "user-1", registeredAt: new Date(), attended: false }],
+      };
+      mockedWebinar.findOneAndUpdate.mockResolvedValue(null);
+      mockedWebinar.findById
+        .mockResolvedValueOnce(webinarMock as any)
+        .mockResolvedValueOnce(latestWebinar as any);
+
+      const req = mockRequest("user-1", { id: "webinar-1" });
+      const res = mockResponse();
+
+      await registerForWebinar(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "You are already registered for this webinar" }));
+    });
+
+    it("reports the webinar as full when a concurrent request fills the last seat", async () => {
+      const webinarMock = {
+        _id: "webinar-1",
+        status: "scheduled",
+        scheduledAt: new Date(Date.now() + 100000),
+        maxParticipants: 2,
+        participants: [{ user: "user-1" }],
+      };
+      const latestWebinar = {
+        ...webinarMock,
+        participants: [
+          { user: "user-1" },
+          { user: "user-2" },
+        ],
+      };
+      mockedWebinar.findById
+        .mockResolvedValueOnce(webinarMock as any)
+        .mockResolvedValueOnce(latestWebinar as any);
+      mockedWebinar.findOneAndUpdate.mockResolvedValue(null);
+
+      const req = mockRequest("user-3", { id: "webinar-1" });
+      const res = mockResponse();
+
+      await registerForWebinar(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Webinar is full" }));
     });
   });
 
