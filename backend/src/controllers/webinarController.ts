@@ -406,14 +406,18 @@ export const getWebinarById = async (req: AuthRequest, res: Response) => {
     };
 
     if (isParticipant) {
+      // Participants may only see their own registration status, never the
+      // identities (or internal ObjectIDs) of other attendees.
       const participantWebinar = {
         ...publicWebinar,
         meetingLink: webinar.meetingLink,
         polls: webinar.polls,
         qna: webinar.qna,
-        participants: webinar.participants.map(p => ({
-          user: (p.user as any)._id?.toString() || p.user.toString()
-        }))
+        participants: webinar.participants
+          .filter(p => ((p.user as any)._id?.toString() || p.user.toString()) === userId)
+          .map(p => ({
+            user: (p.user as any)._id?.toString() || p.user.toString()
+          }))
       };
 
       return res.json({

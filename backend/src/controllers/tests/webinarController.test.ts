@@ -3,6 +3,7 @@ import {
   registerForWebinar,
   unregisterFromWebinar,
   getWebinars,
+  getWebinarById,
 } from "../webinarController";
 import Webinar from "../../models/Webinar";
 import { AuthRequest } from "../../middleware/auth";
@@ -17,8 +18,8 @@ const mockResponse = () => {
   return res as Response;
 };
 
-const mockRequest = (userId: string, params: any = {}): AuthRequest => ({
-  user: { _id: userId },
+const mockRequest = (userId: string, params: any = {}, userType?: string): AuthRequest => ({
+  user: { _id: userId, userType } as any,
   params,
 }) as unknown as AuthRequest;
 
@@ -262,6 +263,100 @@ describe("Webinar Controller", () => {
       expect(webinar.scheduledAt).toBe(webinarRow.scheduledAt);
       expect(webinar.maxParticipants).toBe(50);
       expect(webinar.host).toEqual(webinarRow.host);
+    });
+  });
+
+  describe("getWebinarById", () => {
+    const buildWebinarRow = () => ({
+      _id: "webinar-1",
+      title: "Cardiology Live",
+      description: "desc",
+      host: { _id: "host-1", firstName: "Alice" },
+      type: "webinar",
+      specialization: ["cardiology"],
+      scheduledAt: new Date(Date.now() + 100000),
+      duration: 60,
+      maxParticipants: 100,
+      registrationDeadline: null,
+      tags: [],
+      materials: [],
+      isActive: true,
+      isRecorded: false,
+      status: "scheduled",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      meetingLink: "https://meet.jit.si/webinar-123",
+      polls: [],
+      qna: [],
+      participants: [
+        { user: { _id: "user-a", firstName: "Eve" }, registeredAt: new Date(), attended: false },
+        { user: { _id: "user-b", firstName: "Mallory" }, registeredAt: new Date(), attended: false },
+        { user: { _id: "user-c", firstName: "Trent" }, registeredAt: new Date(), attended: false },
+      ],
+    });
+
+    const mockFindById = (webinarRow: any) => {
+      mockedWebinar.findById.mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        ...webinarRow,
+      } as any);
+    };
+
+    it("does not leak other participants' IDs to a registered participant", async () => {
+      const webinarRow = buildWebinarRow();
+      mockFindById(webinarRow);
+
+      const req = mockRequest("user-a", { id: "webinar-1" });
+      const res = mockResponse();
+
+      await getWebinarById(req as any, res as any);
+
+      const webinar = (res.json as jest.Mock).mock.calls[0][0].data.webinar;
+      expect(webinar.participants).toEqual([{ user: "user-a" }]);
+      expect(webinar.participantCount).toBe(3);
+      expect(webinar.meetingLink).toBe(webinarRow.meetingLink);
+    });
+
+    it("returns only public metadata to a non-participant", async () => {
+      const webinarRow = buildWebinarRow();
+      mockFindById(webinarRow);
+
+      const req = mockRequest("user-d", { id: "webinar-1" });
+      const res = mockResponse();
+
+      await getWebinarById(req as any, res as any);
+
+      const webinar = (res.json as jest.Mock).mock.calls[0][0].data.webinar;
+      expect(webinar).not.toHaveProperty("meetingLink");
+      expect(webinar).not.toHaveProperty("participants");
+      expect(webinar.participantCount).toBe(3);
+    });
+
+    it("returns the full document (including the roster) to the host", async () => {
+      const webinarRow = buildWebinarRow();
+      mockFindById(webinarRow);
+
+      const req = mockRequest("host-1", { id: "webinar-1" });
+      const res = mockResponse();
+
+      await getWebinarById(req as any, res as any);
+
+      const webinar = (res.json as jest.Mock).mock.calls[0][0].data.webinar;
+      expect(webinar.participants).toHaveLength(3);
+      expect(webinar.participants[0].user).toEqual({ _id: "user-a", firstName: "Eve" });
+    });
+
+    it("returns the full document (including the roster) to an admin", async () => {
+      const webinarRow = buildWebinarRow();
+      mockFindById(webinarRow);
+
+      const req = mockRequest("admin-1", { id: "webinar-1" }, "admin");
+      const res = mockResponse();
+
+      await getWebinarById(req as any, res as any);
+
+      const webinar = (res.json as jest.Mock).mock.calls[0][0].data.webinar;
+      expect(webinar.participants).toHaveLength(3);
     });
   });
 });
