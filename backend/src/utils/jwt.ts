@@ -1,14 +1,20 @@
 import jwt from 'jsonwebtoken';
 import type { AppRole } from '../middleware/permissions';
 
-function getJWTSecret(): string {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "fallback_secret") {
-    throw new Error("CRITICAL: JWT_SECRET must be set.");
+function getJWTAccessSecret(): string {
+  const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+  if (!secret || secret === "fallback_secret") {
+    throw new Error("CRITICAL: JWT_ACCESS_SECRET or JWT_SECRET must be set.");
   }
-
-  return process.env.JWT_SECRET;
+  return secret;
 }
-
+function getJWTRefreshSecret(): string {
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+  if (!secret || secret === "fallback_secret") {
+    throw new Error("CRITICAL: JWT_REFRESH_SECRET or JWT_SECRET must be set.");
+  }
+  return secret;
+}
 const MIN_SECRET_LENGTH = 32;
 
 /**
@@ -35,21 +41,21 @@ export interface JwtPayload {
   exp?: number;
 }
 
-export const generateToken = (payload: JwtPayload, rememberMe: boolean = false): string => {
-  const secret = getJWTSecret();
-  const expiresIn = rememberMe ? '7d' : '15m';
-
+// Access Token generate karne ke liye (Humesha 15 minutes)
+export const generateToken = (payload: JwtPayload): string => {
+  const secret = getJWTAccessSecret();
+  const expiresIn = '15m';
+  return jwt.sign(payload, secret, { expiresIn });
+};
+// Refresh Token generate karne ke liye (Humesha 7 days)
+export const generateRefreshToken = (payload: JwtPayload): string => {
+  const secret = getJWTRefreshSecret();
+  const expiresIn = '7d';
   return jwt.sign(payload, secret, { expiresIn });
 };
 
-export const generateRefreshToken = (payload: JwtPayload): string => {
-  const secret = process.env.JWT_REFRESH_SECRET || getJWTSecret();
-
-  return jwt.sign(payload, secret, { expiresIn: '7d' });
-};
-
 export const verifyToken = (token: string): JwtPayload | null => {
-  const secret = getJWTSecret()
+  const secret = getJWTAccessSecret()
 
   try {
     const decoded = jwt.verify(token, secret, {
@@ -62,7 +68,7 @@ export const verifyToken = (token: string): JwtPayload | null => {
 };
 
 export const verifyRefreshToken = (token: string): JwtPayload | null => {
-  const secret = process.env.JWT_REFRESH_SECRET || getJWTSecret();
+  const secret = getJWTRefreshSecret();
 
   try {
     const decoded = jwt.verify(token, secret, {

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import Otp from '../models/Otp';
+import RefreshToken from '../models/RefreshToken';
 import transporter from '../utils/mailer';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { AuthRequest, blacklistToken, isTokenBlacklisted } from '../middleware/auth';
@@ -310,12 +311,18 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict' as const,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  res.cookie('token', token, cookieOptions);
-  res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
-  res.cookie('refresh_token', refreshToken, cookieOptions);
+  // Save refresh token to database
+  await RefreshToken.create({
+    token: refreshToken,
+    userId: user._id,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  res.cookie('token', token, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+  res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('refresh_token', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
   setCsrfCookie(res);
 
   // SECURITY: token/refreshToken are intentionally NOT included in the
@@ -454,12 +461,18 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict' as const,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  res.cookie('token', token, cookieOptions);
-  res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
-  res.cookie('refresh_token', refreshToken, cookieOptions);
+  // Save refresh token to database
+  await RefreshToken.create({
+    token: refreshToken,
+    userId: user._id,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  res.cookie('token', token, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+  res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('refresh_token', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
   setCsrfCookie(res);
 
   // SECURITY: token/refreshToken are intentionally NOT included in the
@@ -669,6 +682,7 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   const refreshToken: string | undefined =
     req.cookies?.refresh_token || req.body?.refreshToken || req.body?.refresh_token;
   if (refreshToken) {
+    await RefreshToken.findOneAndUpdate({ token: refreshToken }, { isRevoked: true });
     const refreshDecoded = jwt.decode(refreshToken) as { exp?: number } | null;
     const refreshRemainingMs = refreshDecoded?.exp
       ? refreshDecoded.exp * 1000 - Date.now()
@@ -758,6 +772,21 @@ export const refreshToken = asyncHandler(
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
+    const dbToken = await RefreshToken.findOne({ token: incomingRefreshToken });
+    if (!dbToken) {
+      throw new AppError('Invalid refresh token', 401);
+    }
+
+    // REUSE DETECTION: If token is already revoked, revoke all tokens for this user.
+    if (dbToken.isRevoked) {
+      await RefreshToken.updateMany({ userId: dbToken.userId }, { isRevoked: true });
+      throw new AppError('Refresh token has been revoked due to reuse attempt', 401);
+    }
+
+    if (dbToken.expiresAt < new Date()) {
+      throw new AppError('Refresh token has expired', 401);
+    }
+
     if (await isTokenBlacklisted(incomingRefreshToken)) {
       throw new AppError('Refresh token has been revoked', 401);
     }
@@ -778,8 +807,19 @@ export const refreshToken = asyncHandler(
     const newAccessToken = generateToken(tokenPayload);
     const newRefreshToken = generateRefreshToken(tokenPayload);
 
-    // Rotate the refresh token: consume the incoming token so a stolen copy
-    // can never be replayed after the legitimate user refreshes their session.
+    // Save the new refresh token in db
+    await RefreshToken.create({
+      token: newRefreshToken,
+      userId: user._id,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    // Revoke old token and link it to the new one
+    dbToken.isRevoked = true;
+    dbToken.replacedByToken = newRefreshToken;
+    await dbToken.save();
+
+    // Rotate the refresh token: consume the incoming token in the blacklist too
     const remainingMs = decoded.exp
       ? decoded.exp * 1000 - Date.now()
       : 7 * 24 * 60 * 60 * 1000;
@@ -790,16 +830,11 @@ export const refreshToken = asyncHandler(
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      // SECURITY: must match the 'strict' used at login/register — these
-      // calls overwrite the same cookie names, so setting 'lax' here was
-      // silently downgrading SameSite protection on every session after
-      // its first token refresh.
       sameSite: 'strict' as const,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
     };
-    res.cookie('token', newAccessToken, cookieOptions);
-    res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false });
-    res.cookie('refresh_token', newRefreshToken, cookieOptions);
+    res.cookie('token', newAccessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('auth_status', 'authenticated', { ...cookieOptions, httpOnly: false, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('refresh_token', newRefreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
     setCsrfCookie(res);
 
     // SECURITY: token/refreshToken are intentionally NOT included in the
