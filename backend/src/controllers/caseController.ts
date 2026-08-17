@@ -818,10 +818,33 @@ export const publishDueAICasePosts = asyncHandler(
         { reviewedBy: { $in: adminUserIds.map(admin => admin._id) } },
       ];
     }
-    const dueSchedules = await AICasePostSchedule.find(query).limit(10);
     const published: any[] = [];
-    for (const schedule of dueSchedules) {
-      const generatedCase = schedule.generatedCase;
+    const now = new Date();
+    for (let i = 0; i < 10; i++) {
+      // Atomically claim one due schedule to prevent duplicate publishing
+      // under concurrent invocations. We use a separate query object that
+      // includes the original filter so the claim only succeeds when the
+      // schedule still meets the "due" criteria.
+      const claimQuery: mongoose.FilterQuery<InstanceType<typeof AICasePostSchedule>> = {
+        ...query,
+        nextRunAt: { $lte: now },
+      };
+      // For non-admins, reuse the same $or ownership filter.
+      const claimed = await AICasePostSchedule.findOneAndUpdate(
+        claimQuery,
+        {
+          $set: { lastPublishedAt: now },
+          $setOnInsert: {},
+        },
+        { new: false },
+      );
+      if (!claimed) break;
+
+      // Only advance nextRunAt after a successful claim so that if the
+      // process crashes between here and the Case.create the schedule
+      // will be retried (intentional at-most-once risk is acceptable
+      // since duplicate cases are moderate impact vs. missed publishes).
+      const generatedCase = claimed.generatedCase;
       const publishedCase = await Case.create({
         title: generatedCase.title,
         description: generatedCase.description,
@@ -832,23 +855,24 @@ export const publishDueAICasePosts = asyncHandler(
         tags: generatedCase.tags,
         difficulty: generatedCase.difficulty,
         specialization: generatedCase.specialization,
-        doctor: schedule.author,
+        doctor: claimed.author,
         isPatientCase: false,
         moderationStatus: "approved",
         moderationAuditTrail: [
           {
             status: "approved",
             reason: "AI publication automatic execution",
-            reviewedBy: schedule.reviewedBy,
-            reviewedAt: schedule.reviewedAt ?? new Date(),
+            reviewedBy: claimed.reviewedBy,
+            reviewedAt: claimed.reviewedAt ?? now,
           },
         ],
         pointsAwarded: 0,
       });
-      (schedule as any).publishedCase = publishedCase._id;
-      schedule.lastPublishedAt = new Date();
-      schedule.nextRunAt = getNextAICasePostDate(schedule.nextRunAt, schedule.interval);
-      await schedule.save();
+
+      // Advance nextRunAt only after Case.create succeeds.
+      claimed.publishedCase = publishedCase._id;
+      claimed.nextRunAt = getNextAICasePostDate(claimed.nextRunAt, claimed.interval);
+      await claimed.save();
       published.push(publishedCase);
     }
     return res.json({ success: true, data: { count: published.length, cases: published } });
