@@ -6,7 +6,8 @@ import {
   updateMentorshipStatus,
   addGoal,
   toggleGoal,
-  addMeeting
+  addMeeting,
+  completeMeeting
 } from '../controllers/mentorshipController';
 import { authenticate } from '../middleware/auth';
 
@@ -21,5 +22,6 @@ router.patch('/:id/status', updateMentorshipStatus);
 router.post('/:id/goals', addGoal);
 router.patch('/:id/goals/:goalId/toggle', toggleGoal);
 router.post('/:id/meetings', addMeeting);
+router.patch('/:id/meetings/:meetingId/complete', completeMeeting);
 
 export default router;

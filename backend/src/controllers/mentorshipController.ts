@@ -3,6 +3,11 @@ import mongoose from 'mongoose';
 import Mentorship from '../models/Mentorship';
 import User from '../models/User';
 
+// Credits awarded to a mentor when a mentorship is completed. This is the only
+// place the mentoring-credit economy is funded — credits are spent on issuing
+// certificates and counted on the leaderboard, but were never earned anywhere.
+const MENTORSHIP_COMPLETION_CREDITS = 5;
+
 // True when userId is the mentor or mentee of the mentorship. Handles both
 // populated (mentor._id) and unpopulated (mentor as ObjectId) documents.
 const isParticipant = (mentorship: any, userId: string): boolean => {
@@ -175,6 +180,14 @@ export const updateMentorshipStatus = async (req: Request, res: Response): Promi
         await User.findByIdAndUpdate(mentorship.mentee, {
           $unset: { mentorDoctor: 1 }
         }, { session });
+
+        // Award the mentor their mentoring credits on completion. Only the
+        // active -> completed transition reaches here, so this fires once.
+        if (status === 'completed') {
+          await User.findByIdAndUpdate(mentorship.mentor, {
+            $inc: { mentoringCredits: MENTORSHIP_COMPLETION_CREDITS }
+          }, { session });
+        }
       }
 
       await session.commitTransaction();
@@ -267,10 +280,37 @@ export const addMeeting = async (req: Request, res: Response): Promise<any> => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    // Validate the requested time: required, parseable, and in the future.
+    if (!scheduledAt || !topic) {
+      return res.status(400).json({ success: false, message: 'scheduledAt and topic are required' });
+    }
+    const when = new Date(scheduledAt);
+    if (Number.isNaN(when.getTime())) {
+      return res.status(400).json({ success: false, message: 'scheduledAt must be a valid date' });
+    }
+    if (when <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Meetings must be scheduled in the future' });
+    }
+
+    // Reject a time that collides with an existing (non-cancelled) meeting.
+    // ponytail: fixed 60-min window; add a per-meeting duration field if scheduling gets real.
+    const OVERLAP_MS = 60 * 60 * 1000;
+    const overlaps = mentorship.meetings.some(
+      (m: any) =>
+        m.status !== 'cancelled' &&
+        Math.abs(new Date(m.scheduledAt).getTime() - when.getTime()) < OVERLAP_MS
+    );
+    if (overlaps) {
+      return res.status(409).json({
+        success: false,
+        message: 'That time overlaps an existing meeting for this mentorship',
+      });
+    }
+
     // Use an atomic $push so concurrent adds never overwrite each other.
     const updatedMentorship = await Mentorship.findByIdAndUpdate(
       req.params.id,
-      { $push: { meetings: { scheduledAt: new Date(scheduledAt), topic, link, notes } } },
+      { $push: { meetings: { scheduledAt: when, topic, link, notes, status: 'scheduled' } } },
       { new: true }
     );
 
@@ -282,6 +322,53 @@ export const addMeeting = async (req: Request, res: Response): Promise<any> => {
     }
 
     res.status(200).json({ success: true, data: updatedMentorship });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * Mark a scheduled meeting as completed. Participant-only; the meeting must have
+ * already taken place (its scheduledAt is in the past). Idempotent if the meeting
+ * is already completed.
+ */
+export const completeMeeting = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { meetingId } = req.params;
+    const userId = (req as any).user.id;
+    const mentorship = await Mentorship.findById(req.params.id);
+    if (!mentorship) {
+      return res.status(404).json({ success: false, message: 'Mentorship not found' });
+    }
+    if (!isParticipant(mentorship, userId)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const meeting = mentorship.meetings.find(
+      (m: any) => m._id && m._id.toString() === meetingId
+    );
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+    if (meeting.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Cannot complete a cancelled meeting' });
+    }
+    if (meeting.status === 'completed') {
+      // Idempotent: already done.
+      return res.status(200).json({ success: true, data: mentorship });
+    }
+    if (new Date(meeting.scheduledAt) > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot complete a meeting that has not happened yet',
+      });
+    }
+
+    meeting.status = 'completed';
+    meeting.completedAt = new Date();
+    await mentorship.save();
+
+    res.status(200).json({ success: true, data: mentorship });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
