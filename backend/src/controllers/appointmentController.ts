@@ -4,6 +4,29 @@ import User, { IUser } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
+import DoctorAvailability from '../models/DoctorAvailability';
+import { isWithinSchedule } from '../services/slotService';
+
+/**
+ * Reject a booking that falls outside the doctor's published schedule.
+ * If the doctor has not set availability, the check is skipped (backward
+ * compatible with doctors who predate the availability feature). Double-booking
+ * is enforced separately by the caller.
+ */
+async function assertWithinSchedule(
+  doctorId: string,
+  scheduledDate: Date,
+  scheduledTime: string,
+): Promise<void> {
+  const availability = await DoctorAvailability.findOne({ doctor: doctorId });
+  if (!availability) return;
+  if (!isWithinSchedule(availability, scheduledDate, scheduledTime)) {
+    throw new AppError(
+      'That time is outside the doctor’s available slots. Please pick an open slot.',
+      409,
+    );
+  }
+}
 
 /**
  * Create a new appointment
@@ -43,6 +66,9 @@ export const createAppointment = asyncHandler(
     if (appointmentDate < new Date()) {
       throw new AppError('Appointment date must be in the future', 400);
     }
+
+    // Constrain to the doctor's published availability (if any).
+    await assertWithinSchedule(doctorId, appointmentDate, scheduledTime);
 
     // Check for existing appointments (Issue #999: prevent double-booking)
     const existingAppointment = await Appointment.findOne({
@@ -226,6 +252,9 @@ export const rescheduleAppointment = asyncHandler(
     if (newDate < new Date()) {
       throw new AppError('Appointment date must be in the future', 400);
     }
+
+    // Constrain to the doctor's published availability (if any).
+    await assertWithinSchedule(appointment.doctorId.toString(), newDate, scheduledTime);
 
     // Bug fix (#1051): Check for double-booking before rescheduling.
     // createAppointment does this check but rescheduleAppointment did not,

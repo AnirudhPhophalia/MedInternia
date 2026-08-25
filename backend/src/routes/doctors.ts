@@ -4,6 +4,11 @@ import User from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination';
 import { createSafeRegexFilter } from '../utils/searchUtils';
+import {
+  setAvailability,
+  getMyAvailability,
+  getAvailableSlots,
+} from '../controllers/availabilityController';
 
 const router = Router();
 
@@ -86,6 +91,13 @@ router.get('/meta/specializations', authenticate, async (req: AuthRequest, res) 
     });
   }
 });
+
+// --- Doctor availability & bookable slots ---
+// A doctor manages their own recurring schedule.
+router.put('/me/availability', authenticate, authorize('doctor'), setAvailability);
+router.get('/me/availability', authenticate, authorize('doctor'), getMyAvailability);
+// Anyone can see a doctor's open slots for a given date (to book).
+router.get('/:id/available-slots', optionalAuthenticate, getAvailableSlots);
 
 // Get doctor by ID
 router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res) => {
