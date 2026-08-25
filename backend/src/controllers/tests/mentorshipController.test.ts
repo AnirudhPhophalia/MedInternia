@@ -6,7 +6,8 @@ import {
   getMentorshipById,
   addGoal,
   toggleGoal,
-  addMeeting
+  addMeeting,
+  completeMeeting
 } from "../mentorshipController";
 import Mentorship from "../../models/Mentorship";
 import User from "../../models/User";
@@ -320,8 +321,11 @@ describe("Mentorship Controller", () => {
   });
 
   describe("addMeeting", () => {
+    const FUTURE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const PAST = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
     it("adds meeting successfully if mentorship exists", async () => {
-      const req = mockRequest("doctor-1", "doctor", { scheduledAt: "2026-07-13T22:00:00Z", topic: "Clinical audit", link: "zoom.us", notes: "preparation" }, { id: "mentorship-1" });
+      const req = mockRequest("doctor-1", "doctor", { scheduledAt: FUTURE, topic: "Clinical audit", link: "zoom.us", notes: "preparation" }, { id: "mentorship-1" });
       const res = mockResponse();
 
       mockedMentorship.findById.mockResolvedValue({
@@ -359,6 +363,139 @@ describe("Mentorship Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, message: 'Mentorship not found' }));
+    });
+
+    it("rejects a meeting scheduled in the past (400)", async () => {
+      const req = mockRequest("doctor-1", "doctor", { scheduledAt: PAST, topic: "Late" }, { id: "mentorship-1" });
+      const res = mockResponse();
+      mockedMentorship.findById.mockResolvedValue({
+        _id: "mentorship-1",
+        mentor: { toString: () => "doctor-1" },
+        meetings: [],
+      } as any);
+
+      await addMeeting(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockedMentorship.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a meeting that overlaps an existing one (409)", async () => {
+      const req = mockRequest("doctor-1", "doctor", { scheduledAt: FUTURE, topic: "Clash" }, { id: "mentorship-1" });
+      const res = mockResponse();
+      // An existing scheduled meeting 10 minutes from the requested time.
+      const near = new Date(new Date(FUTURE).getTime() + 10 * 60 * 1000);
+      mockedMentorship.findById.mockResolvedValue({
+        _id: "mentorship-1",
+        mentor: { toString: () => "doctor-1" },
+        meetings: [{ scheduledAt: near, status: "scheduled" }],
+      } as any);
+
+      await addMeeting(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(mockedMentorship.findByIdAndUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("completeMeeting", () => {
+    const PAST = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const FUTURE = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    it("marks a past scheduled meeting as completed and saves", async () => {
+      const meeting: any = { _id: { toString: () => "m1" }, scheduledAt: PAST, status: "scheduled" };
+      const mockSave = jest.fn();
+      mockedMentorship.findById.mockResolvedValue({
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
+        meetings: [meeting],
+        save: mockSave,
+      } as any);
+      const req = mockRequest("doctor-1", "doctor", {}, { id: "mentorship-1", meetingId: "m1" });
+      const res = mockResponse();
+
+      await completeMeeting(req as any, res as any);
+
+      expect(meeting.status).toBe("completed");
+      expect(meeting.completedAt).toBeInstanceOf(Date);
+      expect(mockSave).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("refuses to complete a meeting that hasn't happened yet (400)", async () => {
+      const meeting: any = { _id: { toString: () => "m1" }, scheduledAt: FUTURE, status: "scheduled" };
+      const mockSave = jest.fn();
+      mockedMentorship.findById.mockResolvedValue({
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
+        meetings: [meeting],
+        save: mockSave,
+      } as any);
+      const req = mockRequest("doctor-1", "doctor", {}, { id: "mentorship-1", meetingId: "m1" });
+      const res = mockResponse();
+
+      await completeMeeting(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it("is idempotent when the meeting is already completed (200, no re-save)", async () => {
+      const meeting: any = { _id: { toString: () => "m1" }, scheduledAt: PAST, status: "completed" };
+      const mockSave = jest.fn();
+      mockedMentorship.findById.mockResolvedValue({
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
+        meetings: [meeting],
+        save: mockSave,
+      } as any);
+      const req = mockRequest("intern-1", "intern", {}, { id: "mentorship-1", meetingId: "m1" });
+      const res = mockResponse();
+
+      await completeMeeting(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-participant (403)", async () => {
+      mockedMentorship.findById.mockResolvedValue({
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
+        meetings: [{ _id: { toString: () => "m1" }, scheduledAt: PAST, status: "scheduled" }],
+        save: jest.fn(),
+      } as any);
+      const req = mockRequest("stranger-9", "doctor", {}, { id: "mentorship-1", meetingId: "m1" });
+      const res = mockResponse();
+
+      await completeMeeting(req as any, res as any);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+  });
+
+  describe("updateMentorshipStatus — mentoring credits", () => {
+    it("awards mentoring credits to the mentor when a mentorship is completed", async () => {
+      const req = mockRequest("intern-1", "intern", { status: "completed" }, { id: "req-1" });
+      const res = mockResponse();
+      mockedMentorship.findById.mockResolvedValue({
+        _id: "req-1",
+        mentor: { toString: () => "doctor-1" },
+        mentee: { toString: () => "intern-1" },
+        status: "active",
+        save: jest.fn(),
+      } as any);
+      (mockedUser.findByIdAndUpdate as jest.Mock).mockResolvedValue({} as any);
+
+      await updateMentorshipStatus(req as any, res as any);
+
+      // Mentor receives a positive mentoringCredits increment inside the txn.
+      expect(mockedUser.findByIdAndUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ $inc: expect.objectContaining({ mentoringCredits: expect.any(Number) }) }),
+        expect.objectContaining({ session: mockSession })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 });

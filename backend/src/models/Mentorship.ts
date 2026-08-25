@@ -14,6 +14,8 @@ export interface IMentorshipMeeting {
   topic: string;
   link?: string;
   notes?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled';
+  completedAt?: Date;
 }
 
 export interface IMentorship extends Document {
@@ -48,7 +50,13 @@ const MentorshipSchema = new Schema<IMentorship>({
     scheduledAt: { type: Date, required: true },
     topic: { type: String, required: true },
     link: { type: String },
-    notes: { type: String }
+    notes: { type: String },
+    status: {
+      type: String,
+      enum: ['scheduled', 'completed', 'cancelled'],
+      default: 'scheduled'
+    },
+    completedAt: { type: Date }
   }]
 }, { timestamps: true });
 
