@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth';
 import JobOpportunity from '../models/JobOpportunity';
 import User from '../models/User';
 import { calculateJobEligibility } from '../services/jobEligibilityService';
+import { rankJobsByMatch } from '../services/jobRecommendationService';
 
 const isInvalidPastDeadline = (deadline: unknown): boolean => {
   const parsedDeadline = new Date(deadline as any);
@@ -573,6 +574,54 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
 };
 
 // Get job opportunities posted by doctor
+// Get active jobs ranked by how well they match the current user's profile,
+// excluding ones they have already applied to. Purely a discovery aid — the
+// match score is the same one surfaced elsewhere, just used to sort + filter.
+export const getRecommendedJobs = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = (req.user!._id as any).toString();
+    const { limit = 10, minScore = 0 } = req.query;
+
+    const parsedLimit = Math.min(Math.max(Number(limit) || 0, 1), 50);
+    const parsedMinScore = Math.min(Math.max(Number(minScore) || 0, 0), 100);
+
+    const fullUser = await User.findById(userId);
+    if (!fullUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Active, not-yet-expired jobs the user has not already applied to.
+    const jobs = await JobOpportunity.find({
+      isActive: true,
+      applicationDeadline: { $gte: new Date() },
+      'applicants.user': { $ne: userId }
+    })
+      .populate('postedBy', 'firstName lastName specialization isVerifiedDoctor')
+      .populate('requirements.requiredBadges', 'name description icon');
+
+    const strippedJobs = jobs.map((job) =>
+      stripApplicantsForNonOwner(job.toObject(), userId)
+    );
+
+    const ranked = rankJobsByMatch(
+      strippedJobs,
+      (job) => calculateMatchScore(fullUser, job),
+      { minScore: parsedMinScore, limit: parsedLimit }
+    ).map((entry) => ({ ...entry.job, matchPercentage: entry.matchPercentage }));
+
+    res.json({
+      success: true,
+      data: { jobOpportunities: ranked, total: ranked.length }
+    });
+  } catch (error) {
+    console.error('Get recommended jobs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 export const getMyJobOpportunities = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!._id;

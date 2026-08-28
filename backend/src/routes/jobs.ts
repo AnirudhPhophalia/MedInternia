@@ -10,7 +10,8 @@ import {
   checkJobEligibility,
   applyToJob,
   getMyJobOpportunities,
-  getMyJobApplications
+  getMyJobApplications,
+  getRecommendedJobs
 } from '../controllers/jobController';
 
 const router = Router();
@@ -26,6 +27,9 @@ router.get('/my', authenticate, requirePermission('job:manage'), getMyJobOpportu
 
 // Get user applications
 router.get('/applications', authenticate, getMyJobApplications);
+
+// Get jobs recommended for the current user (ranked by profile match)
+router.get('/recommendations', authenticate, getRecommendedJobs);
 
 // Get job opportunity by ID
 router.get('/:id', authenticate, getJobOpportunityById);
