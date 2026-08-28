@@ -3,6 +3,7 @@ import {
   createFlashcard,
   getMyFlashcards,
   getDueFlashcards,
+  getFlashcardStats,
   reviewFlashcard,
   deleteFlashcard
 } from '../controllers/flashcardController';
@@ -15,6 +16,7 @@ router.use(authenticate);
 router.post('/', createFlashcard);
 router.get('/me', getMyFlashcards);
 router.get('/due', getDueFlashcards);
+router.get('/stats', getFlashcardStats);
 router.post('/:id/review', reviewFlashcard);
 router.delete('/:id', deleteFlashcard);
 

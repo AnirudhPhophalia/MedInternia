@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Flashcard from '../models/Flashcard';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination';
+import { computeFlashcardStats } from '../utils/flashcardStats';
 
 /**
  * SM-2 Spaced Repetition Algorithm
@@ -160,6 +161,23 @@ export const reviewFlashcard = async (req: Request, res: Response): Promise<void
     }
 
     res.status(200).json({ success: true, data: reviewedFlashcard });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @route GET /api/flashcards/stats
+// @desc  Study summary over the user's deck (due / new / learning / mature)
+export const getFlashcardStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const cards = await Flashcard.find({ user: (req as any).user.id })
+      .select('interval repetitions easeFactor nextReview')
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: computeFlashcardStats(cards as any)
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
