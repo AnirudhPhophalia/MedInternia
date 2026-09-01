@@ -3,6 +3,7 @@ import {
   createCase,
   getCases,
   getCaseById,
+  getCaseComplexity,
   updateCase,
   deleteCase,
   addComment,
@@ -93,6 +94,7 @@ router.post('/ai-posts/schedule', authenticate, requirePermission('case:create')
 router.patch('/ai-posts/:scheduleId/review', authenticate, requirePermission('comment:moderate'), reviewAICasePost);
 router.post('/ai-posts/publish-due', authenticate, requirePermission('comment:moderate'), publishDueAICasePosts);
 router.get('/:id', optionalAuthenticate, getCaseById);
+router.get('/:id/complexity', optionalAuthenticate, getCaseComplexity);
 router.get('/:id/export', optionalAuthenticate, exportCasePdf);
 router.put('/:id', authenticate, requirePermission('case:update'), checkPlagiarismAndAI, updateCase);
 router.delete('/:id', authenticate, requirePermission('case:delete'), deleteCase);
