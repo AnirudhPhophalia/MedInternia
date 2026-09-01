@@ -16,6 +16,7 @@ import { deleteCaseVectors, ingestCase, suggestCases } from "../services/ragServ
 import { generateCasePdfHtml, renderHtmlToPdfBuffer } from "../services/pdfExportService";
 import { enqueueCaseModeration } from "../jobs/caseModerationJob";
 import { asyncHandler } from "../utils/asyncHandler";
+import { scoreCaseComplexity } from "../utils/caseComplexity";
 import { AppError } from "../utils/AppError";
 import { uploadCaseAttachment, generateSignedUrl } from "../utils/cloudinary";
 import { parsePagination, buildPaginationMeta } from "../utils/pagination";
@@ -111,6 +112,26 @@ export const getCaseById = asyncHandler(async (req: AuthRequest, res: Response) 
   }
   res.json({ success: true, data: { case: caseDoc } });
 });
+
+export const getCaseComplexity = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const caseDoc = await Case.findOne({
+      _id: getId(req.params.id),
+      isActive: { $ne: false },
+      $or: [
+        { moderationStatus: "approved" },
+        { moderationStatus: { $exists: false } },
+      ],
+    }).select("symptoms patientInfo attachments isRareDisease");
+
+    if (!caseDoc) {
+      throw new AppError("Case not found or not approved", 404);
+    }
+
+    const complexity = scoreCaseComplexity(caseDoc);
+    res.json({ success: true, data: { complexity } });
+  },
+);
 
 // Update a case
 export const updateCase = asyncHandler(async (req: AuthRequest, res: Response) => {

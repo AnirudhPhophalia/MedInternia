@@ -14,6 +14,7 @@ import {
   reviewAICasePost,
   publishDueAICasePosts,
   exportCasePdf,
+  getCaseComplexity,
 } from "../caseController";
 import { AuthRequest } from "../../middleware/auth";
 import Case from "../../models/Case";
@@ -1183,6 +1184,47 @@ describe("Case Controller", () => {
 
       await expect(exportCasePdf(req, res, jest.fn())).rejects.toThrow(
         "User not authenticated",
+      );
+    });
+  });
+
+  describe("getCaseComplexity", () => {
+    it("returns a complexity score for an approved case", async () => {
+      mockedCase.findOne.mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          symptoms: ["fever", "cough"],
+          patientInfo: { age: 72, medicalHistory: ["copd"] },
+          attachments: [],
+          isRareDisease: false,
+        }),
+      } as any);
+
+      const req = mockRequest("u1", "doctor", { id: "case1" });
+      const res = mockResponse();
+      await getCaseComplexity(req, res, jest.fn());
+
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            complexity: expect.objectContaining({
+              score: expect.any(Number),
+              suggestedDifficulty: expect.any(String),
+            }),
+          }),
+        }),
+      );
+    });
+
+    it("throws 404 when the case is not found", async () => {
+      mockedCase.findOne.mockReturnValue({
+        select: jest.fn().mockResolvedValue(null),
+      } as any);
+
+      const req = mockRequest("u1", "doctor", { id: "missing" });
+      const res = mockResponse();
+      await expect(getCaseComplexity(req, res, jest.fn())).rejects.toThrow(
+        "Case not found or not approved",
       );
     });
   });
