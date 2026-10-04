@@ -4,13 +4,13 @@ A modern Node.js backend API built with TypeScript and Express.js.
 
 ## Features
 
-- ✅ TypeScript for type safety
-- ✅ Express.js web framework
-- ✅ Security middleware (Helmet, CORS)
-- ✅ Request logging with Morgan
-- ✅ Environment variables with dotenv
-- ✅ Development server with hot reload
-- ✅ Organized project structure
+- TypeScript for type safety
+- Express.js web framework
+- Security middleware (Helmet, CORS)
+- Request logging with Morgan
+- Environment variables with dotenv
+- Development server with hot reload
+- Organized project structure
 
 ## Project Structure
 
