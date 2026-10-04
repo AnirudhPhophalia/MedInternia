@@ -1,4 +1,4 @@
-# 🩺 MedInternia
+# MedInternia
 
 <div align="center">
 
@@ -6,229 +6,67 @@
 
 MedInternia is a comprehensive medical education and collaboration platform designed for doctors, interns, medical students, and patients.
 
-🚀 Official GSSoC 2026 Project
+**Official GSSoC 2026 Project**
 
 <p align="center">
-
 <img src="https://img.shields.io/github/stars/AnirudhPhophalia/MedInternia?style=for-the-badge" />
 <img src="https://img.shields.io/github/forks/AnirudhPhophalia/MedInternia?style=for-the-badge" />
 <img src="https://img.shields.io/github/issues/AnirudhPhophalia/MedInternia?style=for-the-badge" />
 <img src="https://img.shields.io/badge/GSSoC-2026-orange?style=for-the-badge" />
-
 </p>
 
 </div>
 
-# 🚨 Problem Statement
 
-The medical education and collaboration ecosystem faces critical real-world challenges:
+## Vision & Problem Statement
 
-* **Limited collaborative case discussion platforms** — Medical professionals lack dedicated spaces for structured peer-to-peer case discussions
-* **Difficulty accessing medical mentorship and peer learning** — Interns and students struggle to connect with experienced doctors for guidance
-* **Fragmented internship and job discovery** — No centralized hub exists for medical internship, residency, and job opportunities
-* **Lack of centralized medical learning and networking ecosystems** — Medical knowledge, networking, and career tools are scattered across disconnected platforms
+The medical education ecosystem faces challenges such as fragmented job discovery, limited collaborative platforms, and difficult access to mentorship. MedInternia was built to unify these tools, creating an ecosystem where professionals can connect, share knowledge, and advance their careers, ultimately improving healthcare quality through better training.
 
----
-
-# 🎯 Project Vision
-
-MedInternia was built to transform how medical professionals learn, collaborate, and grow:
-
-* **Why MedInternia was built** — To create a unified platform where doctors, interns, students, and patients can connect, share knowledge, and advance their careers together
-* **Long-term goals** — To become the leading ecosystem for medical education, peer learning, mentorship, and career development globally
-* **Intended impact on medical education and collaboration** — Improve healthcare quality by empowering better-trained and better-connected medical professionals
-
----
-
-# 💡 Solution Overview
-
-MedInternia addresses these challenges through an integrated platform:
-
-* **Case-Based Learning** — Explore and analyze real medical cases with peers
-* **Medical Job Board** — Find internships and career opportunities in one place
-* **Webinars & Live AMAs** — Join live sessions with experienced professionals
-* **Leaderboard & Achievements** — Track contributions and earn recognition
-* **AI-Powered Suggestions** — Get smart recommendations for learning and collaboration
-* **Peer Review & Ratings** — Maintain quality through community feedback
-
----
-
-# 👥 User-Centric Narrative
-
-MedInternia is built for everyone in the medical ecosystem:
-
-| User | How MedInternia Helps |
-|------|----------------------|
-| 🎓 Medical Students | Case-based peer learning, mentorship, certifications |
-| 🏥 Interns | Job and residency discovery, skill building |
-| 👨‍⚕️ Doctors | Share expertise, review cases, host webinars |
-| 🤝 Contributors | Clear docs, good first issues, active maintainers |
-| 🏅 GSSoC Reviewers | Problem-driven architecture, real-world impact |
-| 💼 Recruiters | Modern tech stack, healthcare domain experience |
-
----
----
-
-# 🌟 Features
-
-## 🗂️ Case-Based Learning System
-
-* Create, publish, and discuss medical cases
-* Nested comments and threaded replies
-* Interactive peer discussions
-
-## 🧑‍⚕️ Peer Review & Ratings
-
-* Doctors and interns can review cases
-* Rating system for cases and comments
-
-## 🏅 Badges & Certifications
-
-* Earn participation badges
-* Achievement-based certificates
-
-## 💼 Medical Job Board
-
-* Browse and apply for medical jobs
-* Internship and residency opportunities
-
-## 🎥 Webinars & AMA Sessions
-
-* Attend and host webinars
-* Interactive live sessions
+**Core Solutions:**
+* **Case-Based Learning:** Explore, analyze, and review real medical cases with peers.
+* **Medical Job Board:** Centralized hub for internships, residencies, and job opportunities.
+* **Webinars & Live AMAs:** Direct interaction with experienced professionals.
+* **AI-Powered Suggestions & Leaderboards:** Smart learning recommendations and contribution tracking.
 
 
-## 🤖 AI-Powered Suggestions
+## User Centric Approach
 
-* Smart recommendations for discussions
-* AI-assisted learning support
+| Audience | Benefits Provided |
+|----------|-------------------|
+| **Medical Students** | Case-based peer learning, mentorship, and certifications |
+| **Interns** | Job and residency discovery, skill building |
+| **Doctors** | Share expertise, review cases, and host webinars |
+| **Contributors & Reviewers**| Clear docs, active maintainers, problem-driven architecture |
 
-## 📹 Video Conferencing
 
-- Secure video calls via [Daily.co](https://daily.co) (WebRTC)
-- Webinar and live AMA session support
-- Role-based controls (host can mute/remove participants)
-- **Status: Implementation in progress** — see [docs/video-conferencing.md](docs/video-conferencing.md)
+## Features
 
-## 👤 User Profiles
+* **Case-Based Learning & Peer Review:** Create, publish, and discuss medical cases with nested comments, threaded replies, and peer rating systems.
+* **Badges & Certifications:** Earn participation badges and achievement-based certificates.
+* **Medical Job Board:** Browse and apply for medical jobs, internships, and residency opportunities.
+* **Webinars & Video Conferencing:** Attend and host interactive sessions secured via [Daily.co](https://daily.co) (WebRTC). Role-based controls currently in progress (see [docs/video-conferencing.md](docs/video-conferencing.md)).
+* **AI-Powered Suggestions:** Smart recommendations for discussions and AI-assisted learning.
+* **User Profiles & Security:** Personalized dashboards managed via JWT authentication, OTP verification, and protected routes.
 
-* Manage professional information
-* Personalized dashboards
 
-## 🔒 Authentication & Security
 
-* JWT Authentication
-* OTP Verification
-* Protected routes
 
----
+## Getting Started
 
-# 🛠️ Tech Stack
-
-## Frontend
-
-* Next.js
-* React.js
-* Material UI
-
-## Backend
-
-* Node.js
-* Express.js
-* MongoDB
-* Mongoose
-
-## Authentication & Security
-
-* JWT
-* Nodemailer
-* Helmet
-* CORS
-
----
-
-# 📁 Folder Structure
-
-```bash
-MedInternia/
-│
-├── backend/
-├── frontend/
-├── README.md
-└── package.json
-```
-
-## 📁 Folder Structure
-```
-MedInternia/
-│
-├── backend/          # Node.js + Express API (port 3000)
-├── frontend/         # Next.js frontend (port 3001)
-├── docs/             # Architecture documentation
-│   └── ai-nlp-integration.md   # AI/NLP module plan
-├── requirements.txt  # Python dependencies (for future NLP module)
-├── README.md
-└── package.json
-```
-
-> **Note on `requirements.txt`:** This file is a placeholder for the planned
-> Python NLP microservice. See `docs/ai-nlp-integration.md` for the implementation
-> plan and `backend/.env.example` for the `NLP_SERVICE_URL` configuration.
-Also update the "Getting Started" section to add:
-markdown## 4️⃣ Start Development Servers
-
-### Backend
-```bash
-cd backend
-npm run dev
-```
-
-### Frontend
-```bash
-cd frontend  
-npm run dev
-```
-
-### NLP Service (Optional — only needed for AI Suggestions feature)
-> ⚠️ The NLP module is **not yet implemented**. The AI-Powered Suggestions feature
-> is currently planned. See [docs/ai-nlp-integration.md](docs/ai-nlp-integration.md)
-> for the implementation roadmap.
-
----
-
-# ⚡ Getting Started
-
-## 1️⃣ Clone Repository
-
+### 1. Setup & Installation
 ```bash
 git clone https://github.com/AnirudhPhophalia/MedInternia.git
 cd MedInternia
+
+# Install Backend Dependencies
+cd backend && npm install
+
+# Install Frontend Dependencies
+cd ../frontend && npm install
 ```
 
----
-
-## 2️⃣ Install Dependencies
-
-### Backend
-
-```bash
-cd backend
-npm install
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-```
-
----
-
-## 3️⃣ Configure Environment Variables
-
-Create a `.env` file inside `backend/`
-
+### 2. Configuration
+Create a `.env` file in the `backend/` directory:
 ```env
 PORT=3000
 MONGODB_URI=your_mongodb_connection
@@ -237,103 +75,37 @@ CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
+# Gmail SMTP Configuration (Requires a 16-char App Password, not account password)
 EMAIL_USER=your_gmail@gmail.com
-EMAIL_PASS=your_gmail_app_password    # ⚠️ 16-char App Password — NOT your Gmail password
-                                       # Generate at: myaccount.google.com/apppasswords
+EMAIL_PASS=your_gmail_app_password
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-
-> **⚠️ Gmail SMTP Note:** Google permanently removed support for password-based SMTP
-> in August 2024. `EMAIL_PASS` must be a **Gmail App Password** (not your account password).
-> Enable 2-Step Verification first, then generate an App Password at
-> [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
-> For local development without sending real emails, use [Mailtrap](https://mailtrap.io) (free).
-
 ```
 
----
-
-## 4️⃣ Start Development Servers
-
-### Backend
-
+### 3. Start Development Servers
 ```bash
-npm run dev
+# Start Backend API (runs on http://localhost:3000/api)
+cd backend && npm run dev
+
+# Start Frontend (runs on http://localhost:3001)
+cd ../frontend && npm run dev
 ```
 
-> **Verification:** After starting the backend, open `http://localhost:3000/api` (or the configured API base URL) and confirm the server responds before launching the frontend.
 
-### Frontend
+## Contributing
 
-```bash
-npm run dev
-```
-
-> **Verification:** Open `http://localhost:3001` and verify that the landing page loads without console errors and can communicate with the backend API.
-
----
-
-# 🌐 Local Development URLs
-
-| Service     | URL                       |
-| ----------- | ------------------------- |
-| Frontend    | http://localhost:3001     |
-| Backend API | http://localhost:3000/api |
-
----
-
-# 📝 Usage
-
-* Register as a doctor, intern, or patient
-* Verify email via OTP
-* Create and discuss cases
-* Attend webinars
-* Apply for jobs
-* Earn badges and certificates
-
----
-
-# 🤝 Contributing
-
-We welcome contributions from developers, designers, and medical enthusiasts!
-
-## Contribution Steps
-
-1. Fork the repository
-2. Clone your fork
-3. Create a branch
-
-```bash
-git checkout -b feature/your-feature-name
-```
-
-4. Commit changes
-
-```bash
-git commit -m "feat: added new feature"
-```
-
-5. Push changes
-
-```bash
-git push origin feature/your-feature-name
-```
-
-6. Open a Pull Request
-
----
-
-# 🌟 Contributors
-
-Thanks to all the amazing contributors who help improve MedInternia ❤️
+We welcome contributions! To get started:
+1. Fork the repository and clone your fork.
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes: `git commit -m "feat: added new feature"`
+4. Push and open a Pull Request.
 
 <a href="https://github.com/AnirudhPhophalia/MedInternia/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=AnirudhPhophalia/MedInternia" />
 </a>
 
----
 
-# 👨‍💻 Project Admins / Maintainers
+# Project Admins / Maintainers
 
 <table>
 <tr>
@@ -370,35 +142,15 @@ Thanks to all the amazing contributors who help improve MedInternia ❤️
 </tr>
 </table>
 
----
 
-# 🏷️ GSSoC 2026
 
-<div align="center">
+## License & Support
 
-✨ Officially Selected in GirlScript Summer of Code 2026 ✨
-
-</div>
-
----
-
-# 📄 License
-
-This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
-
-For responsible vulnerability reporting, see [SECURITY.md](./SECURITY.md). For setup and usage help, see [SUPPORT.md](./SUPPORT.md).
-
----
-
-# 📬 Contact
-
-📧 Team Blue Spies
-🌐 https://github.com/AnirudhPhophalia/MedInternia
-
----
+* **License:** Licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+* **Security:** See [SECURITY.md](./SECURITY.md) for responsible vulnerability reporting.
+* **Support:** See [SUPPORT.md](./SUPPORT.md) for usage help.
+* **Contact:** Team Blue Spies — [GitHub Repository](https://github.com/AnirudhPhophalia/MedInternia)
 
 <div align="center">
-
-Made with ❤️ for the Medical Community & Open Source Ecosystem
-
+Made for the Medical Community & Open Source Ecosystem
 </div>
